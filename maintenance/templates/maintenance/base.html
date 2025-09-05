@@ -1,0 +1,39 @@
+{% load static %}
+<!doctype html>
+<html lang="tr" class="light">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}Bakım Modülü{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="{% static 'maintenance/dashboard.css' %}" rel="stylesheet" />
+  <script defer src="{% static 'maintenance/dashboard.js' %}"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">🛠️</div>
+    <div class="brand-text">
+      <strong>Bakım Modülü</strong>
+      <span class="sub">IATF 16949 • AS9100 • ISO 22163</span>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button class="btn ghost" onclick="window.location.reload()">Yenile</button>
+    <button class="btn primary" onclick="MaintenanceUI.toast('Kaydedildi')">Kaydet</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="side">
+    {% block sidebar %}{% endblock %}
+  </aside>
+  <section class="content">
+    {% block content %}{% endblock %}
+  </section>
+</main>
+
+<footer class="footer">
+  <span>© {{ now|date:"Y" }} Bakım Kalibrasyon • Tüm hakları saklıdır.</span>
+</footer>
+</body>
+</html>

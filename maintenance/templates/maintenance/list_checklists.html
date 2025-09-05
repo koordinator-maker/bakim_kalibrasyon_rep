@@ -1,0 +1,45 @@
+{% extends "maintenance/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">BAKIM MODÜLÜ</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-dashboard' %}" class="menu-link">Dashboard</a>
+      <a href="{% url 'admin:maintenance-checklist-create' %}" class="menu-link">Yeni Checklist Maddesi</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">İş Emirleri</a>
+      <a href="{% url 'admin:maintenance-calibrations' %}" class="menu-link">Kalibrasyonlar</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>{{ title }}</h1>
+    <div class="filters">
+      <a class="btn primary" href="{% url 'admin:maintenance-checklist-create' %}">Yeni Checklist Maddesi</a>
+    </div>
+  </section>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Makine</th><th>Madde</th><th>Frekans</th><th>Zorunlu</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>{{ r.equipment.code }} - {{ r.equipment.name }}</td>
+            <td>{{ r.name }}</td>
+            <td>{{ r.get_frequency_display }}</td>
+            <td>{% if r.is_mandatory %}Evet{% else %}Hayır{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">Kayıt yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

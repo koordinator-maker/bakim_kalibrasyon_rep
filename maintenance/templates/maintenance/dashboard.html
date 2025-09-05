@@ -1,0 +1,127 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Bakım Kalibrasyon • Dashboard{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">BAKIM MODÜLÜ</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-dashboard' %}" class="menu-link">Analiz Sayfaları</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Planlı Bakım</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Kestirimci Bakım</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Arızi Bakım</a>
+      <a href="{% url 'admin:maintenance-checklists' %}" class="menu-link">Kritik Parça Yönetimi</a>
+      <a href="{% url 'admin:maintenance-calibrations' %}" class="menu-link">Kalibrasyon Yönetimi</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Makine Bazlı Analiz</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Maliyet Analizi</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Süre Analizi</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Performans Analizi</a>
+    </nav>
+  </div>
+
+  <div class="menu-card ticker-wrap short">
+    <div class="menu-title">YAKLAŞAN BAKIMLAR</div>
+    <div class="ticker" data-speed="12">
+      {% for o in upcoming_orders %}
+        <div class="tick">
+          <b>{{ o.due_date|date:"d.m.Y" }}</b> — {{ o.equipment.code }} {{ o.equipment.name }} — {{ o.get_order_type_display }}
+        </div>
+      {% empty %}
+        <div class="tick">Planlı/kestirimci bakım bulunamadı.</div>
+      {% endfor %}
+      {% for c in upcoming_cals %}
+        <div class="tick">
+          <b>{{ c.next_calibration|date:"d.m.Y" }}</b> — {{ c.equipment.code }} {{ c.equipment.name }} — Kalibrasyon
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>BAKIM KALİBRASYON</h1>
+    <div class="filters">
+      <select class="input"><option>Son 90 gün</option><option>Son 180 gün</option><option>Son 12 ay</option></select>
+      <select class="input"><option>Tüm makineler</option></select>
+      <button class="btn ghost">Filtrele</button>
+    </div>
+  </section>
+
+  <section class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-title">Toplam Maliyet</div>
+      <div class="kpi-value">{{ kpis.total_cost|default_if_none:"0"|floatformat:2 }} ₺</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-title">Ortalama Maliyet</div>
+      <div class="kpi-value">{{ kpis.avg_cost|default_if_none:"0"|floatformat:2 }} ₺</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-title">Toplam Süre</div>
+      <div class="kpi-value">{{ kpis.total_duration|default_if_none:"0"|floatformat:2 }} h</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-title">İş Emri</div>
+      <div class="kpi-value">{{ kpis.total_orders|default_if_none:"0" }}</div>
+    </div>
+  </section>
+
+  <section class="kpi-row subtle">
+    <div class="kpi small"><div class="kpi-title">MTBF</div><div class="kpi-value">{{ extras.mtbf }} h</div></div>
+    <div class="kpi small"><div class="kpi-title">MTTR</div><div class="kpi-value">{{ extras.mttr }} h</div></div>
+    <div class="kpi small"><div class="kpi-title">Planlı Uyum</div><div class="kpi-value">{{ extras.schedule }}%</div></div>
+    <div class="kpi small"><div class="kpi-title">PdM İsabet</div><div class="kpi-value">{{ extras.pdm }}%</div></div>
+    <div class="kpi small"><div class="kpi-title">Arızi Oran</div><div class="kpi-value">{{ extras.brk_ratio }}%</div></div>
+    <div class="kpi small"><div class="kpi-title">Kalibrasyon Uyum</div><div class="kpi-value">{{ extras.cal_comp }}%</div></div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <div class="card-title">Bakım Tür Dağılımı</div>
+      <div class="bars">
+        <div class="bar"><span>Planlı</span><i style="height:{{ type_counts.PLN|default:0|add:1 }}%"></i></div>
+        <div class="bar"><span>Kestirimci</span><i style="height:{{ type_counts.PRD|default:0|add:1 }}%"></i></div>
+        <div class="bar"><span>Arızi</span><i style="height:{{ type_counts.BRK|default:0|add:1 }}%"></i></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Durum Dağılımı</div>
+      <div class="bars">
+        <div class="bar"><span>Planlandı</span><i style="height:{% firstof status_counts.SCHEDULED 0 %}%"></i></div>
+        <div class="bar"><span>Tamamlandı</span><i style="height:{% firstof status_counts.COMPLETED 0 %}%"></i></div>
+        <div class="bar"><span>Gecikmiş</span><i style="height:{% firstof status_counts.OVERDUE 0 %}%"></i></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Disiplin Bazlı Maliyet</div>
+      <table class="table">
+        <thead><tr><th>Disiplin</th><th>Maliyet (₺)</th></tr></thead>
+        <tbody>
+        {% for row in by_discipline %}
+          <tr>
+            <td>
+              {% if row.equipment__discipline == 'ELEC' %}Elektrik
+              {% elif row.equipment__discipline == 'PNEU' %}Pnömatik
+              {% else %}Mekanik{% endif %}
+            </td>
+            <td class="num">{{ row.cost|default_if_none:"0"|floatformat:2 }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="2">Kayıt yok.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card span-2">
+      <div class="card-title">Kontrol Checklist Durum Örneği</div>
+      <p>Checklist tamamlama oranları ve makine bazlı özet için ayrılmış panel. (Veri girildikçe dolduracağız.)</p>
+      <div class="actions">
+        <a class="btn ghost" href="{% url 'admin:maintenance-checklists' %}">Checklistleri Yönet</a>
+        <a class="btn primary" href="{% url 'admin:maintenance-order-create' %}">Yeni İş Emri</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}

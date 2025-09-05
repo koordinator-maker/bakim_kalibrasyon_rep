@@ -1,0 +1,36 @@
+{% extends "maintenance/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">KALİBRASYON</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-calibrations' %}" class="menu-link">Kalibrasyon Tablosu</a>
+      <a href="{% url 'admin:maintenance-calibration-create' %}" class="menu-link">Yeni Kalibrasyon</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card"><h1>{{ title }}</h1></section>
+
+  <div class="card">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="form-grid cols-2">
+        {% for field in form %}
+          <label class="form-row">
+            <span class="label">{{ field.label }}</span>
+            <span class="ctrl">{{ field }}</span>
+            {% if field.help_text %}<small class="help">{{ field.help_text }}</small>{% endif %}
+            {% for e in field.errors %}<div class="error">{{ e }}</div>{% endfor %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="actions">
+        <a class="btn ghost" href="{% url 'admin:maintenance-calibrations' %}">Vazgeç</a>
+        <button class="btn primary" type="submit">Kaydet</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

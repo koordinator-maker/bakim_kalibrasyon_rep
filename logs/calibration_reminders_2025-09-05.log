@@ -1,0 +1,12 @@
+[START] 05/09/2025  0:28:39.54 
+Running: venv\Scripts\python.exe manage.py calibration_reminders --days 30 --settings=core.settings_maintenance 
+Gönderim tamam: grup=0, kayýt=0
+ExitCode=0 
+[END] 05/09/2025  0:28:40.62 
+ 
+[START] 05/09/2025  0:35:35.31 
+Running: venv\Scripts\python.exe manage.py calibration_reminders --days 30 --settings=core.settings_maintenance 
+Gönderim tamam: grup=0, kayýt=0
+ExitCode=0 
+[END] 05/09/2025  0:35:35.78 
+ 

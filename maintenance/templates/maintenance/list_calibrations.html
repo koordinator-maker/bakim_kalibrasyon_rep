@@ -1,0 +1,85 @@
+{% extends "maintenance/base.html" %}
+{% load maint_extras %}
+{% block title %}Kalibrasyonlar{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">BAKIM MODÜLÜ</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-dashboard' %}" class="menu-link">Dashboard</a>
+      <a href="{% url 'admin:maintenance-cal-asset-create' %}" class="menu-link">Yeni Cihaz</a>
+      <a href="{% url 'admin:maintenance-calibration-create' %}" class="menu-link">Yeni Kalibrasyon Kaydı</a>
+      <a href="{% url 'admin:maintenance-calibration-remind' %}" class="menu-link">E-posta Hatırlat</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Kalibrasyonlar (Tam Ekran Özet)</h1>
+    <div class="filters">
+      <a class="btn ghost" href="{% url 'admin:maintenance-cal-asset-create' %}">Yeni Cihaz</a>
+      <a class="btn primary" href="{% url 'admin:maintenance-calibration-create' %}">Yeni Kalibrasyon</a>
+    </div>
+  </section>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table class="table wide">
+        <thead>
+          <tr>
+            <th>Kod</th>
+            <th>Ad</th>
+            <th>Lokasyon</th>
+            <th>Marka/Model</th>
+            <th>Seri No</th>
+            <th>Aralık</th>
+            <th>Çözünürlük</th>
+            <th>Birim</th>
+            <th>Doğruluk</th>
+            <th>Belirsizlik</th>
+            <th>Kabul Kriteri</th>
+            <th>Yöntem</th>
+            <th>Standart Cihaz</th>
+            <th>Son Kal.</th>
+            <th>Sonraki Kal.</th>
+            <th>Sonuç</th>
+            <th>Sorumlu</th>
+            <th>E-posta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assets %}
+            {% with r=latest_map|get_item:a.id %}
+            <tr>
+              <td>{{ a.asset_code }}</td>
+              <td>{{ a.asset_name }}</td>
+              <td>{{ a.location }}</td>
+              <td>{{ a.brand }} {{ a.model }}</td>
+              <td>{{ a.serial_no }}</td>
+              <td>{{ a.measure_range }}</td>
+              <td>{{ a.resolution }}</td>
+              <td>{{ a.unit }}</td>
+              <td>{{ a.accuracy }}</td>
+              <td>{{ a.uncertainty }}</td>
+              <td>{{ a.acceptance_criteria }}</td>
+              <td>{{ a.calibration_method }}</td>
+              <td>{{ a.standard_device }}</td>
+              <td>{{ r.last_calibration|date:"d.m.Y" }}</td>
+              <td>
+                <span class="{{ r.next_calibration|status_badge }}">{{ r.next_calibration|date:"d.m.Y" }}</span>
+              </td>
+              <td>{{ r.result }}</td>
+              <td>{{ a.owner }}</td>
+              <td>{{ a.responsible_email }}</td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr><td colspan="18">Kayıt yok.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">Not: “Son Kal./Sonraki Kal./Sonuç” sütunları, ilgili cihazın en güncel kalibrasyon kaydından alınır.</p>
+  </div>
+{% endblock %}
