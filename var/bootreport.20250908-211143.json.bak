@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-09-08T12:37:45",
+  "generated_at": "2025-09-08T21:11:42",
   "tz": "UTC",
   "python": {
     "version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
@@ -69,9 +69,24 @@
       "callback": "maintenance.admin.order_create"
     },
     {
+      "route": "admin/maintenance/equipment/",
+      "name": "maintenance-equipment-list",
+      "callback": "maintenance.admin.equipment_list"
+    },
+    {
+      "route": "admin/maintenance/equipment/new/",
+      "name": "maintenance-equipment-create",
+      "callback": "maintenance.admin.equipment_create"
+    },
+    {
       "route": "admin/maintenance/calibrations/",
       "name": "maintenance-calibrations",
       "callback": "maintenance.admin.calibration_list"
+    },
+    {
+      "route": "admin/maintenance/calibrations/follow/",
+      "name": "maintenance-calibration-follow",
+      "callback": "maintenance.admin.calibration_follow"
     },
     {
       "route": "admin/maintenance/calibrations/asset/new/",
@@ -82,6 +97,16 @@
       "route": "admin/maintenance/calibrations/record/new/",
       "name": "maintenance-calibration-create",
       "callback": "maintenance.admin.cal_record_create"
+    },
+    {
+      "route": "admin/maintenance/calibrations/info/",
+      "name": "maintenance-calibration-info",
+      "callback": "maintenance.admin.calibration_info"
+    },
+    {
+      "route": "admin/maintenance/calibrations/assets/",
+      "name": "maintenance-calibration-assets",
+      "callback": "maintenance.admin.cal_assets_all"
     },
     {
       "route": "admin/maintenance/calibrations/remind/",
@@ -102,11 +127,6 @@
       "route": "admin/maintenance/checklists/new/",
       "name": "maintenance-checklist-create",
       "callback": "maintenance.admin.checklist_create"
-    },
-    {
-      "route": "admin/maintenance/equipment/new/",
-      "name": "maintenance-equipment-create",
-      "callback": "maintenance.admin.equipment_create"
     },
     {
       "route": "admin/",
@@ -1186,6 +1206,19 @@
           "choices": null
         },
         {
+          "name": "total_deviation",
+          "type": "DecimalField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
           "name": "notes",
           "type": "TextField",
           "is_relation": false,
@@ -1422,7 +1455,6 @@
             "WEEKLY",
             "MONTHLY",
             "QTR",
-            "SEMI",
             "YEARLY"
           ]
         }
@@ -1739,7 +1771,7 @@
     "training_plan_attendee": null
   },
   "signature": {
-    "sha256": "97a6d05f2c1a19b2ce1e192884eb0615bae2b75a71d18814bd91a785836fb01a",
-    "short": "97a6d05f2c1a"
+    "sha256": "82625342695fb790741faf4d0c49b3450164d6ab3d863b0d2a48b2c8576a1383",
+    "short": "82625342695f"
   }
 }
