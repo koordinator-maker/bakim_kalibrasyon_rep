@@ -1,0 +1,4 @@
+window_days,days_remaining,asset_code,asset_name,location,brand,model,serial_no,measure_range,resolution,unit,accuracy,uncertainty,acceptance_criteria,calibration_method,standard_device,standard_id,owner,responsible_email,next_calibration
+30,26,MC-005,Hat 2 Makine 5,Hat-2,,,,,,,,,,,,,,,2025-10-03
+30,18,MC-007,Hat 3 Makine 7,Hat-3,,,,,,,,,,,,,,,2025-09-25
+60,40,MC-006,Hat 2 Makine 6,Hat-2,,,,,,,,,,,,,,,2025-10-17

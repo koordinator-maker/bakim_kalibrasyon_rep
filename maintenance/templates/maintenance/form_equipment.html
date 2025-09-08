@@ -1,0 +1,40 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Yeni Makine Girişi{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">BAKIM MODÜLÜ</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-dashboard' %}" class="menu-link">Dashboard</a>
+      <a href="{% url 'admin:maintenance-checklist-create' %}" class="menu-link">Yeni Checklist Maddeleri</a>
+      <a href="{% url 'admin:maintenance-checklists' %}" class="menu-link">Kontrol Listeleri</a>
+      <a href="{% url 'admin:maintenance-calibrations' %}" class="menu-link">Kalibrasyonlar</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Yeni Makine Girişi</h1>
+  </section>
+
+  <div class="card">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="form-grid cols-2">
+        {% for field in form %}
+          <label class="form-row">
+            <span class="label">{{ field.label }}</span>
+            <span class="ctrl">{{ field }}</span>
+            {% if field.help_text %}<small class="help">{{ field.help_text }}</small>{% endif %}
+            {% for e in field.errors %}<div class="error">{{ e }}</div>{% endfor %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="actions">
+        <a class="btn ghost" href="{% url 'admin:maintenance-dashboard' %}">Vazgeç</a>
+        <button class="btn primary" type="submit">Kaydet</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

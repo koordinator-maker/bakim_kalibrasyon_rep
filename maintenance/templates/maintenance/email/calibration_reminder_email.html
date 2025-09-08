@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8"/>
+    <title>Kalibrasyon Hatırlatma</title>
+  </head>
+  <body style="font-family: Arial, Helvetica, sans-serif; color:#111;">
+    <h2 style="margin:0 0 8px 0;">Kalibrasyon Hatırlatma</h2>
+    <p style="margin:4px 0 12px 0;">
+      Tarih: {{ today }} — Önümüzdeki {{ days }} gün içindeki cihazlar.
+      {% if responsible_email %}<br/>Sorumlu: {{ responsible_email }}{% endif %}
+    </p>
+
+    <table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse; width:100%; font-size:14px;">
+      <thead style="background:#f3f4f6;">
+        <tr>
+          <th align="left">Cihaz Kodu</th>
+          <th align="left">Cihaz Adı</th>
+          <th align="left">Lokasyon</th>
+          <th align="left">Sorumlu</th>
+          <th align="left">E-posta</th>
+          <th align="left">Son Kal.</th>
+          <th align="left">Sonraki Kal.</th>
+          <th align="right">Gün</th>
+          <th align="left">Sonuç</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in items %}
+        <tr>
+          <td>{{ r.asset.asset_code }}</td>
+          <td>{{ r.asset.asset_name }}</td>
+          <td>{{ r.asset.location }}</td>
+          <td>{{ r.asset.owner }}</td>
+          <td>{{ r.asset.responsible_email }}</td>
+          <td>{% if r.last_calibration %}{{ r.last_calibration }}{% endif %}</td>
+          <td>{% if r.next_calibration %}{{ r.next_calibration }}{% endif %}</td>
+          <td align="right">
+            {% if r.days_left < 0 %}
+              {{ r.days_left }} <!-- eksi ise gecikmiş -->
+            {% else %}
+              {{ r.days_left }}
+            {% endif %}
+          </td>
+          <td>{{ r.record.result }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <p style="margin-top:12px; font-size:12px; color:#555;">
+      Bu e-posta otomatik olarak oluşturulmuştur. Yanıtlamanıza gerek yoktur.
+    </p>
+  </body>
+</html>

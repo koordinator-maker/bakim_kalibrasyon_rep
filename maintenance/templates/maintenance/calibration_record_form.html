@@ -1,0 +1,59 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Yeni Kalibrasyon Kaydı{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">KALİBRASYON</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-calibration-follow' %}" class="menu-link">Kalibrasyon Takip Listesi</a>
+      <a href="{% url 'admin:maintenance-calibration-create' %}" class="menu-link">Yeni Kalibrasyon Kaydı</a>
+      <a href="{% url 'admin:maintenance-calibration-info' %}" class="menu-link">Ölçüm Cihazı Bilgi Formu</a>
+      <a href="{% url 'admin:maintenance-cal-asset-create' %}" class="menu-link">Yeni Ölçüm Cihazı Girişi</a>
+      <a href="{% url 'admin:maintenance-calibration-assets' %}" class="menu-link">Ölçüm Cihazı Listesi</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Yeni Kalibrasyon Kaydı</h1>
+  </section>
+
+  <div class="card">
+    <form method="post" class="form-grid cols-2">
+      {% csrf_token %}
+      <div class="form-row">
+        <label class="label">Cihaz</label>
+        <div class="ctrl">{{ form.asset }}</div>
+      </div>
+      <div class="form-row">
+        <label class="label">Rapor Tarihi</label>
+        <div class="ctrl">{{ form.last_calibration }}</div>
+      </div>
+      <div class="form-row">
+        <label class="label">Rapor No</label>
+        <div class="ctrl">{{ form.certificate_no }}</div>
+      </div>
+      <div class="form-row">
+        <label class="label">Toplam Sapma</label>
+        <div class="ctrl">{{ form.total_deviation }}</div>
+      </div>
+      <div class="form-row">
+        <label class="label">Değerlendirme</label>
+        <div class="ctrl">{{ form.result }}</div>
+      </div>
+      <div class="form-row">
+        <label class="label">Sonraki Kalibrasyon</label>
+        <div class="ctrl">{{ form.next_calibration }}</div>
+      </div>
+      <div class="form-row" style="grid-column:span 2">
+        <label class="label">Not</label>
+        <div class="ctrl">{{ form.notes }}</div>
+      </div>
+      <div class="actions" style="grid-column:span 2">
+        <a class="btn" href="{% url 'admin:maintenance-calibrations' %}">Vazgeç</a>
+        <button class="btn primary">Kaydet</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

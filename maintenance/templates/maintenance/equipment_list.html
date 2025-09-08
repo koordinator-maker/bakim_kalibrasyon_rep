@@ -1,0 +1,55 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Makine Listesi{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">BAKIM MODÜLÜ</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-dashboard' %}" class="menu-link">Dashboard</a>
+      <a href="{% url 'admin:maintenance-equipment-create' %}" class="menu-link">Yeni Makine Girişi</a>
+      <a href="{% url 'admin:maintenance-checklist-create' %}" class="menu-link">Yeni Checklist Maddeleri</a>
+      <a href="{% url 'admin:maintenance-checklists' %}" class="menu-link">Kontrol Listeleri</a>
+      <a href="{% url 'admin:maintenance-calibrations' %}" class="menu-link">Kalibrasyonlar</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Makine Listesi</h1>
+    <div class="actions">
+      <a class="btn primary" href="{% url 'admin:maintenance-equipment-create' %}">Yeni Makine</a>
+    </div>
+  </section>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Kod</th>
+          <th>Ad</th>
+          <th>Bölüm</th>
+          <th>Üretici</th>
+          <th>Disiplin</th>
+          <th class="num">Kritiklik</th>
+          <th>Aktif</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in rows %}
+          <tr>
+            <td>{{ e.code }}</td>
+            <td>{{ e.name }}</td>
+            <td>{{ e.area }}</td>
+            <td>{{ e.manufacturer }}</td>
+            <td>{{ e.get_discipline_display }}</td>
+            <td class="num">{{ e.criticality }}</td>
+            <td>{% if e.is_active %}<span class="chip ok">Aktif</span>{% else %}<span class="chip late">Pasif</span>{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">Kayıt bulunamadı.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

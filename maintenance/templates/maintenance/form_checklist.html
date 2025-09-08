@@ -1,0 +1,126 @@
+{% extends "maintenance/base.html" %}
+{% load static %}
+{% block title %}Yeni Checklist Maddeleri{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">BAKIM MODÜLÜ</div>
+    <nav class="menu-links small">
+      <a class="menu-link" href="{% url 'admin:maintenance-dashboard' %}">Dashboard</a>
+      <a class="menu-link" href="{% url 'admin:maintenance-checklist-create' %}">Checklist Ekle</a>
+      <a class="menu-link" href="{% url 'admin:maintenance-orders' %}">İş Emirleri</a>
+      <a class="menu-link" href="{% url 'admin:maintenance-calibrations' %}">Kalibrasyonlar</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>{{ title }}</h1>
+    <div class="muted">
+      Seçtiğiniz <b>makine</b> için kontrol kriterlerini tek tek ekleyin.
+      <br>Her kriter için <b>periyot</b> seçip <b>Ekle</b>’ye basın.
+      <br>Eklendikten sonra kriter üstteki tabloda görünür; sağındaki <b>Düzenle / Sil</b> ile yönetebilirsiniz.
+    </div>
+  </section>
+
+  <form method="post" novalidate id="checklistForm">
+    {% csrf_token %}
+
+    <div class="card">
+      <div class="form-grid cols-2">
+        <label class="form-row">
+          <span class="label">{{ form.equipment.label }}</span>
+          <span class="ctrl">{{ form.equipment }}</span>
+        </label>
+        <label class="form-row">
+          <span class="label">{{ form.record_date.label }}</span>
+          <span class="ctrl">{{ form.record_date }}</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Tek giriş satırı -->
+    <div class="card">
+      <div class="card-title">Yeni Kriter Ekle</div>
+      <div class="form-grid cols-2">
+        <label class="form-row">
+          <span class="label">Bakım / Kontrol Tanımı</span>
+          <span class="ctrl">
+            <input type="text" id="descInput" placeholder="Örn: Fan kayışı kontrolü" class="input-lg">
+          </span>
+        </label>
+        <label class="form-row">
+          <span class="label">Bakım ve Kontrol Periyodu</span>
+          <span class="ctrl" style="display:flex;gap:12px;flex-wrap:wrap">
+            <label><input type="radio" name="freqInput" value="MONTHLY"> Aylık</label>
+            <label><input type="radio" name="freqInput" value="QTR"> 3 Aylık</label>
+            <label><input type="radio" name="freqInput" value="SEMI"> 6 Aylık</label>
+            <label><input type="radio" name="freqInput" value="YEARLY"> Yıllık</label>
+          </span>
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" id="addRowBtn" class="btn primary">Ekle</button>
+      </div>
+    </div>
+
+    <!-- Eklenen satırların tablosu -->
+    <div class="card">
+      <div class="card-title">Eklenen Kriterler</div>
+      <table class="table" id="itemsTable">
+        <thead>
+          <tr>
+            <th>Tanım</th>
+            <th>Periyot</th>
+            <th class="num">İşlem</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn primary">Kaydet</button>
+    </div>
+  </form>
+
+  <script>
+    (function(){
+      const addBtn = document.getElementById('addRowBtn');
+      const descInput = document.getElementById('descInput');
+      const form = document.getElementById('checklistForm');
+      const tbody = document.querySelector('#itemsTable tbody');
+
+      function addRow(desc, freqVal, freqText) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${desc}<input type="hidden" name="descriptions[]" value="${desc}"></td>
+          <td>${freqText}<input type="hidden" name="row_frequencies[]" value="${freqVal}"></td>
+          <td class="num">
+            <button type="button" class="btn ghost editBtn">Düzenle</button>
+            <button type="button" class="btn danger delBtn">Sil</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        tr.querySelector('.delBtn').addEventListener('click', () => tr.remove());
+        tr.querySelector('.editBtn').addEventListener('click', () => {
+          descInput.value = desc;
+          document.querySelector(`input[name=freqInput][value=${freqVal}]`).checked = true;
+          tr.remove();
+        });
+      }
+
+      addBtn.addEventListener('click', () => {
+        const desc = descInput.value.trim();
+        const freqEl = document.querySelector('input[name=freqInput]:checked');
+        if (!desc) { alert("Tanımı giriniz."); return; }
+        if (!freqEl) { alert("Periyot seçiniz."); return; }
+        addRow(desc, freqEl.value, freqEl.parentElement.textContent.trim());
+        descInput.value = "";
+        freqEl.checked = false;
+      });
+    })();
+  </script>
+{% endblock %}

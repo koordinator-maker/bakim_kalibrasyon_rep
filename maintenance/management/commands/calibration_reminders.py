@@ -1,45 +1,142 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
+from typing import List, Dict, Any, Tuple
 from datetime import date, timedelta
+
 from django.core.management.base import BaseCommand
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives, get_connection
+from django.template.loader import render_to_string
 from django.conf import settings
-from maintenance.models import CalibrationRecord
+from django.db.models import Max
+
+from maintenance.models import CalibrationAsset, CalibrationRecord
+
+# Not: Bu komut, mevcut şemayı kullanır:
+# CalibrationAsset(... owner, responsible_email, is_active ...) + CalibrationRecord(last_calibration, next_calibration, result, ...)
+# Mantık: "önümüzdeki X gün" içinde next_calibration tarihi gelen (veya bugün/geçmiş) kayıtları listeler.
+# Eğer bir asset için birden çok kayıt varsa, en yeni "next_calibration" (veya yoksa en son "last_calibration") esas alınır.
+
+def _today() -> date:
+    # settings.USE_TZ önemli değil; burada sadece tarih bazında çalışıyoruz.
+    return date.today()
+
+def _select_latest_record_map() -> Dict[int, CalibrationRecord]:
+    """
+    Her asset için en güncel CalibrationRecord'u seçer.
+    Öncelik: en büyük next_calibration; eşit/yoksa id'ye göre son oluşturulan.
+    """
+    latest_for_asset: Dict[int, CalibrationRecord] = {}
+    # En önce next_calibration'a göre sırala (desc), sonra id'ye göre (desc)
+    qs = CalibrationRecord.objects.order_by("asset_id", "-next_calibration", "-id")
+    for rec in qs:
+        if rec.asset_id not in latest_for_asset:
+            latest_for_asset[rec.asset_id] = rec
+    return latest_for_asset
+
+def _due_within_days(latest_map: Dict[int, CalibrationRecord], days: int) -> List[Dict[str, Any]]:
+    today = _today()
+    horizon = today + timedelta(days=days)
+    rows: List[Dict[str, Any]] = []
+    for asset in CalibrationAsset.objects.filter(is_active=True).order_by("asset_code"):
+        rec = latest_map.get(asset.id)
+        if not rec:
+            continue
+        nxt = rec.next_calibration
+        lst = rec.last_calibration
+        # next_calibration yoksa hatırlatma kapsamına alma (periyot hesabı bu sürümde yok)
+        if not nxt:
+            continue
+        # kapsam: bugün..horizon ya da zaten gecikmiş (nxt <= today)
+        if nxt <= horizon:
+            days_left = (nxt - today).days
+            rows.append(
+                {
+                    "asset": asset,
+                    "record": rec,
+                    "last_calibration": lst,
+                    "next_calibration": nxt,
+                    "days_left": days_left,
+                }
+            )
+    # En acile göre sırala: days_left (küçükten büyüğe)
+    rows.sort(key=lambda r: (r["days_left"], r["asset"].asset_code))
+    return rows
+
+def _group_by_responsible(rows: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Sorumlu e-postaya göre grupla. E-posta yoksa 'no-email' grubuna at.
+    """
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    for r in rows:
+        email = (r["asset"].responsible_email or "").strip().lower() or "no-email"
+        out.setdefault(email, []).append(r)
+    return out
 
 class Command(BaseCommand):
-    help = "Yaklaşan kalibrasyonları sorumlulara e-posta atar (varsayılan 30 gün)."
+    help = "Önümüzdeki X gün içinde kalibrasyon tarihi gelen cihazları e-posta ile hatırlatır (gruplu)."
 
     def add_arguments(self, parser):
-        parser.add_argument("--days", type=int, default=30)
+        parser.add_argument("--days", type=int, default=30, help="Gün ufku (default: 30)")
+        parser.add_argument("--to", action="append", default=[], help="Tüm liste ayrıca bu adrese de gönderilsin (bilgi amaçlı). Çoklu kullanılabilir.")
+        parser.add_argument("--dry", action="store_true", help="E-posta göndermeden konsola dök")
 
     def handle(self, *args, **opts):
-        days = int(opts["days"])
-        today = date.today()
-        qs = CalibrationRecord.objects.select_related("asset").filter(
-            next_calibration__gte=today, next_calibration__lte=today + timedelta(days=days)
-        ).order_by("next_calibration")
+        days: int = opts["days"]
+        force_to: List[str] = opts["to"]
+        dry: bool = bool(opts["dry"])
 
-        groups = {}
-        for r in qs:
-            mail = (r.asset.responsible_email or "").strip().lower()
-            if not mail:
+        latest_map = _select_latest_record_map()
+        rows = _due_within_days(latest_map, days)
+
+        if not rows:
+            self.stdout.write(self.style.WARNING(f"Uyarı kapsamına giren kayıt yok (days={days})."))
+            return
+
+        # Konsolda kısa özet
+        self.stdout.write(self.style.SUCCESS(f"Toplam {len(rows)} cihaz için hatırlatma oluşturulacak (days={days})."))
+
+        # Grupla ve gönder
+        grouped = _group_by_responsible(rows)
+
+        # Geliştirme ortamında console backend kullanılıyor olabilir
+        default_from = getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@example.com")
+
+        # Her sorumluya ayrı mail
+        for email, items in grouped.items():
+            context = {
+                "days": days,
+                "items": items,
+                "today": _today(),
+                "responsible_email": email if email != "no-email" else "",
+            }
+            subject = f"[Kalibrasyon] {days} gün içinde yaklaşan {len(items)} kayıt"
+            html_body = render_to_string("maintenance/email/calibration_reminder_email.html", context)
+            text_body = render_to_string("maintenance/email/calibration_reminder_email.txt", context)
+
+            to_list: List[str] = []
+            if email != "no-email":
+                to_list.append(email)
+            # force_to ekle
+            to_list += [x for x in force_to if x]
+
+            if not to_list:
+                # E-posta yoksa sadece konsola yaz (ör. log)
+                self.stdout.write(f"(no-email) {len(items)} kayıt – sorumlu e-posta tanımlı değil.")
+                self.stdout.write(text_body)
                 continue
-            groups.setdefault(mail, []).append(r)
 
-        sent = 0
-        for mail, items in groups.items():
-            lines = [
-                f"- {r.next_calibration:%d.%m.%Y} | {r.asset.asset_code} {r.asset.asset_name} | {r.asset.location} | {r.result or '-'}"
-                for r in items
-            ]
-            body = "Aşağıdaki cihazların kalibrasyon tarihi yaklaşıyor:\n\n" + "\n".join(lines)
-            send_mail(
-                subject="Yaklaşan Kalibrasyonlar",
-                message=body,
-                from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@example.com"),
-                recipient_list=[mail],
-                fail_silently=True,
+            if dry:
+                self.stdout.write(f"[DRY] To={to_list} | Subject={subject}")
+                self.stdout.write(text_body)
+                continue
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_body,
+                from_email=default_from,
+                to=to_list,
             )
-            sent += 1
+            msg.attach_alternative(html_body, "text/html")
+            msg.send()
 
-        self.stdout.write(self.style.SUCCESS(f"Gönderim tamam: grup={sent}, kayıt={qs.count()}"))
+        self.stdout.write(self.style.SUCCESS("E-posta hatırlatmaları tamam."))

@@ -1,0 +1,78 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Checklistler{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">BAKIM MODÜLÜ</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-dashboard' %}" class="menu-link">Dashboard</a>
+      <a href="{% url 'admin:maintenance-checklists' %}" class="menu-link">Checklistler</a>
+      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">İş Emirleri</a>
+      <a href="{% url 'admin:maintenance-calibrations' %}" class="menu-link">Kalibrasyonlar</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Checklistler</h1>
+    <div class="actions" style="display:flex;gap:8px">
+      <a class="btn ghost" href="{% url 'admin:maintenance-checklist-create' %}">Ayrı Sayfada Ekle</a>
+    </div>
+  </section>
+
+  <!-- Üstte Hızlı Ekle Formu -->
+  <div class="card">
+    <h3 style="margin-top:0">Hızlı Ekle</h3>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="form-grid cols-2">
+        {% for field in form %}
+          <label class="form-row">
+            <span class="label">{{ field.label }}</span>
+            <span class="ctrl">{{ field }}</span>
+            {% if field.help_text %}<small class="help">{{ field.help_text }}</small>{% endif %}
+            {% for e in field.errors %}<div class="error">{{ e }}</div>{% endfor %}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Ekle</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Liste -->
+  <div class="card">
+    <div class="card-title">Kayıtlı Checklist Maddeleri</div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Makine No</th>
+          <th>Makine Adı</th>
+          <th>Bakım / Kontrol Tanımı</th>
+          <th>Periyot</th>
+          <th>Zorunlu</th>
+          <th class="num">İşlem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+          <tr>
+            <td>{{ it.equipment.code }}</td>
+            <td>{{ it.equipment.name }}</td>
+            <td>{{ it.name }}</td>
+            <td>{{ it.get_frequency_display }}</td>
+            <td>{{ it.is_mandatory|yesno:"Evet,Hayır" }}</td>
+            <td class="num">
+              <a class="btn ghost" href="/admin/maintenance/maintenancechecklistitem/{{ it.id }}/change/">Düzenle</a>
+              <a class="btn" href="/admin/maintenance/maintenancechecklistitem/{{ it.id }}/delete/">Sil</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">Kayıt yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

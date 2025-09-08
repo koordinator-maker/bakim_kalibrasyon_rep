@@ -14,6 +14,8 @@ class Equipment(models.Model):
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=200)
     area = models.CharField(max_length=120, blank=True)
+    # Üretici firma alanı eklendi (admin listelerinde kullanılıyor)
+    manufacturer = models.CharField("Üretici Firma", max_length=200, blank=True)
     discipline = models.CharField(max_length=4, choices=DISCIPLINE_CHOICES, default="MECH")
     criticality = models.PositiveSmallIntegerField(default=3, help_text="1=En kritik, 5=En az kritik")
     is_active = models.BooleanField(default=True)
@@ -40,7 +42,7 @@ class SparePart(models.Model):
 
 
 # ----------------------------------------------------------------------
-# KALİBRASYON: Cihaz Kartı (Excel sütunlarını kapsar)
+# KALİBRASYON: Cihaz Kartı
 # ----------------------------------------------------------------------
 class CalibrationAsset(models.Model):
     equipment = models.ForeignKey(Equipment, on_delete=models.SET_NULL, null=True, blank=True)
@@ -87,8 +89,14 @@ class CalibrationRecord(models.Model):
 
     last_calibration = models.DateField("Son Kalibrasyon", null=True, blank=True)
     next_calibration = models.DateField("Sonraki Kalibrasyon", null=True, blank=True)
-    result = models.CharField("Sonuç", max_length=120, blank=True)  # OK / UYGUN / UYGUN DEĞİL
+
+    # Sonuç (OK / UYGUN / UYGUN DEĞİL vb.)
+    result = models.CharField("Sonuç", max_length=120, blank=True)
     certificate_no = models.CharField("Sertifika No", max_length=120, blank=True)
+
+    # Toplam sapma (rapordaki birleşik/En büyük sapma) – opsiyonel
+    total_deviation = models.DecimalField("Toplam Sapma", max_digits=10, decimal_places=4, null=True, blank=True)
+
     notes = models.TextField("Notlar", blank=True)
 
     class Meta:

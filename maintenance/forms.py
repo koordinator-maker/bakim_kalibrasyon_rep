@@ -1,63 +1,32 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 from django import forms
-from .models import (
-    MaintenanceOrder,
-    CalibrationRecord,
-    MaintenanceChecklistItem,
-    CalibrationAsset,
-)
-
-class DateInput(forms.DateInput):
-    input_type = "date"
-
-class DateTimeInput(forms.DateTimeInput):
-    input_type = "datetime-local"
-    def format_value(self, value):
-        if value is None:
-            return ""
-        try:
-            return value.strftime("%Y-%m-%dT%H:%M")
-        except Exception:
-            return super().format_value(value)
-
-class MaintenanceOrderForm(forms.ModelForm):
-    class Meta:
-        model = MaintenanceOrder
-        fields = [
-            "equipment", "order_type", "title", "description", "technician",
-            "start_date", "due_date", "completed_at", "status",
-            "duration_hours", "cost_total"
-        ]
-        widgets = {
-            "start_date": DateInput(),
-            "due_date": DateInput(),
-            "completed_at": DateTimeInput(),
-            "description": forms.Textarea(attrs={"rows": 3}),
-        }
-
-class CalibrationAssetForm(forms.ModelForm):
-    class Meta:
-        model = CalibrationAsset
-        fields = [
-            "equipment", "asset_code", "asset_name", "location",
-            "brand", "model", "serial_no",
-            "measure_range", "resolution", "unit",
-            "accuracy", "uncertainty", "acceptance_criteria",
-            "calibration_method", "standard_device", "standard_id",
-            "owner", "responsible_email", "is_active",
-        ]
-
-class CalibrationRecordForm(forms.ModelForm):
-    class Meta:
-        model = CalibrationRecord
-        fields = ["asset", "last_calibration", "next_calibration", "result", "certificate_no", "notes"]
-        widgets = {
-            "last_calibration": DateInput(),
-            "next_calibration": DateInput(),
-            "notes": forms.Textarea(attrs={"rows": 3}),
-        }
+from .models import MaintenanceChecklistItem
 
 class MaintenanceChecklistItemForm(forms.ModelForm):
     class Meta:
         model = MaintenanceChecklistItem
-        fields = ["equipment", "name", "is_mandatory", "frequency"]
+        fields = [
+            "department",        # Bulunduğu Bölüm
+            "machine_no",        # Makine No
+            "machine_name",      # Makine Adı
+            "manufacturer",      # Üretici Firma
+            "frequency",         # Bakım / Kontrol Periyodu (dropdown)
+            "name",              # Bakım / Kontrol Tanımı (kısa başlık)
+            "description",       # Açıklama (opsiyonel, uzun)
+            "equipment",         # (İsteğe bağlı) mevcut makine ile bağla
+            "is_mandatory",      # Zorunlu işaretle
+        ]
+        widgets = {
+            "department": forms.TextInput(attrs={"placeholder": "Örn: Pres Atölyesi"}),
+            "machine_no": forms.TextInput(attrs={"placeholder": "Örn: MC-001"}),
+            "machine_name": forms.TextInput(attrs={"placeholder": "Örn: Hat 1 Pres Makinesi"}),
+            "manufacturer": forms.TextInput(attrs={"placeholder": "Örn: ABC Makina"}),
+            "name": forms.TextInput(attrs={"placeholder": "Kontrol/Bakım adını giriniz"}),
+            "description": forms.Textarea(attrs={"rows": 3, "placeholder": "İş adımının detaylı tanımı"}),
+        }
+        help_texts = {
+            "frequency": "Plan üretimi için güvenli kodlarla kullanılacak periyot.",
+            "equipment": "İstersen mevcut bir makineyi seçebilirsin; seçilmezse yukarıdaki bilgilerle yeni kayıt mantığına temel oluşturur.",
+            "is_mandatory": "İş emrinde mutlaka yapılması gereken kritik bir adım ise işaretleyin.",
+        }

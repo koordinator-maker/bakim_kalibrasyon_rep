@@ -1,230 +1,372 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-from datetime import date, timedelta
-
 from django.contrib import admin
-from django.urls import path
+from django.contrib.admin import AdminSite
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
-from django.db.models import Count, Sum
-from django.core.mail import send_mail
-from django.conf import settings
+from django.urls import path
+from django import forms
+import csv
+from decimal import Decimal, InvalidOperation
 
 from .models import (
-    Equipment, MaintenanceOrder, MaintenanceChecklistItem, SparePart,
-    CalibrationAsset, CalibrationRecord
+    Equipment,
+    MaintenanceChecklistItem,
+    MaintenanceOrder,
+    CalibrationAsset,
+    CalibrationRecord,
 )
-from .forms import (
-    MaintenanceOrderForm, CalibrationRecordForm, MaintenanceChecklistItemForm, CalibrationAssetForm
-)
-from .kpi_helpers import (
-    cost_summary, mtbf_hours, mttr_hours, schedule_compliance, pdm_hit_rate, breakdown_ratio, calibration_compliance
-)
-import csv
-from django.http import HttpResponse
 
-# --- Standart admin kayıtları ---
-@admin.register(Equipment)
-class EquipmentAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "area", "discipline", "criticality", "is_active")
-    list_filter = ("discipline", "is_active")
-
-@admin.register(MaintenanceOrder)
-class MaintenanceOrderAdmin(admin.ModelAdmin):
-    list_display = ("title", "equipment", "order_type", "status", "due_date", "duration_hours", "cost_total")
-    list_filter = ("order_type", "status", "equipment__discipline")
-
-@admin.register(SparePart)
-class SparePartAdmin(admin.ModelAdmin):
-    list_display = ("name", "equipment", "is_critical", "stock_qty", "min_qty")
-    list_filter = ("is_critical",)
-
-# --- Özel admin site ve sayfalar ---
-class MaintenanceAdminSite(admin.AdminSite):
+# -----------------------------
+# Admin Site
+# -----------------------------
+class MaintenanceAdminSite(AdminSite):
     site_header = "Bakım Kalibrasyon"
+    site_title = "Bakım Kalibrasyon"
+    index_title = "Yönetim"
 
+    # CSV export endpoint
+    def calibration_export_csv(self, request):
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="calibrations.csv"'
+        writer = csv.writer(response)
+        writer.writerow([
+            "Cihaz Kodu", "Cihaz Adı", "Lokasyon", "Marka", "Model",
+            "Seri No", "Son Kalibrasyon", "Sonraki Kalibrasyon",
+            "Sonuç", "Sertifika No", "Toplam Sapma"
+        ])
+        qs = CalibrationRecord.objects.select_related("asset").all().order_by("-next_calibration")
+        for r in qs:
+            a = r.asset
+            writer.writerow([
+                a.asset_code, a.asset_name, a.location, a.brand, a.model, a.serial_no,
+                r.last_calibration or "", r.next_calibration or "", r.result, r.certificate_no, r.total_deviation or ""
+            ])
+        return response
+
+    # -----------------------------
+    # Basit dashboard/listeler
+    # -----------------------------
+    def dashboard(self, request):
+        upcoming_orders = MaintenanceOrder.objects.order_by("due_date")[:20]
+        upcoming_cals = CalibrationRecord.objects.order_by("next_calibration")[:20]
+        kpis = {"total_cost": 0, "avg_cost": 0, "total_duration": 0, "total_orders": MaintenanceOrder.objects.count()}
+        extras = {"mtbf": 0, "mttr": 0, "schedule": 0, "pdm": 0, "brk_ratio": 0, "cal_comp": 0}
+        return render(request, "maintenance/dashboard.html", {
+            "upcoming_orders": upcoming_orders,
+            "upcoming_cals": upcoming_cals,
+            "kpis": kpis,
+            "extras": extras,
+            "type_counts": {},
+            "status_counts": {},
+            "by_discipline": [],
+        })
+
+    def orders(self, request):
+        orders = MaintenanceOrder.objects.select_related("equipment").all().order_by("-due_date")
+        return render(request, "maintenance/orders.html", {"orders": orders})
+
+    def order_create(self, request):
+        """Yer tutucu."""
+        return redirect("admin:maintenance-orders")
+
+    # ---- Makine listesi/ekleme (footer linkleri için)
+    def equipment_list(self, request):
+        # Django admin Equipment liste ekranına yönlendir
+        return redirect("admin:maintenance_equipment_changelist")
+
+    def equipment_create(self, request):
+        # Django admin Equipment ekleme ekranına yönlendir
+        return redirect("admin:maintenance_equipment_add")
+
+    # -----------------------------
+    # Kalibrasyon – menü sayfaları
+    # -----------------------------
+    def calibration_list(self, request):
+        """Ölçüm cihazı listesi (soldaki menünün ana sayfası)."""
+        assets = CalibrationAsset.objects.select_related("equipment").order_by("asset_code")
+        return render(request, "maintenance/calibration_list.html", {"assets": assets})
+
+    def _parse_limit(self, txt: str) -> Decimal | None:
+        """acceptance_criteria içinden ilk sayıyı ayıklar (örn ±0,05 => 0.05)."""
+        if not txt:
+            return None
+        s = ""
+        for ch in txt:
+            if ch.isdigit() or ch in ",.-":
+                s += ch
+            elif s:
+                break
+        s = s.replace(",", ".")
+        try:
+            return Decimal(s)
+        except Exception:
+            return None
+
+    def calibration_follow(self, request):
+        """Kalibrasyon Takip Listesi – son kayıt + kabul kriteri + toplam sapma."""
+        rows = []
+        assets = CalibrationAsset.objects.order_by("asset_code")
+        for a in assets:
+            rec = a.records.order_by("-last_calibration", "-id").first()
+            limit = self._parse_limit(a.acceptance_criteria)
+            status = ""
+            status_class = "chip"
+            total_dev = None
+            if rec and rec.total_deviation is not None and limit is not None:
+                try:
+                    total_dev = Decimal(rec.total_deviation)
+                    if abs(total_dev) <= limit:
+                        status = "Uygun"
+                        status_class += " ok"
+                    else:
+                        status = "Uygun Değil"
+                        status_class += " late"
+                except InvalidOperation:
+                    status = "Değerlendirilemedi"
+            elif rec and rec.result:
+                status = rec.result
+                status_class += " ok" if rec.result.lower().startswith(("ok", "uygun")) else "late"
+            else:
+                status = "Kayıt Yok"
+                status_class += " due"
+
+            rows.append({
+                "asset": a,
+                "record": rec,
+                "limit": limit,
+                "total_dev": total_dev,
+                "status": status,
+                "status_class": status_class,
+            })
+
+        return render(request, "maintenance/calibration_table.html", {"rows": rows})
+
+    # ---- Yeni Ölçüm Cihazı Girişi (form)
+    class CalibrationAssetForm(forms.ModelForm):
+        class Meta:
+            model = CalibrationAsset
+            fields = [
+                "asset_code", "asset_name", "location",
+                "brand", "model", "serial_no",
+                "measure_range", "resolution", "unit",
+                "accuracy", "uncertainty", "acceptance_criteria",
+                "calibration_method", "standard_device", "standard_id",
+                "owner", "responsible_email", "equipment", "is_active",
+            ]
+            widgets = {
+                "asset_code": forms.TextInput(attrs={"class": "input-lg"}),
+                "asset_name": forms.TextInput(attrs={"class": "input-lg"}),
+                "acceptance_criteria": forms.TextInput(attrs={"placeholder": "örn: ±0.05"}),
+            }
+
+    def cal_asset_create(self, request):
+        if request.method == "POST":
+            form = self.CalibrationAssetForm(request.POST)
+            if form.is_valid():
+                form.save()
+                return redirect("admin:maintenance-calibrations")
+        else:
+            form = self.CalibrationAssetForm()
+        return render(request, "maintenance/calibration_asset_form.html", {"form": form})
+
+    # ---- Yeni Kalibrasyon Kaydı (form)
+    class CalibrationRecordForm(forms.ModelForm):
+        RESULT_CHOICES = (("Uygun", "Uygun"), ("Uygun Değil", "Uygun Değil"), ("Bilgi", "Bilgi"))
+        result = forms.ChoiceField(choices=RESULT_CHOICES, required=False)
+
+        class Meta:
+            model = CalibrationRecord
+            fields = ["asset", "last_calibration", "certificate_no", "total_deviation", "result", "next_calibration", "notes"]
+            widgets = {
+                "last_calibration": forms.DateInput(attrs={"type": "date"}),
+                "next_calibration": forms.DateInput(attrs={"type": "date"}),
+            }
+
+    def cal_record_create(self, request):
+        if request.method == "POST":
+            form = self.CalibrationRecordForm(request.POST)
+            if form.is_valid():
+                form.save()
+                return redirect("admin:maintenance-calibrations")
+        else:
+            form = self.CalibrationRecordForm()
+        return render(request, "maintenance/calibration_record_form.html", {"form": form})
+
+    # ---- Ölçüm Cihazı Bilgi Formu
+    class AssetLookupForm(forms.Form):
+        asset = forms.ModelChoiceField(
+            label="Cihaz",
+            queryset=CalibrationAsset.objects.order_by("asset_code"),
+            required=True
+        )
+
+    def calibration_info(self, request):
+        selected = None
+        form = self.AssetLookupForm(request.GET or None)
+        last_record = None
+        if form.is_valid():
+            selected = form.cleaned_data["asset"]
+            last_record = selected.records.order_by("-last_calibration", "-id").first()
+        return render(request, "maintenance/calibration_asset_detail.html", {
+            "form": form, "asset": selected, "record": last_record
+        })
+
+    # ---- Ölçüm Cihazı Listesi (tam liste)
+    def cal_assets_all(self, request):
+        assets = CalibrationAsset.objects.select_related("equipment").order_by("location", "asset_code")
+        return render(request, "maintenance/calibration_assets_all.html", {"assets": assets})
+
+    def calibration_remind(self, request):
+        return HttpResponse("Kalibrasyon hatırlatma kuru çalıştırma (dev).")
+
+    # -----------------------------
+    # Checklist Create — Excel alanlarıyla birebir
+    # -----------------------------
+    class ChecklistCreateForm(forms.Form):
+        bulunduğu_bölüm = forms.CharField(label="Bulunduğu bölüm", max_length=120, required=False,
+                                           widget=forms.TextInput(attrs={"class": "input-lg"}))
+        makine_no = forms.CharField(label="Makine No", max_length=50,
+                                    widget=forms.TextInput(attrs={"class": "input-lg"}))
+        makine_adı = forms.CharField(label="Makine Adı", max_length=200,
+                                     widget=forms.TextInput(attrs={"class": "input-lg"}))
+        üretici_firma = forms.CharField(label="Üretici Firma", max_length=200, required=False,
+                                        widget=forms.TextInput(attrs={"class": "input-lg"}))
+
+        bakım_kontrol_periyodu = forms.ChoiceField(
+            label="Bakım / Kontrol Periyodu",
+            choices=MaintenanceChecklistItem.FREQ,
+            widget=forms.Select(attrs={"class": "input-lg"})
+        )
+        bakım_kontrol_tanımı = forms.CharField(
+            label="Bakım / Kontrol Tanımı",
+            max_length=200,
+            widget=forms.TextInput(attrs={"class": "input-lg"})
+        )
+
+        existing_equipment = forms.ModelChoiceField(
+            label="(İsteğe bağlı) Mevcut Makine",
+            queryset=Equipment.objects.all().order_by("code"),
+            required=False
+        )
+
+    def checklists(self, request):
+        items = (MaintenanceChecklistItem.objects
+                 .select_related("equipment")
+                 .all().order_by("equipment__code", "id"))
+        return render(request, "maintenance/checklists.html", {"items": items})
+
+    def checklist_create(self, request):
+        FormCls = self.ChecklistCreateForm
+        if request.method == "POST":
+            form = FormCls(request.POST)
+            if form.is_valid():
+                eq = form.cleaned_data.get("existing_equipment")
+                if not eq:
+                    code = form.cleaned_data["makine_no"].strip()
+                    name = form.cleaned_data["makine_adı"].strip()
+                    area = form.cleaned_data.get("bulunduğu_bölüm", "").strip()
+                    manufacturer = form.cleaned_data.get("üretici_firma", "").strip()
+                    eq, _created = Equipment.objects.get_or_create(code=code, defaults={
+                        "name": name,
+                        "area": area,
+                        "manufacturer": manufacturer,
+                        "discipline": "MECH",
+                        "criticality": 3,
+                        "is_active": True,
+                    })
+                    changed = False
+                    if eq.name != name:
+                        eq.name = name; changed = True
+                    if area and eq.area != area:
+                        eq.area = area; changed = True
+                    if manufacturer and getattr(eq, "manufacturer", "") != manufacturer:
+                        eq.manufacturer = manufacturer; changed = True
+                    if changed:
+                        eq.save()
+
+                freq = form.cleaned_data["bakım_kontrol_periyodu"]
+                desc = form.cleaned_data["bakım_kontrol_tanımı"].strip()
+
+                MaintenanceChecklistItem.objects.create(
+                    equipment=eq,
+                    name=desc,
+                    frequency=freq,
+                    is_mandatory=True
+                )
+                return redirect("admin:maintenance-checklists")
+        else:
+            form = FormCls()
+
+        return render(request, "maintenance/form_checklist.html", {
+            "form": form,
+            "title": "Yeni Checklist Maddesi"
+        })
+
+    # -----------------------------
+    # URLs
+    # -----------------------------
     def get_urls(self):
-        urls = super().get_urls()
-        my = [
+        return [
+            # Dashboard & orders
             path("maintenance/dashboard/", self.admin_view(self.dashboard), name="maintenance-dashboard"),
             path("maintenance/orders/", self.admin_view(self.orders), name="maintenance-orders"),
             path("maintenance/orders/new/", self.admin_view(self.order_create), name="maintenance-order-create"),
 
+            # Makine listesi/ekleme (footer linkleri)
+            path("maintenance/equipment/", self.admin_view(self.equipment_list), name="maintenance-equipment-list"),
+            path("maintenance/equipment/new/", self.admin_view(self.equipment_create), name="maintenance-equipment-create"),
+
+            # Kalibrasyon menüsü
             path("maintenance/calibrations/", self.admin_view(self.calibration_list), name="maintenance-calibrations"),
+            path("maintenance/calibrations/follow/", self.admin_view(self.calibration_follow), name="maintenance-calibration-follow"),
             path("maintenance/calibrations/asset/new/", self.admin_view(self.cal_asset_create), name="maintenance-cal-asset-create"),
             path("maintenance/calibrations/record/new/", self.admin_view(self.cal_record_create), name="maintenance-calibration-create"),
+            path("maintenance/calibrations/info/", self.admin_view(self.calibration_info), name="maintenance-calibration-info"),
+            path("maintenance/calibrations/assets/", self.admin_view(self.cal_assets_all), name="maintenance-calibration-assets"),
             path("maintenance/calibrations/remind/", self.admin_view(self.calibration_remind), name="maintenance-calibration-remind"),
             path("maintenance/calibrations/export/", self.admin_view(self.calibration_export_csv), name="maintenance-calibration-export"),
 
+            # Checklist
             path("maintenance/checklists/", self.admin_view(self.checklists), name="maintenance-checklists"),
             path("maintenance/checklists/new/", self.admin_view(self.checklist_create), name="maintenance-checklist-create"),
+            *super().get_urls(),
         ]
-        return my + urls
-    def calibration_export_csv(self, request):
-        # Tüm cihaz + son kayıt özetini CSV olarak indir
-        assets = CalibrationAsset.objects.all().order_by("asset_code")
-        latest_map = {}
-        for r in CalibrationRecord.objects.order_by("asset_id", "-next_calibration", "-id"):
-            latest_map.setdefault(r.asset_id, r)
-
-        resp = HttpResponse(content_type="text/csv; charset=utf-8")
-        resp["Content-Disposition"] = 'attachment; filename="calibrations_export.csv"'
-        w = csv.writer(resp)
-        w.writerow([
-            "Cihaz Kodu","Cihaz Adı","Lokasyon","Marka","Model","Seri No",
-            "Ölçüm Aralığı","Çözünürlük","Birim","Doğruluk","Belirsizlik","Kabul Kriteri",
-            "Yöntem","Standart Cihaz","Standart ID",
-            "Son Kalibrasyon","Sonraki Kalibrasyon","Sonuç",
-            "Sorumlu","E-posta","EkipmanKodu"
-        ])
-        for a in assets:
-            r = latest_map.get(a.id)
-            w.writerow([
-                a.asset_code, a.asset_name, a.location, a.brand, a.model, a.serial_no,
-                a.measure_range, a.resolution, a.unit, a.accuracy, a.uncertainty, a.acceptance_criteria,
-                a.calibration_method, a.standard_device, a.standard_id,
-                getattr(r, "last_calibration", "") or "", getattr(r, "next_calibration", "") or "", getattr(r, "result", "") or "",
-                a.owner, a.responsible_email, getattr(a.equipment, "code", "") or ""
-            ])
-        return resp
-
-    # ---- Views ----
-    def dashboard(self, request):
-        ctx = {}
-        ctx["kpis"] = cost_summary()
-        ctx["extras"] = {
-            "mtbf": mtbf_hours(180),
-            "mttr": mttr_hours(180),
-            "schedule": schedule_compliance(90),
-            "pdm": pdm_hit_rate(90),
-            "brk_ratio": breakdown_ratio(90),
-            "cal_comp": calibration_compliance(365),
-        }
-        ctx["type_counts"] = dict(
-            MaintenanceOrder.objects.values_list("order_type").annotate(c=Count("id")).values_list("order_type", "c")
-        )
-        ctx["status_counts"] = dict(
-            MaintenanceOrder.objects.values_list("status").annotate(c=Count("id")).values_list("status", "c")
-        )
-        ctx["by_discipline"] = (
-            MaintenanceOrder.objects.values("equipment__discipline")
-            .annotate(cost=Sum("cost_total"))
-            .order_by("equipment__discipline")
-        )
-        today = date.today()
-        ctx["upcoming_orders"] = MaintenanceOrder.objects.filter(
-            order_type__in=["PLN", "PRD"], due_date__gte=today, due_date__lte=today + timedelta(days=30)
-        ).select_related("equipment").order_by("due_date")[:20]
-        ctx["upcoming_cals"] = CalibrationRecord.objects.filter(
-            next_calibration__gte=today, next_calibration__lte=today + timedelta(days=30)
-        ).select_related("asset")[:20]
-        return render(request, "maintenance/dashboard.html", ctx)
-
-    def orders(self, request):
-        rows = MaintenanceOrder.objects.select_related("equipment").all()[:300]
-        return render(request, "maintenance/list_orders.html", {"rows": rows, "title": "İş Emirleri"})
-
-    def order_create(self, request):
-        if request.method == "POST":
-            form = MaintenanceOrderForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return redirect("admin:maintenance-orders")
-        else:
-            form = MaintenanceOrderForm()
-        return render(request, "maintenance/form_order.html", {"form": form, "title": "Yeni İş Emri"})
-
-    # ---- KALİBRASYON ----
-    def calibration_list(self, request):
-        assets = CalibrationAsset.objects.all().order_by("asset_code")
-        # Her asset için en güncel record'u map edelim
-        latest_map = {}
-        for r in CalibrationRecord.objects.order_by("asset_id", "-next_calibration", "-id"):
-            latest_map.setdefault(r.asset_id, r)
-        ctx = {
-            "title": "Kalibrasyonlar",
-            "assets": assets,
-            "latest_map": latest_map,
-        }
-        return render(request, "maintenance/list_calibrations.html", ctx)
-
-    def cal_asset_create(self, request):
-        if request.method == "POST":
-            form = CalibrationAssetForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return redirect("admin:maintenance-calibrations")
-        else:
-            form = CalibrationAssetForm()
-        return render(request, "maintenance/form_cal_asset.html", {"form": form, "title": "Yeni Kalibrasyon Cihazı"})
-
-    def cal_record_create(self, request):
-        if request.method == "POST":
-            form = CalibrationRecordForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return redirect("admin:maintenance-calibrations")
-        else:
-            form = CalibrationRecordForm()
-        return render(request, "maintenance/form_cal_record.html", {"form": form, "title": "Yeni Kalibrasyon Kaydı"})
-
-    def checklists(self, request):
-        rows = MaintenanceChecklistItem.objects.select_related("equipment").all()[:500]
-        return render(request, "maintenance/list_checklists.html", {"rows": rows, "title": "Checklistler"})
-
-    def checklist_create(self, request):
-        if request.method == "POST":
-            form = MaintenanceChecklistItemForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return redirect("admin:maintenance-checklists")
-        else:
-            form = MaintenanceChecklistItemForm()
-        return render(request, "maintenance/form_checklist.html", {"form": form, "title": "Yeni Checklist Maddesi"})
-
-    def calibration_remind(self, request):
-        """
-        Gelecek 30 gün içindeki kalibrasyonları sorumlulara e-posta ile gönderir.
-        """
-        days = int(request.GET.get("days", 30))
-        today = date.today()
-        qs = (
-            CalibrationRecord.objects.filter(next_calibration__gte=today, next_calibration__lte=today + timedelta(days=days))
-            .select_related("asset")
-            .order_by("next_calibration")
-        )
-        groups = {}
-        for r in qs:
-            mail = (r.asset.responsible_email or "").strip().lower()
-            if not mail:
-                continue
-            groups.setdefault(mail, []).append(r)
-
-        sent = 0
-        for mail, items in groups.items():
-            lines = [
-                f"- {r.next_calibration:%d.%m.%Y} | {r.asset.asset_code} {r.asset.asset_name} | {r.asset.location} | {r.result or '-'}"
-                for r in items
-            ]
-            body = (
-                "Aşağıdaki cihazların kalibrasyon tarihi yaklaşıyor:\n\n"
-                + "\n".join(lines)
-                + "\n\nBu bildirim sistem tarafından otomatik oluşturulmuştur."
-            )
-            try:
-                send_mail(
-                    subject="Yaklaşan Kalibrasyonlar",
-                    message=body,
-                    from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@example.com"),
-                    recipient_list=[mail],
-                    fail_silently=True,
-                )
-                sent += 1
-            except Exception:
-                pass
-
-        self.message_user(request, f"E-posta gönderimi tamamlandı. Gruplar: {sent}, kayıtlar: {qs.count()}.")
-        return redirect("admin:maintenance-calibrations")
 
 
-# Varsayılan admin site zaten çalışıyorsa bunu import etmek yeterli.
-admin_site = MaintenanceAdminSite()
+admin_site = MaintenanceAdminSite(name="admin")
+
+# Modelleri register etmeye devam
+@admin.register(Equipment, site=admin_site)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "area", "manufacturer", "discipline", "criticality", "is_active")
+    search_fields = ("code", "name", "area", "manufacturer")
+    list_filter = ("discipline", "is_active")
+
+
+@admin.register(MaintenanceChecklistItem, site=admin_site)
+class MaintenanceChecklistItemAdmin(admin.ModelAdmin):
+    list_display = ("equipment", "name", "frequency", "is_mandatory")
+    list_filter = ("frequency", "is_mandatory")
+    search_fields = ("equipment__code", "equipment__name", "name")
+
+
+@admin.register(MaintenanceOrder, site=admin_site)
+class MaintenanceOrderAdmin(admin.ModelAdmin):
+    list_display = ("title", "equipment", "order_type", "status", "due_date", "cost_total")
+    list_filter = ("order_type", "status")
+    search_fields = ("title", "equipment__code", "equipment__name")
+
+
+@admin.register(CalibrationAsset, site=admin_site)
+class CalibrationAssetAdmin(admin.ModelAdmin):
+    list_display = ("asset_code", "asset_name", "location", "brand", "model", "serial_no", "equipment")
+    search_fields = ("asset_code", "asset_name", "brand", "model", "serial_no")
+    list_filter = ("brand",)
+
+
+@admin.register(CalibrationRecord, site=admin_site)
+class CalibrationRecordAdmin(admin.ModelAdmin):
+    list_display = ("asset", "last_calibration", "next_calibration", "result", "certificate_no", "total_deviation")
+    list_filter = ("result", "next_calibration")
+    search_fields = ("asset__asset_code", "asset__asset_name", "certificate_no")

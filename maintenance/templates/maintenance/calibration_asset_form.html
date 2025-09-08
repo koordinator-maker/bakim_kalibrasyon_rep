@@ -1,0 +1,39 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Yeni Ölçüm Cihazı Girişi{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">KALİBRASYON</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-calibration-follow' %}" class="menu-link">Kalibrasyon Takip Listesi</a>
+      <a href="{% url 'admin:maintenance-calibration-create' %}" class="menu-link">Yeni Kalibrasyon Kaydı</a>
+      <a href="{% url 'admin:maintenance-calibration-info' %}" class="menu-link">Ölçüm Cihazı Bilgi Formu</a>
+      <a href="{% url 'admin:maintenance-cal-asset-create' %}" class="menu-link">Yeni Ölçüm Cihazı Girişi</a>
+      <a href="{% url 'admin:maintenance-calibration-assets' %}" class="menu-link">Ölçüm Cihazı Listesi</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Yeni Ölçüm Cihazı</h1>
+  </section>
+
+  <div class="card">
+    <form method="post" class="form-grid cols-2">
+      {% csrf_token %}
+      {% for f in form.visible_fields %}
+        <div class="form-row" {% if forloop.counter == 1 %}style="grid-column:span 2"{% endif %}>
+          <label class="label">{{ f.label }}</label>
+          <div class="ctrl">{{ f }}</div>
+          {% if f.help_text %}<div class="help">{{ f.help_text }}</div>{% endif %}
+          {% for e in f.errors %}<div class="error">{{ e }}</div>{% endfor %}
+        </div>
+      {% endfor %}
+      <div class="actions" style="grid-column:span 2">
+        <a class="btn" href="{% url 'admin:maintenance-calibrations' %}">Vazgeç</a>
+        <button class="btn primary">Kaydet</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Kalibrasyon Takip Listesi{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">KALİBRASYON</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-calibration-follow' %}" class="menu-link">Kalibrasyon Takip Listesi</a>
+      <a href="{% url 'admin:maintenance-calibration-create' %}" class="menu-link">Yeni Kalibrasyon Kaydı</a>
+      <a href="{% url 'admin:maintenance-calibration-info' %}" class="menu-link">Ölçüm Cihazı Bilgi Formu</a>
+      <a href="{% url 'admin:maintenance-cal-asset-create' %}" class="menu-link">Yeni Ölçüm Cihazı Girişi</a>
+      <a href="{% url 'admin:maintenance-calibration-assets' %}" class="menu-link">Ölçüm Cihazı Listesi</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Kalibrasyon Takip Listesi</h1>
+    <p class="muted">Son kalibrasyon kaydı, kabul kriteri ve toplam sapma bazlı durum.</p>
+  </section>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Cihaz</th>
+          <th>Rapor No</th>
+          <th>Rapor Tarihi</th>
+          <th>Toplam Sapma</th>
+          <th>Kabul Kriteri</th>
+          <th>Durum</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>{{ r.asset.asset_code }} - {{ r.asset.asset_name }}</td>
+            <td>{% if r.record %}{{ r.record.certificate_no }}{% endif %}</td>
+            <td>{% if r.record %}{{ r.record.last_calibration }}{% endif %}</td>
+            <td>{% if r.total_dev is not None %}{{ r.total_dev }}{% endif %}</td>
+            <td>{{ r.asset.acceptance_criteria }}</td>
+            <td><span class="{{ r.status_class }}">{{ r.status }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

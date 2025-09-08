@@ -1,0 +1,2 @@
+# Codepack generated at 2025-09-06 00:26:31\n# root: C:\dev\bakim_kalibrasyon" --out codepack_full_20250906-002631.txt --max-file-bytes 2000000 --max-total-bytes 5000000 --split --chunk-bytes 1800000\n\n
+# Skipped files report

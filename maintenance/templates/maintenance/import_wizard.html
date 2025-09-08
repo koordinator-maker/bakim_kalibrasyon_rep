@@ -1,0 +1,102 @@
+{% extends "maintenance/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container" style="max-width: 1100px;">
+  <h1 style="margin: 0 0 16px;">Excel İçe Aktarım Sihirbazı</h1>
+  <p class="help">
+    .xlsx veya .csv yükleyin. Önizleme sonrası sütun eşlemesi yapıp tek tıkla aktarın.
+    <br>Not: Kayıtlar <b>asset_code</b> üzerinden <i>idempotent</i> şekilde güncellenir/oluşturulur.
+  </p>
+
+  {% if error %}
+    <div style="background:#fee2e2;border:1px solid #fecaca;padding:10px;border-radius:8px;margin-bottom:16px;">
+      <b>Hata:</b> {{ error }}
+    </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:16px;">
+    {% csrf_token %}
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap: wrap;">
+      <input type="file" name="file" accept=".xlsx,.csv" required />
+      <button name="action" value="preview" class="btn">Önizle</button>
+      {% if headers %}
+        <button name="action" value="import" class="btn" style="background:#10b981;border-color:#10b981;">İçe Aktar</button>
+      {% endif %}
+      <a href="/calibration/table/" class="btn" style="margin-left:auto;">Tabloya Dön</a>
+    </div>
+
+    {% if headers %}
+      <hr style="margin:14px 0;">
+      <h3 style="margin:0 0 8px;">Sütun Eşleme</h3>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:8px;">
+        {% for fm in ui_map %}
+          <label style="display:flex;align-items:center;gap:8px;">
+            <span style="width:220px;font-weight:600;">{{ fm.field }}</span>
+            <select name="map_{{ fm.field }}" style="flex:1;padding:6px;border:1px solid #e5e7eb;border-radius:8px;">
+              <option value="">(eşleme yok)</option>
+              {% for h in headers %}
+                {% with hlow=h|lower %}
+                  <option value="{{ h }}" {% if fm.selected == hlow %}selected{% endif %}>{{ h }}</option>
+                {% endwith %}
+              {% endfor %}
+            </select>
+          </label>
+        {% endfor %}
+      </div>
+
+      <h3 style="margin:16px 0 8px;">Önizleme (ilk 20 satır)</h3>
+      <div style="overflow:auto;border:1px solid #e5e7eb;border-radius:10px;">
+        <table class="table" style="min-width:800px;">
+          <thead>
+            <tr>
+              {% for h in headers %}<th>{{ h }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in preview %}
+              <tr>
+                {% for c in row %}<td>{{ c }}</td>{% endfor %}
+              </tr>
+            {% empty %}
+              <tr><td colspan="99" style="text-align:center;color:#6b7280;">Veri yok</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </form>
+
+  {% if result %}
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:12px;border-radius:12px;">
+      <h3 style="margin:0 0 8px;">Sonuç</h3>
+      <p style="margin:0 0 8px;">
+        <b>{{ result.created }}</b> oluşturuldu,
+        <b>{{ result.updated }}</b> güncellendi,
+        <b>{{ result.skipped }}</b> atlandı.
+      </p>
+      <details>
+        <summary>İşlem Günlüğü (ilk {{ result.report|length }})</summary>
+        <ul style="margin-top:8px;">
+          {% for status, code in result.report %}
+            <li><code>{{ status }}</code> — {{ code }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .btn{
+    padding:8px 12px;
+    border:1px solid #d1d5db;
+    border-radius:10px;
+    background:#111827;
+    color:#fff;
+    cursor:pointer;
+  }
+  .table th,.table td{ padding:6px 10px; border-bottom:1px solid #e5e7eb; font-size:13px;}
+  .table th{ background:#f9fafb; text-align:left;}
+</style>
+{% endblock %}

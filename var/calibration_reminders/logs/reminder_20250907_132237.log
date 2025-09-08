@@ -1,0 +1,58 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20250907132237
+Username: LAPTOP-BJ5VB4RI\HP
+RunAs User: LAPTOP-BJ5VB4RI\HP
+Configuration Name: 
+Machine: LAPTOP-BJ5VB4RI (Microsoft Windows NT 10.0.19045.0)
+Host Application: powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\bakim_kalibrasyon\scripts\calibration_reminder.ps1
+Process ID: 20260
+PSVersion: 5.1.19041.6216
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.19041.6216
+BuildVersion: 10.0.19041.6216
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+[INFO] Reminder baÅŸlÄ±yor @ 2025-09-07 13:22:37
+[INFO] Ã‡alÄ±ÅŸtÄ±rÄ±lÄ±yor: python manage.py calibration_reminder --days 30 60 90 --roles=BakÄ±m YÃ¶neticisi --attach=both --settings=core.settings_maintenance --dry-run --no-asset-emails
+Traceback (most recent call last):
+  File "C:\dev\bakim_kalibrasyon\manage.py", line 22, in <module>
+    main()
+  File "C:\dev\bakim_kalibrasyon\manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+  File "C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\core\management\__init__.py", line 442, in execute_from_c
+ommand_line
+    utility.execute()
+  File "C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\core\management\__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\core\management\__init__.py", line 275, in fetch_command
+    klass = load_command_class(app_name, subcommand)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\core\management\__init__.py", line 48, in load_command_cl
+ass
+    module = import_module("%s.management.commands.%s" % (app_name, name))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\HP\AppData\Local\Programs\Python\Python311\Lib\importlib\__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 936, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1074, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1004, in source_to_code
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "C:\dev\bakim_kalibrasyon\maintenance\management\commands\calibration_reminder.py", line 2
+    Set-StrictMode -Version Latest
+                            ^^^^^^
+SyntaxError: invalid syntax
+[INFO] ExitCode=1
+**********************
+Windows PowerShell transcript end
+End time: 20250907132238
+**********************

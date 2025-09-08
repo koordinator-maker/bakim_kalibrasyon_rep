@@ -17,9 +17,14 @@
 {% block content %}
   <section class="header-card">
     <h1>Kalibrasyonlar (Tam Ekran Özet)</h1>
-    <div class="filters">
+    <div class="filters" style="display:flex;gap:8px;flex-wrap:wrap">
       <a class="btn ghost" href="{% url 'admin:maintenance-cal-asset-create' %}">Yeni Cihaz</a>
       <a class="btn primary" href="{% url 'admin:maintenance-calibration-create' %}">Yeni Kalibrasyon</a>
+
+      <!-- YENİ: hızlı kısayollar -->
+      <a class="btn" href="/calibration/table/">Tam Tablo</a>
+      <a class="btn" href="/calibration/table/?import=1">Excel’le İçe Aktar</a>
+      <a class="btn ghost" href="{% url 'admin:maintenance-calibration-export' %}">CSV Dışa Aktar</a>
     </div>
   </section>
 
@@ -66,9 +71,7 @@
               <td>{{ a.calibration_method }}</td>
               <td>{{ a.standard_device }}</td>
               <td>{{ r.last_calibration|date:"d.m.Y" }}</td>
-              <td>
-                <span class="{{ r.next_calibration|status_badge }}">{{ r.next_calibration|date:"d.m.Y" }}</span>
-              </td>
+              <td><span class="{{ r.next_calibration|status_badge }}">{{ r.next_calibration|date:"d.m.Y" }}</span></td>
               <td>{{ r.result }}</td>
               <td>{{ a.owner }}</td>
               <td>{{ a.responsible_email }}</td>

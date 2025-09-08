@@ -1,0 +1,50 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Ölçüm Cihazı Listesi{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">KALİBRASYON</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-calibration-follow' %}" class="menu-link">Kalibrasyon Takip Listesi</a>
+      <a href="{% url 'admin:maintenance-calibration-create' %}" class="menu-link">Yeni Kalibrasyon Kaydı</a>
+      <a href="{% url 'admin:maintenance-calibration-info' %}" class="menu-link">Ölçüm Cihazı Bilgi Formu</a>
+      <a href="{% url 'admin:maintenance-cal-asset-create' %}" class="menu-link">Yeni Ölçüm Cihazı Girişi</a>
+      <a href="{% url 'admin:maintenance-calibration-assets' %}" class="menu-link">Ölçüm Cihazı Listesi</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Ölçüm Cihazı Listesi</h1>
+  </section>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Lokasyon/Bölüm</th>
+          <th>Kod</th>
+          <th>Ad</th>
+          <th>Marka / Model</th>
+          <th>Seri No</th>
+          <th>Bağlı Makine</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in assets %}
+          <tr>
+            <td>{{ a.location }}</td>
+            <td>{{ a.asset_code }}</td>
+            <td>{{ a.asset_name }}</td>
+            <td>{{ a.brand }}{% if a.brand and a.model %} / {% endif %}{{ a.model }}</td>
+            <td>{{ a.serial_no }}</td>
+            <td>{% if a.equipment %}{{ a.equipment.code }} - {{ a.equipment.name }}{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">Kayıt bulunamadı.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

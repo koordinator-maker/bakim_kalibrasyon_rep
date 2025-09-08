@@ -1,0 +1,71 @@
+{% extends "maintenance/base.html" %}
+{% block title %}Ölçüm Cihazı Bilgi Formu{% endblock %}
+
+{% block sidebar %}
+  <div class="menu-card">
+    <div class="menu-title">KALİBRASYON</div>
+    <nav class="menu-links small">
+      <a href="{% url 'admin:maintenance-calibration-follow' %}" class="menu-link">Kalibrasyon Takip Listesi</a>
+      <a href="{% url 'admin:maintenance-calibration-create' %}" class="menu-link">Yeni Kalibrasyon Kaydı</a>
+      <a href="{% url 'admin:maintenance-calibration-info' %}" class="menu-link">Ölçüm Cihazı Bilgi Formu</a>
+      <a href="{% url 'admin:maintenance-cal-asset-create' %}" class="menu-link">Yeni Ölçüm Cihazı Girişi</a>
+      <a href="{% url 'admin:maintenance-calibration-assets' %}" class="menu-link">Ölçüm Cihazı Listesi</a>
+    </nav>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <section class="header-card">
+    <h1>Ölçüm Cihazı Bilgi Formu</h1>
+  </section>
+
+  <div class="card">
+    <form method="get" class="form-grid">
+      <div class="form-row">
+        <label class="label">Cihaz Seç</label>
+        <div class="ctrl">{{ form.asset }}</div>
+      </div>
+      <div class="actions">
+        <button class="btn primary">Göster</button>
+      </div>
+    </form>
+  </div>
+
+  {% if asset %}
+    <div class="grid">
+      <div class="card span-2">
+        <div class="card-title">Cihaz Bilgileri</div>
+        <table class="table">
+          <tbody>
+            <tr><th>Kod</th><td>{{ asset.asset_code }}</td><th>Ad</th><td>{{ asset.asset_name }}</td></tr>
+            <tr><th>Lokasyon</th><td>{{ asset.location }}</td><th>Bağlı Makine</th><td>{% if asset.equipment %}{{ asset.equipment.code }} - {{ asset.equipment.name }}{% endif %}</td></tr>
+            <tr><th>Marka/Model</th><td>{{ asset.brand }} {% if asset.brand and asset.model %}/{% endif %} {{ asset.model }}</td><th>Seri No</th><td>{{ asset.serial_no }}</td></tr>
+            <tr><th>Ölçüm Aralığı</th><td>{{ asset.measure_range }}</td><th>Çözünürlük</th><td>{{ asset.resolution }}</td></tr>
+            <tr><th>Birim</th><td>{{ asset.unit }}</td><th>Doğruluk</th><td>{{ asset.accuracy }}</td></tr>
+            <tr><th>Belirsizlik</th><td>{{ asset.uncertainty }}</td><th>Kabul Kriteri</th><td>{{ asset.acceptance_criteria }}</td></tr>
+            <tr><th>Yöntem/Prosedür</th><td>{{ asset.calibration_method }}</td><th>Standart Cihaz</th><td>{{ asset.standard_device }} ({{ asset.standard_id }})</td></tr>
+            <tr><th>Sorumlu</th><td>{{ asset.owner }}</td><th>E-posta</th><td>{{ asset.responsible_email }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Son Kalibrasyon</div>
+        {% if record %}
+          <table class="table">
+            <tbody>
+              <tr><th>Rapor No</th><td>{{ record.certificate_no }}</td></tr>
+              <tr><th>Rapor Tarihi</th><td>{{ record.last_calibration }}</td></tr>
+              <tr><th>Toplam Sapma</th><td>{{ record.total_deviation }}</td></tr>
+              <tr><th>Sonraki Kalibrasyon</th><td>{{ record.next_calibration }}</td></tr>
+              <tr><th>Sonuç</th><td>{{ record.result }}</td></tr>
+              <tr><th>Not</th><td>{{ record.notes }}</td></tr>
+            </tbody>
+          </table>
+        {% else %}
+          <p class="muted">Kayıt bulunamadı.</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,9 @@
+Kalibrasyon Hatırlatma
+Tarih: {{ today }} — Önümüzdeki {{ days }} gün içindeki cihazlar.
+{% if responsible_email %}Sorumlu: {{ responsible_email }}{% endif %}
+
+{% for r in items -%}
+- {{ r.asset.asset_code }} | {{ r.asset.asset_name }} | {{ r.asset.location }} | {{ r.asset.owner }} | {{ r.asset.responsible_email }} | Son: {{ r.last_calibration|default:"-" }} | Sonraki: {{ r.next_calibration|default:"-" }} | Gün: {{ r.days_left }} | Sonuç: {{ r.record.result|default:"-" }}
+{% endfor %}
+
+(Bu mesaj otomatik üretilmiştir.)

@@ -1,0 +1,6 @@
+[START] 07/09/2025  9:00:01.22 
+Running: venv\Scripts\python.exe manage.py calibration_reminders --days 30 --settings=core.settings_maintenance 
+Uyarý kapsamýna giren kayýt yok (days=30).
+ExitCode=0 
+[END] 07/09/2025  9:00:02.21 
+ 

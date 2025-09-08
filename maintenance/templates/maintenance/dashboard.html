@@ -22,14 +22,22 @@
     <div class="menu-title">YAKLAŞAN BAKIMLAR</div>
     <div class="ticker" data-speed="12">
       {% for o in upcoming_orders %}
-        <div class="tick">
+        <div class="tick"
+             data-href="/admin/maintenance/maintenanceorder/{{ o.id }}/change/">
           <b>{{ o.due_date|date:"d.m.Y" }}</b> — {{ o.equipment.code }} {{ o.equipment.name }} — {{ o.get_order_type_display }}
         </div>
       {% empty %}
         <div class="tick">Planlı/kestirimci bakım bulunamadı.</div>
       {% endfor %}
       {% for c in upcoming_cals %}
-        <div class="tick">
+        <div class="tick"
+             {% if c.id %}
+               data-href="/admin/maintenance/calibrationrecord/{{ c.id }}/change/"
+             {% elif c.asset_id %}
+               data-href="/admin/maintenance/calibrationasset/{{ c.asset_id }}/change/"
+             {% else %}
+               data-href="{% url 'admin:maintenance-calibrations' %}"
+             {% endif %}>
           <b>{{ c.next_calibration|date:"d.m.Y" }}</b> — {{ c.equipment.code }} {{ c.equipment.name }} — Kalibrasyon
         </div>
       {% endfor %}

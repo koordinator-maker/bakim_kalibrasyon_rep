@@ -1,39 +1,50 @@
 {% load static %}
 <!doctype html>
-<html lang="tr" class="light">
+<html lang="tr" class="light" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <title>{% block title %}Bakım Modülü{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="{% static 'maintenance/dashboard.css' %}" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'maintenance/dashboard.css' %}">
   <script defer src="{% static 'maintenance/dashboard.js' %}"></script>
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <div class="logo">🛠️</div>
-    <div class="brand-text">
-      <strong>Bakım Modülü</strong>
-      <span class="sub">IATF 16949 • AS9100 • ISO 22163</span>
+  <header class="topbar" role="banner">
+    <div class="brand" aria-label="Uygulama">
+      <div class="logo" aria-hidden="true">🛠️</div>
+      <div class="brand-text">
+        <strong>Bakım Modülü</strong>
+        <span class="sub">IATF 16949 • AS9100 • ISO 22163</span>
+      </div>
     </div>
-  </div>
-  <div class="top-actions">
-    <button class="btn ghost" onclick="window.location.reload()">Yenile</button>
-    <button class="btn primary" onclick="MaintenanceUI.toast('Kaydedildi')">Kaydet</button>
-  </div>
-</header>
+    <div class="top-actions">
+      <button id="themeToggle" class="btn ghost" type="button" title="Tema: Açık/Koyu" aria-label="Tema değiştir">🌙 / ☀️</button>
+      <button class="btn ghost" type="button" onclick="window.location.reload()">Yenile</button>
+      <button class="btn primary" type="button" onclick="MaintenanceUI.toast('Kaydedildi')">Kaydet</button>
+    </div>
+  </header>
 
-<main class="layout">
-  <aside class="side">
-    {% block sidebar %}{% endblock %}
-  </aside>
-  <section class="content">
-    {% block content %}{% endblock %}
-  </section>
-</main>
+  <main class="layout" role="main">
+    <aside class="side">
+      {% block sidebar %}{% endblock %}
+    </aside>
+    <section class="content">
+      {% block content %}{% endblock %}
+    </section>
+  </main>
 
-<footer class="footer">
-  <span>© {{ now|date:"Y" }} Bakım Kalibrasyon • Tüm hakları saklıdır.</span>
-</footer>
+  <footer class="footer" role="contentinfo">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;color:var(--muted)">© {{ now|date:"Y" }} Bakım Kalibrasyon • Tüm hakları saklıdır.</div>
+
+      <!-- Hızlı Bağlantılar (en altta) -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn ghost" href="{% url 'admin:maintenance-equipment-list' %}">Makine Listesi</a>
+        <a class="btn ghost" href="{% url 'admin:maintenance-equipment-create' %}">Yeni Makine Girişi</a>
+        <a class="btn ghost" href="{% url 'admin:maintenance-calibrations' %}">Yeni Ölçüm Cihazı</a>
+        <a class="btn primary" href="{% url 'admin:maintenance-checklists' %}">Kontrol Listeleri</a>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

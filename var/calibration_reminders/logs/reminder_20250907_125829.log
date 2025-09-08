@@ -1,0 +1,36 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20250907125829
+Username: LAPTOP-BJ5VB4RI\HP
+RunAs User: LAPTOP-BJ5VB4RI\HP
+Configuration Name: 
+Machine: LAPTOP-BJ5VB4RI (Microsoft Windows NT 10.0.19045.0)
+Host Application: powershell -NoProfile -ExecutionPolicy Bypass -File C:\dev\bakim_kalibrasyon\scripts\calibration_reminder.ps1
+Process ID: 12128
+PSVersion: 5.1.19041.6216
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.19041.6216
+BuildVersion: 10.0.19041.6216
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+[INFO] Reminder baÅŸlÄ±yor @ 2025-09-07 12:58:29
+[INFO] Ã‡alÄ±ÅŸtÄ±rÄ±lÄ±yor: python manage.py calibration_reminder --days 30 60 90 --roles BakÄ±m YÃ¶neticisi --attach both --settings=core.settings_maintenance
+PS>TerminatingError(): "The term 'python manage.py calibration_reminder --days 30 60 90 --roles BakÄ±m YÃ¶neticisi --attach both --settings=core.settings_maintenance' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again."
+The term 'python manage.py calibration_reminder --days 30 60 90 --roles BakÄ±m YÃ¶neticisi --attach both --settings=core.settings_maintenance' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+& : The term 'python manage.py calibration_reminder --days 30 60 90 --roles BakÄ±m YÃ¶neticisi --attach both
+--settings=core.settings_maintenance' is not recognized as the name of a cmdlet, function, script file, or operable
+program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At C:\dev\bakim_kalibrasyon\scripts\calibration_reminder.ps1:37 char:3
++ & $cmd
++   ~~~~
+    + CategoryInfo          : ObjectNotFound: (python manage.p...ngs_maintenance:String) [], ParentContainsErrorRecord
+   Exception
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+**********************
+Windows PowerShell transcript end
+End time: 20250907125830
+**********************
