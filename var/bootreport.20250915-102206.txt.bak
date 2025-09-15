@@ -1,4 +1,4 @@
-Generated: 2025-09-08T18:01:57  TZ=UTC
+Generated: 2025-09-14T09:00:02  TZ=UTC
 Python: CPython 3.11.9
 Django: 5.2.6  DEBUG=True
 Project: BASE_DIR=C:\dev\bakim_kalibrasyon  ROOT_URLCONF=core.urls
@@ -9,10 +9,12 @@ Installed Apps: 7 items
 Middleware   : 7 items
 Databases:
   - default: django.db.backends.sqlite3  name=C:\dev\bakim_kalibrasyon\db.sqlite3
-URL Patterns: 57 items
+URL Patterns: 59 items
   - admin/maintenance/dashboard/  (name=maintenance-dashboard)
   - admin/maintenance/orders/  (name=maintenance-orders)
   - admin/maintenance/orders/new/  (name=maintenance-order-create)
+  - admin/maintenance/equipment/  (name=maintenance-equipment-list)
+  - admin/maintenance/equipment/new/  (name=maintenance-equipment-create)
   - admin/maintenance/calibrations/  (name=maintenance-calibrations)
   - admin/maintenance/calibrations/follow/  (name=maintenance-calibration-follow)
   - admin/maintenance/calibrations/asset/new/  (name=maintenance-cal-asset-create)
@@ -58,10 +60,8 @@ URL Patterns: 57 items
   - admin/maintenance/calibrationrecord/  (name=maintenance_calibrationrecord_changelist)
   - admin/maintenance/calibrationrecord/add/  (name=maintenance_calibrationrecord_add)
   - admin/maintenance/calibrationrecord/<path:object_id>/history/  (name=maintenance_calibrationrecord_history)
-  - admin/maintenance/calibrationrecord/<path:object_id>/delete/  (name=maintenance_calibrationrecord_delete)
-  - admin/maintenance/calibrationrecord/<path:object_id>/change/  (name=maintenance_calibrationrecord_change)
-  ... (+7 more)
+  ... (+9 more)
 HR-LMS Focus:
   TrainingPlan: -
   TrainingPlanAttendee: -
-Signature: sha256=12d2e995643c…  short=12d2e995643c
+Signature: sha256=82625342695f…  short=82625342695f

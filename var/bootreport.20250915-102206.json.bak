@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-09-08T18:01:57",
+  "generated_at": "2025-09-14T09:00:02",
   "tz": "UTC",
   "python": {
     "version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
@@ -67,6 +67,16 @@
       "route": "admin/maintenance/orders/new/",
       "name": "maintenance-order-create",
       "callback": "maintenance.admin.order_create"
+    },
+    {
+      "route": "admin/maintenance/equipment/",
+      "name": "maintenance-equipment-list",
+      "callback": "maintenance.admin.equipment_list"
+    },
+    {
+      "route": "admin/maintenance/equipment/new/",
+      "name": "maintenance-equipment-create",
+      "callback": "maintenance.admin.equipment_create"
     },
     {
       "route": "admin/maintenance/calibrations/",
@@ -1761,7 +1771,7 @@
     "training_plan_attendee": null
   },
   "signature": {
-    "sha256": "12d2e995643c63f16b370eb077b06d9f1a102729d3f65f059202ad26ae658cbf",
-    "short": "12d2e995643c"
+    "sha256": "82625342695fb790741faf4d0c49b3450164d6ab3d863b0d2a48b2c8576a1383",
+    "short": "82625342695f"
   }
 }
