@@ -1,6 +1,9 @@
-# REV: 1.0 | 2025-09-24 | Hash: 83ecab24 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 5e286802 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-78PPMS41
 # -*- coding: utf-8 -*-
 from __future__ import annotations
+# <<< BLOK SONU: ID:PY-IMP-78PPMS41
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-WKWJA9S0
 from typing import List, Dict, Any, Tuple
 from datetime import date, timedelta
 
@@ -141,3 +144,4 @@ class Command(BaseCommand):
             msg.send()
 
         self.stdout.write(self.style.SUCCESS("E-posta hatırlatmaları tamam."))
+# <<< BLOK SONU: ID:PY-COM-WKWJA9S0

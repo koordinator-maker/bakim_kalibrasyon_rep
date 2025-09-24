@@ -1,7 +1,10 @@
-# REV: 1.0 | 2025-09-24 | Hash: 878296d9 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 3c61e1dd | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-74RSM79F
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+# <<< BLOK SONU: ID:PY-IMP-74RSM79F
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-4VYASZQ2
 from typing import Dict, Iterable, List, Set
 
 from django.apps import apps
@@ -173,3 +176,4 @@ class Command(BaseCommand):
             self.stdout.write(f"OK: {u.username} -> {GROUP_MANAGER} (email={u.email or '-'})")
 
         self.stdout.write(self.style.SUCCESS(f"Tamamlandı. Grup atanan kullanıcı sayısı: {added}"))
+# <<< BLOK SONU: ID:PY-COM-4VYASZQ2

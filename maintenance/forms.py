@@ -1,9 +1,12 @@
-# REV: 1.0 | 2025-09-24 | Hash: cd2196d0 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 544f9096 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-Z7B1GP9H
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 from django import forms
 from .models import MaintenanceChecklistItem
 
+# <<< BLOK SONU: ID:PY-IMP-Z7B1GP9H
+# >>> BLOK: FORMS | Formlar | ID:PY-FOR-RXA5WRDF
 class MaintenanceChecklistItemForm(forms.ModelForm):
     class Meta:
         model = MaintenanceChecklistItem
@@ -31,3 +34,4 @@ class MaintenanceChecklistItemForm(forms.ModelForm):
             "equipment": "İstersen mevcut bir makineyi seçebilirsin; seçilmezse yukarıdaki bilgilerle yeni kayıt mantığına temel oluşturur.",
             "is_mandatory": "İş emrinde mutlaka yapılması gereken kritik bir adım ise işaretleyin.",
         }
+# <<< BLOK SONU: ID:PY-FOR-RXA5WRDF

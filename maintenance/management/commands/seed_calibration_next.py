@@ -1,8 +1,11 @@
-# REV: 1.0 | 2025-09-24 | Hash: 24ea4106 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 8dd154fb | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-Q39NYKQ7
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import random
+# <<< BLOK SONU: ID:PY-IMP-Q39NYKQ7
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-SGZCGYTS
 from datetime import date, timedelta
 
 from django.core.management.base import BaseCommand
@@ -68,3 +71,4 @@ class Command(BaseCommand):
             created += 1
 
         self.stdout.write(self.style.SUCCESS(f"Oluşturulan kalibrasyon kaydı: {created}"))
+# <<< BLOK SONU: ID:PY-COM-SGZCGYTS

@@ -1,9 +1,12 @@
-# REV: 1.0 | 2025-09-24 | Hash: d4730995 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 45922179 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-WBM30A3D
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 from django.contrib import admin
 from django.contrib.admin import AdminSite
 from django.http import HttpResponse
+# <<< BLOK SONU: ID:PY-IMP-WBM30A3D
+# >>> BLOK: ADMIN | Yonetim | ID:PY-ADM-J611F820
 from django.shortcuts import render, redirect
 from django.urls import path
 from django import forms
@@ -371,3 +374,4 @@ class CalibrationRecordAdmin(admin.ModelAdmin):
     list_display = ("asset", "last_calibration", "next_calibration", "result", "certificate_no", "total_deviation")
     list_filter = ("result", "next_calibration")
     search_fields = ("asset__asset_code", "asset__asset_name", "certificate_no")
+# <<< BLOK SONU: ID:PY-ADM-J611F820

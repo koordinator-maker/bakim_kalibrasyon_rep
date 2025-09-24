@@ -1,10 +1,13 @@
-# REV: 1.0 | 2025-09-24 | Hash: ed39944f | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 049d1bb7 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-45M6B23F
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import csv
 import io
 from datetime import date
+# <<< BLOK SONU: ID:PY-IMP-45M6B23F
+# >>> BLOK: VIEWS | Gorunumler | ID:PY-VIE-8DM3AFDK
 from typing import Dict, List, Tuple, Iterable
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -324,3 +327,4 @@ def calibration_import_wizard(request: HttpRequest) -> HttpResponse:
     except Exception as ex:
         ctx["error"] = f"İçe aktarma sırasında beklenmeyen hata: {ex}"
         return render(request, "maintenance/import_wizard.html", ctx)
+# <<< BLOK SONU: ID:PY-VIE-8DM3AFDK

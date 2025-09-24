@@ -1,4 +1,7 @@
-# REV: 1.0 | 2025-09-24 | Hash: 2205e0fb | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: aa64b9dc | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-BA97B7DG
+# <<< BLOK SONU: ID:PY-IMP-BA97B7DG
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-2Z10B8Z7
 """
 WSGI config for core project.
 
@@ -15,3 +18,4 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 application = get_wsgi_application()
+# <<< BLOK SONU: ID:PY-HEL-2Z10B8Z7

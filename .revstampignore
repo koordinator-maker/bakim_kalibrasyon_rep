@@ -1,0 +1,14 @@
+venv/**
+.venv/**
+**/__pycache__/**
+**/site-packages/**
+**/dist-packages/**
+node_modules/**
+build/**
+dist/**
+_otokodlama/**
+# artefact ve arşivler
+codepack_full_*_part*.txt
+codepack_full_part01.bat
+*.exe
+var/**

@@ -1,7 +1,10 @@
-# REV: 1.0 | 2025-09-24 | Hash: 4d444271 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 5806a8a8 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-E8P0MXWW
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+# <<< BLOK SONU: ID:PY-IMP-E8P0MXWW
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-773MBFDD
 from datetime import date, timedelta
 from typing import Iterable, List, Set, Dict, Any
 from pathlib import Path
@@ -361,3 +364,4 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"E-posta gönderimi başarısız: {ex}"))
             self.stderr.write("İçerik aşağıdadır (gönderilmedi):")
             self.stderr.write(body)
+# <<< BLOK SONU: ID:PY-COM-773MBFDD

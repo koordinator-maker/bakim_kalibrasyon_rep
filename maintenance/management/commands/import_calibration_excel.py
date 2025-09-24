@@ -1,7 +1,10 @@
-# REV: 1.0 | 2025-09-24 | Hash: c6444739 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 25929227 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-6RVA8X3A
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 import os
+# <<< BLOK SONU: ID:PY-IMP-6RVA8X3A
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-WEJDN8BE
 from typing import Dict, Any, List, Tuple
 from django.core.management.base import BaseCommand, CommandError
 from maintenance.models import CalibrationAsset, CalibrationRecord, Equipment
@@ -200,3 +203,4 @@ class Command(BaseCommand):
                 f"Tamam: assets(created={created_assets}, updated={updated_assets}), records(created={created_records})"
             )
         )
+# <<< BLOK SONU: ID:PY-COM-WEJDN8BE

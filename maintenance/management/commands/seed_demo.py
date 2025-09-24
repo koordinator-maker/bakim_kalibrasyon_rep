@@ -1,7 +1,10 @@
-# REV: 1.0 | 2025-09-24 | Hash: b7b2804c | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: ad7b7037 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-8V7HK2VC
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 import random
+# <<< BLOK SONU: ID:PY-IMP-8V7HK2VC
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-5D7MS3Z0
 from datetime import date, datetime, timedelta, time
 from typing import List
 from django.core.management.base import BaseCommand
@@ -99,3 +102,4 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS("Demo verileri eklendi."))
+# <<< BLOK SONU: ID:PY-COM-5D7MS3Z0

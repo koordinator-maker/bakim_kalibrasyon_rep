@@ -1,4 +1,5 @@
-# REV: 1.0 | 2025-09-24 | Hash: c1991529 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 7af5b31c | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-GGW1GAWP
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 import json
@@ -6,6 +7,8 @@ import os
 from django.core.management.base import BaseCommand
 from django.conf import settings
 
+# <<< BLOK SONU: ID:PY-IMP-GGW1GAWP
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-NKAM3YXM
 class Command(BaseCommand):
     help = "bootreport'i çalıştırır, var/ içine dosyaları yazar ve kısa özet basar."
 
@@ -54,3 +57,4 @@ class Command(BaseCommand):
                 ))
             except Exception as e:
                 self.stderr.write(f"READ JSON ERROR: {e!r}")
+# <<< BLOK SONU: ID:PY-COM-NKAM3YXM

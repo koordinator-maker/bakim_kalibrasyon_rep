@@ -1,4 +1,5 @@
-# REV: 1.0 | 2025-09-24 | Hash: 9ef95eda | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: d652bc60 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-YRK6V5KM
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
@@ -6,6 +7,8 @@ import os
 from .settings_maintenance import *  # noqa
 
 # UTF-8 AUTH LOGIN destekleyen backend
+# <<< BLOK SONU: ID:PY-IMP-YRK6V5KM
+# >>> BLOK: SETTINGS | Proje ayarlari | ID:PY-SET-F3WT5MEH
 EMAIL_BACKEND = "core.email_backend_utf8.Utf8EmailBackend"
 
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.office365.com")
@@ -26,3 +29,4 @@ EMAIL_TIMEOUT = int(os.environ.get("SMTP_TIMEOUT", "30"))
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", SMTP_USER or "noreply@example.com")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+# <<< BLOK SONU: ID:PY-SET-F3WT5MEH

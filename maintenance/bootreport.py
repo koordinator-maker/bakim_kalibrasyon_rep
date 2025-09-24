@@ -1,4 +1,5 @@
-# REV: 1.0 | 2025-09-24 | Hash: f86d901c | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 5d345cf0 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-E9M949JJ
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
@@ -10,6 +11,8 @@ import hashlib
 import shutil
 import glob
 from datetime import datetime
+# <<< BLOK SONU: ID:PY-IMP-E9M949JJ
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-WBMVJXKH
 from typing import Any, Dict, List
 
 import django
@@ -315,3 +318,4 @@ def _summarize(d: Dict[str, Any]) -> str:
     push(f"Signature: sha256={sig.get('sha256','')[:12]}…  short={sig.get('short','')}")
 
     return "\n".join(lines)
+# <<< BLOK SONU: ID:PY-HEL-WBMVJXKH

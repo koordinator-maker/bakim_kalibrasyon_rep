@@ -1,6 +1,9 @@
-# REV: 1.0 | 2025-09-24 | Hash: 4966a813 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 30143910 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-PTSYESDH
 from django.apps import AppConfig
 
+# <<< BLOK SONU: ID:PY-IMP-PTSYESDH
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-WP1RFCNE
 class MaintenanceConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "maintenance"
@@ -12,3 +15,4 @@ class MaintenanceConfig(AppConfig):
             safe_write_boot_report()
         except Exception:
             pass
+# <<< BLOK SONU: ID:PY-HEL-WP1RFCNE

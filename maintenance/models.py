@@ -1,4 +1,5 @@
-# REV: 1.0 | 2025-09-24 | Hash: 5f179057 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 3a841969 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-YS2S076R
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 from django.db import models
@@ -6,6 +7,8 @@ from django.db import models
 # ----------------------------------------------------------------------
 # Ekipman
 # ----------------------------------------------------------------------
+# <<< BLOK SONU: ID:PY-IMP-YS2S076R
+# >>> BLOK: MODELS | Domain modelleri | ID:PY-MOD-VE0WTPKT
 class Equipment(models.Model):
     DISCIPLINE_CHOICES = (
         ("ELEC", "Elektrik"),
@@ -150,3 +153,4 @@ class MaintenanceOrder(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_order_type_display()})"
+# <<< BLOK SONU: ID:PY-MOD-VE0WTPKT

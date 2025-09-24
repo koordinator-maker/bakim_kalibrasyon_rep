@@ -1,9 +1,12 @@
-# REV: 1.0 | 2025-09-24 | Hash: 5d7fd7e1 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: ff6475bc | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-09RC30Y6
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import base64
 import smtplib
+# <<< BLOK SONU: ID:PY-IMP-09RC30Y6
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-CMHKV681
 from django.core.mail.backends.smtp import EmailBackend as DjangoEmailBackend
 
 
@@ -62,3 +65,4 @@ class Utf8EmailBackend(DjangoEmailBackend):
         code, resp = self.connection.docmd(p)
         if code != 235:
             raise smtplib.SMTPAuthenticationError(code, resp)
+# <<< BLOK SONU: ID:PY-HEL-CMHKV681

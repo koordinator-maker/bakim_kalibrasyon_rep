@@ -1,5 +1,8 @@
-# REV: 1.0 | 2025-09-24 | Hash: a2a95101 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 1f64af44 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-8GQS0CVD
 from django import template
+# <<< BLOK SONU: ID:PY-IMP-8GQS0CVD
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-2YCE8FE4
 register = template.Library()
 
 @register.filter
@@ -21,3 +24,4 @@ def status_badge(date_obj):
     if date_obj <= today + timedelta(days=30):
         return "badge warn"
     return "badge"
+# <<< BLOK SONU: ID:PY-HEL-2YCE8FE4

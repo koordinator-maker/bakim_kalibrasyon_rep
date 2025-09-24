@@ -1,4 +1,7 @@
-# REV: 1.0 | 2025-09-24 | Hash: 12d75d44 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: bb7c310c | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-3REMVA2D
+# <<< BLOK SONU: ID:PY-IMP-3REMVA2D
+# >>> BLOK: SETTINGS | Proje ayarlari | ID:PY-SET-10HDCS31
 """
 Django settings for core project.
 
@@ -121,3 +124,4 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# <<< BLOK SONU: ID:PY-SET-10HDCS31

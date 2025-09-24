@@ -1,5 +1,8 @@
-# REV: 1.0 | 2025-09-24 | Hash: 490f33f0 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 1cc1418a | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-XX3Z0KQ7
 #!/usr/bin/env python
+# <<< BLOK SONU: ID:PY-IMP-XX3Z0KQ7
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-JNKMP1V0
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
@@ -21,3 +24,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+# <<< BLOK SONU: ID:PY-HEL-JNKMP1V0

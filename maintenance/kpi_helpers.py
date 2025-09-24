@@ -1,6 +1,9 @@
-# REV: 1.0 | 2025-09-24 | Hash: 21ae7d73 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: 79d127ef | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-VER4SXB2
 # -*- coding: utf-8 -*-
 from __future__ import annotations
+# <<< BLOK SONU: ID:PY-IMP-VER4SXB2
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-CSMB3X32
 from datetime import datetime, date, time, timedelta
 from typing import Optional
 
@@ -136,3 +139,4 @@ def cost_summary(days: int = 180) -> dict:
     for k in ("total_cost", "avg_cost", "total_duration", "total_orders"):
         agg[k] = agg[k] or 0
     return agg
+# <<< BLOK SONU: ID:PY-HEL-CSMB3X32

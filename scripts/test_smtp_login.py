@@ -1,4 +1,5 @@
-# REV: 1.0 | 2025-09-24 | Hash: 960b0bf3 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: aaf24dc1 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-5ZBWA3HA
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
@@ -7,6 +8,8 @@ import ssl
 import smtplib
 import base64
 
+# <<< BLOK SONU: ID:PY-IMP-5ZBWA3HA
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-JQAJBVNA
 host = os.getenv("SMTP_HOST", "smtp.office365.com")
 port = int(os.getenv("SMTP_PORT", "587"))
 user = os.getenv("SMTP_USER", "")
@@ -43,3 +46,4 @@ if code != 235:
 
 print("LOGIN OK")
 smtp.quit()
+# <<< BLOK SONU: ID:PY-HEL-JQAJBVNA

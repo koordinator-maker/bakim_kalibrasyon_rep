@@ -1,4 +1,5 @@
-# REV: 1.0 | 2025-09-24 | Hash: ddc622f0 | Parça: 1/1
+# REV: 1.1 | 2025-09-24 | Hash: cb94ad93 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-1QVHDB8X
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 import os
@@ -7,6 +8,8 @@ import traceback
 from django.core.management.base import BaseCommand
 from django.conf import settings
 
+# <<< BLOK SONU: ID:PY-IMP-1QVHDB8X
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-4A13QPRK
 class Command(BaseCommand):
     help = "Bootreport teşhis komutu: adım adım çalıştırır, klasörleri oluşturur, ayrıntılı çıktı verir."
 
@@ -74,3 +77,4 @@ class Command(BaseCommand):
         except Exception as e:
             self.stderr.write(f"READ JSON ERROR: {e!r}")
             traceback.print_exc()
+# <<< BLOK SONU: ID:PY-COM-4A13QPRK
