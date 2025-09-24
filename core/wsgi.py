@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 2205e0fb | Parça: 1/1
 """
 WSGI config for core project.
 

@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: ddc622f0 | Parça: 1/1
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 import os

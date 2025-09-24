@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: d37abaeb | Parça: 1/1
 # Bootreport'ı venv aktivasyonunda üretir. Logu var\bootreport-activate-YYYYmmdd-HHMMSS.log'a yazar.
 param()
 

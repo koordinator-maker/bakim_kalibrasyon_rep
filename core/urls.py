@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 90bf1995 | Parça: 1/1
 # -*- coding: utf-8 -*-
 # core/urls.py
 from django.urls import path

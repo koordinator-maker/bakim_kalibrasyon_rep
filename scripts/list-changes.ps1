@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 76692279 | Parça: 1/1
 param(
   [Parameter(Mandatory=$true)] [string]$Root,
   [Parameter(Mandatory=$true)] [string]$Start,

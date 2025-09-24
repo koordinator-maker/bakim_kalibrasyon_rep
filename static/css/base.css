@@ -1,0 +1,13 @@
+/* REV: 1.0 | 2025-09-24 | Hash: b944efd8 | Parça: 1/1 */
+/* GUARDRAIL CSS BASE */
+.card{padding:1rem;border:1px solid #ddd;border-radius:.5rem}
+.section-bar{padding:.5rem 1rem;border-bottom:1px solid #ddd}
+.section-body{padding:1rem}
+.field{margin-bottom:1rem}
+.label{font-weight:600;margin-bottom:.25rem;display:block}
+.help{font-size:.85rem;opacity:.8}
+.input, .select, .textarea{width:100%;padding:.5rem;border:1px solid #ccc;border-radius:.25rem}
+.toolbar{display:flex;gap:.5rem}
+.btn{padding:.5rem 1rem;border:1px solid #333;border-radius:.375rem;background:#f7f7f7}
+.btn-primary{background:#333;color:#fff;border-color:#333}
+.col-span-2{grid-column:span 2}

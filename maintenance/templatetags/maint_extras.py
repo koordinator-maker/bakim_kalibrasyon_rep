@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: a2a95101 | Parça: 1/1
 from django import template
 register = template.Library()
 

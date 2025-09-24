@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 12d75d44 | Parça: 1/1
 """
 Django settings for core project.
 

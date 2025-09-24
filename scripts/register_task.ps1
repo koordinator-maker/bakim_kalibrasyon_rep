@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 96858568 | Parça: 1/1
 <#
   Windows Task Scheduler kaydı (PowerShell ScheduledTasks modülü ile)
   Çalışma klasörü, tetikleyici ve haklar düzgün ayarlanır.

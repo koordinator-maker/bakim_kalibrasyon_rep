@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 504d2bb6 | Parça: 1/1
 param(
   [string]$Days = "30,60,90",
   [string]$Roles = "Bakım Yöneticisi",

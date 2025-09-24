@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: ca844bfd | Parça: 1/1
 #Requires -Version 5.1
 param(
   [switch]$Seed,     # örn: .\run_maintenance_dev.ps1 -Seed

@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 0c0e7606 | Parça: 1/1
 # -*- coding: utf-8 -*-
 # Özel bakım/kalibrasyon ortamı
 from .settings import *  # projedeki ortak ayarları içe al

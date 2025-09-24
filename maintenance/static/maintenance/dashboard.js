@@ -1,3 +1,5 @@
+// REV: 1.0 | 2025-09-24 | Hash: daab89bd | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 4052105c | Parça: 1/1
 // Basit UI yardımcıları
 const MaintenanceUI = {
   toast(msg) {

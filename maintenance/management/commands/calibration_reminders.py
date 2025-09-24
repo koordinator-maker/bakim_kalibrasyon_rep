@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 83ecab24 | Parça: 1/1
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 from typing import List, Dict, Any, Tuple

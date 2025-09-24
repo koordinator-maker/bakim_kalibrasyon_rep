@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-24 | Hash: 490f33f0 | Parça: 1/1
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 import os
