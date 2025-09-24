@@ -1,4 +1,4 @@
-Generated: 2025-09-23T09:00:03  TZ=UTC
+Generated: 2025-09-24T09:00:03  TZ=UTC
 Python: CPython 3.11.9
 Django: 5.2.6  DEBUG=True
 Project: BASE_DIR=C:\dev\bakim_kalibrasyon  ROOT_URLCONF=core.urls
