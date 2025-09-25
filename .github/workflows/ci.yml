@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  pipeline:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        shell: pwsh
+        run: |
+          python -m venv venv
+          ./venv/Scripts/python -m pip install --upgrade pip
+          ./venv/Scripts/python -m pip install -r requirements.txt
+          ./venv/Scripts/python -m playwright install chromium
+
+      - name: Run pipeline (serve + screenshot + playwright + acceptance)
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File tools/serve_then_pipeline.ps1 -BindHost 127.0.0.1 -Port 8000
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-outputs
+          path: |
+            targets/target.png
+            targets/screens/*.png
+            _otokodlama/out/**
+            layout_report.json
