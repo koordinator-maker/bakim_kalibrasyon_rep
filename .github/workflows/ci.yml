@@ -8,13 +8,20 @@ on:
 jobs:
   pipeline:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      # (opsiyonel) Windows konsolda UTF-8 çıktılar düzgün görünsün
+      - name: Set UTF-8 output
+        shell: pwsh
+        run: |
+          [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
       - name: Install deps
         shell: pwsh
@@ -24,10 +31,11 @@ jobs:
           ./venv/Scripts/python -m pip install -r requirements.txt
           ./venv/Scripts/python -m playwright install chromium
 
-      - name: Run pipeline (serve + screenshot + playwright + acceptance)
+      # Uçtan uca: runserver + pipeline + guided visual accept (>=0.90)
+      - name: Run pipeline + guided accept (>=0.90)
         shell: pwsh
         run: |
-          powershell -ExecutionPolicy Bypass -File tools/serve_then_pipeline.ps1 -BindHost 127.0.0.1 -Port 8000
+          powershell -ExecutionPolicy Bypass -File tools\run_all.ps1 -BindHost 127.0.0.1 -Port 8000
 
       - name: Upload artifacts
         if: always()
@@ -36,6 +44,6 @@ jobs:
           name: pipeline-outputs
           path: |
             targets/target.png
-            targets/screens/*.png
+            targets/screens/**/*.png
             _otokodlama/out/**
-            layout_report.json
+            _otokodlama/out/**/layout_report.json

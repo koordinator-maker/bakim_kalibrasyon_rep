@@ -1,0 +1,13 @@
+# EÅŸik saÄŸlanÄ±nca Ã§alÄ±ÅŸacak adÄ±mlar (Ã¶rnek)
+# Not: '&&' kullanma, PS satÄ±r satÄ±r Ã§alÄ±ÅŸÄ±r.
+
+# 1) Etiketle
+ps> $tag = "ci-pass-" + (Get-Date -Format yyyyMMdd-HHmmss)
+ps> git tag $tag
+
+# 2) Origin'e gÃ¶nder (kimlik doÄŸrulama gerekli)
+ps> git push origin $tag
+
+# 3) (opsiyonel) revstamp
+ps> git config alias.rev "pre-commit run --hook-stage manual -a"
+ps> git rev

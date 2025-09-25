@@ -1,0 +1,78 @@
+###> tools/pipeline_and_next.ps1
+param(
+  [string]$BindHost="127.0.0.1",
+  [int]$Port=8000,
+  [string]$NextCard = ".\ops\next_ok_runcard.txt",
+  [switch]$NoAccept,
+  [switch]$DryRun
+)
+$ErrorActionPreference="Stop"
+
+$root   = Get-Location
+$serve  = Join-Path $PSScriptRoot 'serve_then_pipeline.ps1'
+$accept = Join-Path $PSScriptRoot 'accept_visual.ps1'
+
+# 1) Pipeline
+powershell -ExecutionPolicy Bypass -File $serve -BindHost $BindHost -Port $Port
+$pipeExit = $LASTEXITCODE
+
+# 2) Rapor/konfig
+$cfgPath = Join-Path $root 'pipeline.config.json'
+$repPath = Join-Path $root 'layout_report.json'
+$cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
+$rep = Get-Content $repPath -Raw | ConvertFrom-Json
+
+# auto_accept_if yoksa default 0.98
+$auto = if ($cfg.acceptance -and $cfg.acceptance.auto_accept_if) { [double]$cfg.acceptance.auto_accept_if } else { 0.98 }
+$pass = ($rep.ok -eq $true) -and ($rep.similarity -ge $auto) -and ($rep.tests_ok -eq $true) -and ($rep.improvements_ok -eq $true)
+
+# 3) Guided accept
+if ($pass -and -not $NoAccept) {
+  powershell -ExecutionPolicy Bypass -File $accept | Out-Host
+}
+
+# 4) Durum yaz
+$statusDir = Join-Path $root '_otokodlama'
+New-Item -ItemType Directory -Force -Path $statusDir | Out-Null
+[pscustomobject]@{
+  when = (Get-Date).ToString("s")
+  similarity = $rep.similarity
+  threshold  = $auto
+  ok = $pass
+  latest_screenshot = $rep.latest_screenshot
+  target = $rep.target
+} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $statusDir 'status.json') -Encoding utf8
+
+# 5) Sonraki adım
+if ($pass) {
+  Write-Host "[NEXT] koşulu sağlandı (similarity=$($rep.similarity) >= $auto)."
+  if (Test-Path $NextCard) {
+    if ($DryRun) {
+      Write-Host "[DRY] tools\\apply_runcard.ps1 -Card $NextCard -NoConfirm"
+    } else {
+      powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'apply_runcard.ps1') -Card $NextCard -NoConfirm
+    }
+  } else {
+    Write-Host "[NEXT] Runcard bulunamadı: $NextCard (atlandı)"
+  }
+  exit 0
+} else {
+  Write-Warning "[NEXT] koşulu sağlanmadı. similarity=$($rep.similarity) threshold=$auto"
+  exit 1
+}
+###<
+###> ops/next_ok_runcard.txt
+# Eşik sağlanınca çalışacak adımlar (örnek)
+# Not: '&&' kullanma, PS satır satır çalışır.
+
+# 1) Etiketle
+ps> $tag = "ci-pass-" + (Get-Date -Format yyyyMMdd-HHmmss)
+ps> git tag $tag
+
+# 2) Origin'e gönder (kimlik doğrulama gerekli)
+ps> git push origin $tag
+
+# 3) (opsiyonel) revstamp
+ps> git config alias.rev "pre-commit run --hook-stage manual -a"
+ps> git rev
+###<
