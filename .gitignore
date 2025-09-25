@@ -11,3 +11,9 @@ _otokodlama/out/
 var/bootreport.json
 
 _otokodlama/INDEX.json
+# generated artifacts
+var/*.bak
+var/bootreport.*
+targets/screens/*.png
+_otokodlama/**
+*.bak

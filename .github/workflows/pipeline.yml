@@ -1,0 +1,23 @@
+name: pipeline
+on: [push, pull_request]
+jobs:
+  run:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m pip install playwright
+          python -m playwright install chromium
+      - name: Serve & Pipeline
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File .\tools\serve_then_pipeline.ps1 -BindHost 127.0.0.1 -Port 8000
+      - name: Upload screenshots (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens
+          path: targets/screens/*.png

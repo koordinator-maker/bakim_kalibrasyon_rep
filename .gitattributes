@@ -1,16 +1,5 @@
-* text=auto
-
-# PowerShell betikleri Windows sat?r sonu
-*.ps1 text eol=crlf
-
-# Python/HTML/CSS/JS LF kals?n
-*.py   text eol=lf
-*.html text eol=lf
-*.htm  text eol=lf
-*.css  text eol=lf
-*.js   text eol=lf
-*.ts   text eol=lf
-*.yml  text eol=lf
-*.yaml text eol=lf
-
-*.json text eol=lf
+﻿* text=auto
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.py    text eol=lf
