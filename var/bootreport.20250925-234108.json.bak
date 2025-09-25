@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-09-25T09:00:03",
+  "generated_at": "2025-09-25T23:36:45",
   "tz": "UTC",
   "python": {
     "version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
@@ -27,13 +27,13 @@
   },
   "apps": {
     "installed_apps": [
+      "maintenance.apps.MaintenanceConfig",
       "django.contrib.admin",
       "django.contrib.auth",
       "django.contrib.contenttypes",
       "django.contrib.sessions",
       "django.contrib.messages",
-      "django.contrib.staticfiles",
-      "maintenance.apps.MaintenanceConfig"
+      "django.contrib.staticfiles"
     ],
     "middleware": [
       "django.middleware.security.SecurityMiddleware",
@@ -1771,7 +1771,7 @@
     "training_plan_attendee": null
   },
   "signature": {
-    "sha256": "82625342695fb790741faf4d0c49b3450164d6ab3d863b0d2a48b2c8576a1383",
-    "short": "82625342695f"
+    "sha256": "b90fbce1d5011c63920e8270121cd90df217f1d54284fc4ca28cbcf5daad746b",
+    "short": "b90fbce1d501"
   }
 }

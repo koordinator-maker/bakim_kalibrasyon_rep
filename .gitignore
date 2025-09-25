@@ -9,3 +9,5 @@ dist/
 build/
 _otokodlama/out/
 var/bootreport.json
+
+_otokodlama/INDEX.json

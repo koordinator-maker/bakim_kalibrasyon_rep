@@ -1,0 +1,26 @@
+﻿# REV: 1.0 | 2025-09-25 | Hash: 1043af36 | ParÃ§a: 1/1
+repos:
+  - repo: local
+    hooks:
+      - id: otokodlama-revstamp
+        exclude: ^(pipeline\.config\.json|targets/.*|_otokodlama/.*)$name: "Revizyon DamgasÄ±"
+        entry: "python tools/revstamp.py ."
+        language: system
+        pass_filenames: false
+        files: "\\.(py|ps1|html|css|js|ts|md|yml|yaml|ini|cfg)$|^pipeline\\.ps1$"
+        exclude: "^(venv/|\\.venv/|_otokodlama/|var/|node_modules/|\\.git/)"
+
+      - id: otokodlama-blockcheck
+        name: "Blok DoÄŸrulama & Ä°ndeks"
+        entry: "python tools/blockcheck.py --tracked"
+        language: system
+        pass_filenames: false
+        exclude: "^(venv/|\\.venv/|_otokodlama/|var/|node_modules/|\\.git/)"
+
+      - id: otokodlama-guardrail
+        name: "Guardrail KontrolÃ¼ (base.html & base.css)"
+        entry: "python tools/guardrail_check.py"
+        language: system
+        pass_filenames: false
+        files: "^templates/base\\.html$|^static/css/base\\.css$"
+

@@ -1,4 +1,4 @@
-Generated: 2025-09-25T09:00:03  TZ=UTC
+Generated: 2025-09-25T23:36:45  TZ=UTC
 Python: CPython 3.11.9
 Django: 5.2.6  DEBUG=True
 Project: BASE_DIR=C:\dev\bakim_kalibrasyon  ROOT_URLCONF=core.urls
@@ -64,4 +64,4 @@ URL Patterns: 59 items
 HR-LMS Focus:
   TrainingPlan: -
   TrainingPlanAttendee: -
-Signature: sha256=82625342695f…  short=82625342695f
+Signature: sha256=b90fbce1d501…  short=b90fbce1d501
