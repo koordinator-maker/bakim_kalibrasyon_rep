@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: ea809379 | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: ea809379 | Parça: 1/1
 # Her dosya başında revizyon bilgisi sistemi olacak.
 # >>> BLOK: SETUP | Benzersiz blok kodu üretici | ID:PY-SET-Q6R5V2JK
 #!/usr/bin/env python3

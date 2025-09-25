@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: 30143910 | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: 30143910 | Parça: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-PTSYESDH
 from django.apps import AppConfig
 

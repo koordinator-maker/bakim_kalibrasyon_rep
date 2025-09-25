@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: 45ddb718 | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: 45ddb718 | Parça: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-3PR10E2P
 # -*- coding: utf-8 -*-
 # core/urls.py

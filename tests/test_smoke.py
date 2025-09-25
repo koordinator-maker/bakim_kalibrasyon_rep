@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: ccea333a | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: ccea333a | Parça: 1/1
 # Her dosya başında revizyon bilgisi sistemi olacak.
 # >>> BLOK: TEST | Django check | ID:PY-TST-SMK-8D4F2K7M
 import os

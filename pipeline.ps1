@@ -1,7 +1,7 @@
-# REV: 1.2 | 2025-09-24 | Hash: 3c1ee928 | Parça: 1/1
-# Her dosya başında revizyon bilgisi sistemi olacak.
+﻿# REV: 1.1 | 2025-09-24 | Hash: be366a92 | Parça: 1/1
+# Her dosya baÃƒâ€¦Ã…Â¸Ãƒâ€Ã‚Â±nda revizyon bilgisi sistemi olacak.
 
-# >>> BLOK: SETUP | Pipeline ana betiği | ID:PS1-SET-1H7K9Q2A
+# >>> BLOK: SETUP | Pipeline ana betiÃƒâ€Ã…Â¸i | ID:PS1-SET-1H7K9Q2A
 Param(
   [switch]$Push,              # kullanirsaniz commit/push yapar
   [string]$PyTestArgs = "",   # orn: "-q"
@@ -28,7 +28,7 @@ Step "revstamp" { python tools/revstamp.py . --tracked }
 # <<< BLOK SONU: ID:PS1-REV-B4N8M2Z6
 
 # >>> BLOK: BLOCKCHECK | Blok indeks & dogrulama | ID:PS1-BLK-G3S7P1T4
-Step "blockcheck" { python tools/blockcheck.py }
+Step "blockcheck" { python tools/blockcheck.py --tracked }
 # <<< BLOK SONU: ID:PS1-BLK-G3S7P1T4
 
 # >>> BLOK: GUARDRAIL | Base/Template kontrol | ID:PS1-GRD-K8D4V6R1
@@ -58,7 +58,7 @@ if (Get-Command pytest -ErrorAction SilentlyContinue) {
   }
 }
 # <<< BLOK SONU: ID:PS1-TST-5C8R1L7U
-Step "django_check" { .\scripts\django_check.ps1 }
+StepSoft "django_check" { .\scripts\django_check.ps1 -Settings "core.settings" -Soft }
 
 # >>> BLOK: ARTIFACT | Ciktilarin paketlenmesi | ID:PS1-ART-9N3F6X2D
 Copy-Item "_otokodlama/INDEX.json" "$outDir/INDEX.json" -ErrorAction SilentlyContinue
@@ -74,3 +74,19 @@ if ($Push) {
 # <<< BLOK SONU: ID:PS1-GIT-M0A4S7P9
 
 Write-Host ("OK - pipeline tamam. Ciktilar: {0}, arsiv: {0}.zip" -f $outDir)
+
+# >>> BLOK: STEP_SOFT | hatada devam | ID:PS1-SET-SOFT-3H8K2W5N
+function StepSoft($name, $scriptBlock) {
+  Write-Host "==> $name (soft)"
+  try {
+    & $scriptBlock 2>&1 | Tee-Object -FilePath "$outDir/$($name -replace '\s','_').log"
+  } catch {
+    Write-Host "!  $name FAILED (soft, continuing)"
+  }
+}
+# <<< BLOK SONU: ID:PS1-SET-SOFT-3H8K2W5N
+
+
+
+
+

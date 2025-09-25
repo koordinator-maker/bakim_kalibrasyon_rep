@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: 1f64af44 | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: 1f64af44 | Parça: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-8GQS0CVD
 from django import template
 # <<< BLOK SONU: ID:PY-IMP-8GQS0CVD

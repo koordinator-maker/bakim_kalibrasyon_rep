@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: 049d1bb7 | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: 049d1bb7 | Parça: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-45M6B23F
 # -*- coding: utf-8 -*-
 from __future__ import annotations

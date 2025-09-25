@@ -1,4 +1,4 @@
-# REV: 1.2 | 2025-09-24 | Hash: 22847e11 | Parça: 1/1
+# REV: 1.2 | 2025-09-25 | Hash: 22847e11 | Parça: 1/1
 # Her dosya başında revizyon bilgisi sistemi olacak.
 
 # >>> BLOK: IMPORTS | ID:PY-LFR-IMP-7Q2W9K4B

@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: 1cc1418a | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: 1cc1418a | Parça: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-XX3Z0KQ7
 #!/usr/bin/env python
 # <<< BLOK SONU: ID:PY-IMP-XX3Z0KQ7

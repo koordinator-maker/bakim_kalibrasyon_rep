@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: a82325e6 | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: a82325e6 | Parça: 1/1
 # Her dosya başında revizyon bilgisi sistemi olacak.
 # >>> BLOK: GUARDRAIL | Base layout & CSS kontrol | ID:PY-GRD-8M2S4K9H
 #!/usr/bin/env python3

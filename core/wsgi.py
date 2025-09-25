@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-24 | Hash: aa64b9dc | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: aa64b9dc | Parça: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-BA97B7DG
 # <<< BLOK SONU: ID:PY-IMP-BA97B7DG
 # >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-2Z10B8Z7

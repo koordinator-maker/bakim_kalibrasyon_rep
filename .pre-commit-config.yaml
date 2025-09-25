@@ -1,22 +1,25 @@
-# REV: 1.0 | 2025-09-24 | Hash: TBD | Parça: 1/1
-# Her dosya başında revizyon bilgisi sistemi olacak.
+# REV: 1.0 | 2025-09-25 | Hash: 1043af36 | Parça: 1/1
 repos:
   - repo: local
     hooks:
       - id: otokodlama-revstamp
-        name: Revizyon Damgası
-        entry: python tools/revstamp.py .
+        name: "Revizyon Damgası"
+        entry: "python tools/revstamp.py ."
         language: system
         pass_filenames: false
+        files: "\\.(py|ps1|html|css|js|ts|md|yml|yaml|ini|cfg)$|^pipeline\\.ps1$"
+        exclude: "^(venv/|\\.venv/|_otokodlama/|var/|node_modules/|\\.git/)"
 
       - id: otokodlama-blockcheck
-        name: Blok Doğrulama & İndeks
-        entry: python tools/blockcheck.py
+        name: "Blok Doğrulama & İndeks"
+        entry: "python tools/blockcheck.py --tracked"
         language: system
         pass_filenames: false
+        exclude: "^(venv/|\\.venv/|_otokodlama/|var/|node_modules/|\\.git/)"
 
-      - id: otokodlama-guardrails
-        name: Guardrail Kontrolü (base.html & base.css)
-        entry: python tools/guardrail_check.py
+      - id: otokodlama-guardrail
+        name: "Guardrail Kontrolü (base.html & base.css)"
+        entry: "python tools/guardrail_check.py"
         language: system
         pass_filenames: false
+        files: "^templates/base\\.html$|^static/css/base\\.css$"

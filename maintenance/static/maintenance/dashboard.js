@@ -1,3 +1,15 @@
+// REV: 1.0 | 2025-09-25 | Hash: f89c9f70 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 5c0d71a9 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 92f5a69d | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 40758142 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 5e9dceee | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: e6620e44 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: cacc8cda | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: a5da344b | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 8558f19f | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 7afd77ce | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 0045d593 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: a4c40aa8 | Parça: 1/1
 // REV: 1.0 | 2025-09-24 | Hash: daab89bd | Parça: 1/1
 // REV: 1.0 | 2025-09-24 | Hash: 4052105c | Parça: 1/1
 // Basit UI yardımcıları
