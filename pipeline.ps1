@@ -1,92 +1,116 @@
-﻿# REV: 1.1 | 2025-09-24 | Hash: be366a92 | Parça: 1/1
-# Her dosya baÃƒâ€¦Ã…Â¸Ãƒâ€Ã‚Â±nda revizyon bilgisi sistemi olacak.
-
-# >>> BLOK: SETUP | Pipeline ana betiÃƒâ€Ã…Â¸i | ID:PS1-SET-1H7K9Q2A
+﻿# REV: 1.0 | 2025-09-25 | Hash: TBD | Parça: 1/1
 Param(
-  [switch]$Push,              # kullanirsaniz commit/push yapar
-  [string]$PyTestArgs = "",   # orn: "-q"
-  [string]$CommitMsg = "pipeline: revstamp+blockcheck+guardrail"
+  [string]$Settings = "core.settings"
 )
 $ErrorActionPreference = "Stop"
-$ts = Get-Date -Format "yyyyMMdd-HHmmss"
-$outDir = "_otokodlama/out/$ts"
-New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
+# -------------------- Ortam & Yol Kurulumu --------------------
+$Root = (Get-Location).Path
+$Ts   = Get-Date -Format "yyyyMMdd-HHmmss"
+$OutDir = Join-Path $Root ("_otokodlama/out/" + $Ts)
+New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+
+# Tam terminal dökümü
+Start-Transcript -Path (Join-Path $OutDir "transcript.txt") -Force | Out-Null
+
+# Config yükle
+$ConfigPath = Join-Path $Root "pipeline.config.json"
+if (Test-Path $ConfigPath) {
+  $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+} else {
+  throw "pipeline.config.json bulunamadı."
+}
+
+# -------------------- Yardımcılar --------------------
 function Step($name, $scriptBlock) {
   Write-Host "==> $name"
   try {
-    & $scriptBlock 2>&1 | Tee-Object -FilePath "$outDir/$($name -replace '\s','_').log"
+    & $scriptBlock 2>&1 | Tee-Object -FilePath (Join-Path $OutDir ("$($name -replace '\s','_').log"))
+    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) { throw "$name exit code $LASTEXITCODE" }
   } catch {
-    Write-Host "X  $name FAILED"
+    Write-Host "!  $name FAILED"
+    Stop-Transcript | Out-Null
     throw
   }
 }
-# <<< BLOK SONU: ID:PS1-SET-1H7K9Q2A
 
-# >>> BLOK: REVSTAMP | Revizyon damgasi | ID:PS1-REV-B4N8M2Z6
-Step "revstamp" { python tools/revstamp.py . --tracked }
-# <<< BLOK SONU: ID:PS1-REV-B4N8M2Z6
-
-# >>> BLOK: BLOCKCHECK | Blok indeks & dogrulama | ID:PS1-BLK-G3S7P1T4
-Step "blockcheck" { python tools/blockcheck.py --tracked }
-# <<< BLOK SONU: ID:PS1-BLK-G3S7P1T4
-
-# >>> BLOK: GUARDRAIL | Base/Template kontrol | ID:PS1-GRD-K8D4V6R1
-Step "guardrail_check" { python tools/guardrail_check.py }
-# <<< BLOK SONU: ID:PS1-GRD-K8D4V6R1
-
-# >>> BLOK: LONGFILES | 650+ satir raporu | ID:PS1-LNG-2W9E5H0C
-if (Test-Path ".") {
-  Step "longfile_report" { python tools/longfile_report.py --threshold 650 --out "$outDir/longfiles.json" }
-}
-# <<< BLOK SONU: ID:PS1-LNG-2W9E5H0C
-
-# >>> BLOK: LINT | ruff/flake8 opsiyonel | ID:PS1-LIN-4E7C2M9Q
-if (Get-Command ruff -ErrorAction SilentlyContinue) {
-  Step "ruff_check" { ruff check . }
-} elseif (Get-Command flake8 -ErrorAction SilentlyContinue) {
-  Step "flake8" { flake8 . }
-}
-# <<< BLOK SONU: ID:PS1-LIN-4E7C2M9Q
-
-# >>> BLOK: TEST | pytest opsiyonel | ID:PS1-TST-5C8R1L7U
-if (Get-Command pytest -ErrorAction SilentlyContinue) {
-  if ((Get-ChildItem -Recurse -Filter "test_*.py" | Measure-Object).Count -gt 0 -or (Test-Path ".\pytest.ini")) {
-    Step "pytest" { Invoke-Expression "pytest $PyTestArgs" }
-  } else {
-    Write-Host "pytest: no tests; skipped."
-  }
-}
-# <<< BLOK SONU: ID:PS1-TST-5C8R1L7U
-StepSoft "django_check" { .\scripts\django_check.ps1 -Settings "core.settings" -Soft }
-
-# >>> BLOK: ARTIFACT | Ciktilarin paketlenmesi | ID:PS1-ART-9N3F6X2D
-Copy-Item "_otokodlama/INDEX.json" "$outDir/INDEX.json" -ErrorAction SilentlyContinue
-Compress-Archive -Path "$outDir\*" -DestinationPath "$outDir.zip" -Force
-# <<< BLOK SONU: ID:PS1-ART-9N3F6X2D
-
-# >>> BLOK: GIT | Istege bagli commit/push | ID:PS1-GIT-M0A4S7P9
-if ($Push) {
-  git add -A
-  git commit -m "$CommitMsg ($ts)"
-  git push
-}
-# <<< BLOK SONU: ID:PS1-GIT-M0A4S7P9
-
-Write-Host ("OK - pipeline tamam. Ciktilar: {0}, arsiv: {0}.zip" -f $outDir)
-
-# >>> BLOK: STEP_SOFT | hatada devam | ID:PS1-SET-SOFT-3H8K2W5N
 function StepSoft($name, $scriptBlock) {
   Write-Host "==> $name (soft)"
   try {
-    & $scriptBlock 2>&1 | Tee-Object -FilePath "$outDir/$($name -replace '\s','_').log"
+    & $scriptBlock 2>&1 | Tee-Object -FilePath (Join-Path $OutDir ("$($name -replace '\s','_').log"))
   } catch {
     Write-Host "!  $name FAILED (soft, continuing)"
   }
 }
-# <<< BLOK SONU: ID:PS1-SET-SOFT-3H8K2W5N
 
+# 650 satır üstü gate (venv, node_modules, _otokodlama hariç)
+function Gate-LineLimit650 {
+  $limit = 650
+  $long = @()
+  Get-ChildItem -Recurse -File | Where-Object {
+    $_.FullName -notmatch '\\venv\\' -and
+    $_.FullName -notmatch '\\node_modules\\' -and
+    $_.FullName -notmatch '\\_otokodlama\\' -and
+    $_.Name -ne "transcript.txt"
+  } | ForEach-Object {
+    try {
+      $cnt = [System.IO.File]::ReadLines($_.FullName).Count
+      if ($cnt -gt $limit) {
+        $long += "{0} : {1} satır" -f ($_).FullName, $cnt
+      }
+    } catch { }
+  }
+  $out = Join-Path $OutDir "longfiles.txt"
+  $long | Out-File -Encoding utf8 $out
+  if ($long.Count -gt 0) {
+    Write-Host "[LONGFILES] 650+ satır bulundu, detay için: $out"
+    throw "650 satır sınırı aşıldı."
+  } else {
+    Write-Host "[LONGFILES] OK (650 üstü yok)"
+  }
+}
 
+# -------------------- Adımlar --------------------
+# (İstersen aktif tut: revstamp / blockcheck / guardrail)
+#Step "revstamp" { python tools/revstamp.py . }
+Step "blockcheck" { python tools/blockcheck.py --tracked }
+Step "guardrail_check" { python tools/guardrail_check.py }
 
+# 650 satır gate
+Step "line_limit_650" { Gate-LineLimit650 }
 
+# Django check (soft)
+StepSoft "django_check" { .\scripts\django_check.ps1 -Settings $Settings -Soft }
 
+# Ekran görüntüsü (her koşuda)
+$ScreensDir = Join-Path $Root $Config.screenshots_dir
+Step "screenshot" {
+  .\scripts\capture_screenshot.ps1 -OutDir $ScreensDir -AlsoCopyTo $OutDir
+}
+
+# Playwright testleri
+$PwOut = Join-Path $OutDir "playwright"
+Step "playwright" {
+  if (!(Test-Path $PwOut)) { New-Item -ItemType Directory -Force -Path $PwOut | Out-Null }
+  python tools/playwright_tests.py --urls $Config.urls_file --out $PwOut
+}
+
+# Layout acceptance (hedef ekran + iyileştirme + test sonucu)
+$TargetPng = Join-Path $Root $Config.target_screenshot
+$ImproveTx = Join-Path $Root $Config.improvements_file
+$LayJson   = Join-Path $OutDir "layout_report.json"
+$PwJson    = Join-Path $PwOut "report.json"
+$Th        = [double]$Config.acceptance.screenshot_similarity
+
+Step "acceptance_gate" {
+  python tools/layout_acceptance.py `
+    --target $TargetPng `
+    --latest $ScreensDir `
+    --improve $ImproveTx `
+    --report $LayJson `
+    --threshold $Th `
+    --playwright_json $PwJson
+}
+
+Write-Host "[PIPELINE] Tamamlandı."
+Stop-Transcript | Out-Null
