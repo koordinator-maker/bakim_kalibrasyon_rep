@@ -1,18 +1,26 @@
 {
-  "line_limit": 650,
-  "screenshots_dir": "targets/screens",
-  "target_screenshot": "targets/target.png",
-  "improvements_file": "targets/improvements.txt",
-  "urls_file": "targets/urls.txt",
-  "acceptance": {
-    "screenshot_similarity": 0.90,
-    "require_tests_pass": true,
-    "require_improvements_checked": true
-  },
-  "playwright": {
-    "base_url": "http://127.0.0.1:8000",
-    "headless": true,
-    "viewport": { "width": 1280, "height": 800 },
-    "routes": ["/", "/admin/login/"]
-  }
+    "line_limit":  650,
+    "screenshots_dir":  "targets/screens",
+    "target_screenshot":  "targets/target.png",
+    "improvements_file":  "targets/improvements.txt",
+    "urls_file":  "targets/urls.txt",
+    "acceptance":  {
+                       "screenshot_similarity":  0.9,
+                       "mode":  "guided",
+                       "auto_accept_if":  0.9,
+                       "require_tests_pass":  true,
+                       "require_improvements_checked":  true
+                   },
+    "playwright":  {
+                       "base_url":  "http://127.0.0.1:8000",
+                       "headless":  true,
+                       "viewport":  {
+                                        "width":  1280,
+                                        "height":  800
+                                    },
+                       "routes":  [
+                                      "/",
+                                      "/admin/login/"
+                                  ]
+                   }
 }
