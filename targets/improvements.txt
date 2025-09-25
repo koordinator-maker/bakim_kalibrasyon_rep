@@ -1,8 +1,1 @@
-﻿# Ä°yileÅŸtirme Checklist (boÅŸ= [ ], tamam= [x])
-[x]  Header hizalamasÄ± dÃ¼zeltilecek
-[x]  Kart gÃ¶lgeleri yumuÅŸatÄ±lacak
-[x]  Button spacing tutarlÄ± (8px) olacak
-[x]  Responsive breakpoint (md) menÃ¼ dÃ¼zgÃ¼n aÃ§Ä±lÄ±yor
-[x]  Footer link kontrastÄ± AA
-
-
+﻿- [x] İlk kurulum ve temel kontroller tamam

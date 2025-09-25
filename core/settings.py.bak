@@ -1,4 +1,4 @@
-# REV: 1.2 | 2025-09-25 | Hash: a7864e49 | Parça: 1/1
+# REV: 1.1 | 2025-09-25 | Hash: bb7c310c | Parça: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-3REMVA2D
 # <<< BLOK SONU: ID:PY-IMP-3REMVA2D
 # >>> BLOK: SETTINGS | Proje ayarlari | ID:PY-SET-10HDCS31
@@ -34,14 +34,13 @@ ALLOWED_HOSTS = []
 
 # Application definition
 
-INSTALLED_APPS = [    'maintenance.apps.MaintenanceConfig',
-    
-        'django.contrib.admin',
-        'django.contrib.auth',
-        'django.contrib.contenttypes',
-        'django.contrib.sessions',
-        'django.contrib.messages',
-        'django.contrib.staticfiles',
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
 ]
 
 MIDDLEWARE = [

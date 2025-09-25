@@ -1,0 +1,1777 @@
+{
+  "generated_at": "2025-09-25T20:33:55",
+  "tz": "UTC",
+  "python": {
+    "version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "implementation": "CPython"
+  },
+  "django": {
+    "version": "5.2.6",
+    "debug": true
+  },
+  "project": {
+    "base_dir": "C:\\dev\\bakim_kalibrasyon",
+    "root_urlconf": "core.urls",
+    "allowed_hosts": [],
+    "secret_key_masked": "django************************************************************",
+    "language_code": "en-us",
+    "use_tz": true
+  },
+  "paths": {
+    "static_url": "/static/",
+    "static_root": "None",
+    "staticfiles_dirs": [],
+    "media_url": "/",
+    "media_root": "",
+    "template_dirs": []
+  },
+  "apps": {
+    "installed_apps": [
+      "maintenance.apps.MaintenanceConfig",
+      "django.contrib.admin",
+      "django.contrib.auth",
+      "django.contrib.contenttypes",
+      "django.contrib.sessions",
+      "django.contrib.messages",
+      "django.contrib.staticfiles"
+    ],
+    "middleware": [
+      "django.middleware.security.SecurityMiddleware",
+      "django.contrib.sessions.middleware.SessionMiddleware",
+      "django.middleware.common.CommonMiddleware",
+      "django.middleware.csrf.CsrfViewMiddleware",
+      "django.contrib.auth.middleware.AuthenticationMiddleware",
+      "django.contrib.messages.middleware.MessageMiddleware",
+      "django.middleware.clickjacking.XFrameOptionsMiddleware"
+    ],
+    "auth_user_model": "auth.User"
+  },
+  "database": {
+    "default": {
+      "engine": "django.db.backends.sqlite3",
+      "name": "C:\\dev\\bakim_kalibrasyon\\db.sqlite3"
+    }
+  },
+  "urls": [
+    {
+      "route": "admin/maintenance/dashboard/",
+      "name": "maintenance-dashboard",
+      "callback": "maintenance.admin.dashboard"
+    },
+    {
+      "route": "admin/maintenance/orders/",
+      "name": "maintenance-orders",
+      "callback": "maintenance.admin.orders"
+    },
+    {
+      "route": "admin/maintenance/orders/new/",
+      "name": "maintenance-order-create",
+      "callback": "maintenance.admin.order_create"
+    },
+    {
+      "route": "admin/maintenance/equipment/",
+      "name": "maintenance-equipment-list",
+      "callback": "maintenance.admin.equipment_list"
+    },
+    {
+      "route": "admin/maintenance/equipment/new/",
+      "name": "maintenance-equipment-create",
+      "callback": "maintenance.admin.equipment_create"
+    },
+    {
+      "route": "admin/maintenance/calibrations/",
+      "name": "maintenance-calibrations",
+      "callback": "maintenance.admin.calibration_list"
+    },
+    {
+      "route": "admin/maintenance/calibrations/follow/",
+      "name": "maintenance-calibration-follow",
+      "callback": "maintenance.admin.calibration_follow"
+    },
+    {
+      "route": "admin/maintenance/calibrations/asset/new/",
+      "name": "maintenance-cal-asset-create",
+      "callback": "maintenance.admin.cal_asset_create"
+    },
+    {
+      "route": "admin/maintenance/calibrations/record/new/",
+      "name": "maintenance-calibration-create",
+      "callback": "maintenance.admin.cal_record_create"
+    },
+    {
+      "route": "admin/maintenance/calibrations/info/",
+      "name": "maintenance-calibration-info",
+      "callback": "maintenance.admin.calibration_info"
+    },
+    {
+      "route": "admin/maintenance/calibrations/assets/",
+      "name": "maintenance-calibration-assets",
+      "callback": "maintenance.admin.cal_assets_all"
+    },
+    {
+      "route": "admin/maintenance/calibrations/remind/",
+      "name": "maintenance-calibration-remind",
+      "callback": "maintenance.admin.calibration_remind"
+    },
+    {
+      "route": "admin/maintenance/calibrations/export/",
+      "name": "maintenance-calibration-export",
+      "callback": "maintenance.admin.calibration_export_csv"
+    },
+    {
+      "route": "admin/maintenance/checklists/",
+      "name": "maintenance-checklists",
+      "callback": "maintenance.admin.checklists"
+    },
+    {
+      "route": "admin/maintenance/checklists/new/",
+      "name": "maintenance-checklist-create",
+      "callback": "maintenance.admin.checklist_create"
+    },
+    {
+      "route": "admin/",
+      "name": "index",
+      "callback": "django.contrib.admin.sites.index"
+    },
+    {
+      "route": "admin/login/",
+      "name": "login",
+      "callback": "django.contrib.admin.sites.login"
+    },
+    {
+      "route": "admin/logout/",
+      "name": "logout",
+      "callback": "django.contrib.admin.sites.logout"
+    },
+    {
+      "route": "admin/password_change/",
+      "name": "password_change",
+      "callback": "django.contrib.admin.sites.password_change"
+    },
+    {
+      "route": "admin/password_change/done/",
+      "name": "password_change_done",
+      "callback": "django.contrib.admin.sites.password_change_done"
+    },
+    {
+      "route": "admin/autocomplete/",
+      "name": "autocomplete",
+      "callback": "django.contrib.admin.sites.autocomplete_view"
+    },
+    {
+      "route": "admin/jsi18n/",
+      "name": "jsi18n",
+      "callback": "django.contrib.admin.sites.i18n_javascript"
+    },
+    {
+      "route": "admin/r/<path:content_type_id>/<path:object_id>/",
+      "name": "view_on_site",
+      "callback": "django.contrib.contenttypes.views.shortcut"
+    },
+    {
+      "route": "admin/maintenance/equipment/",
+      "name": "maintenance_equipment_changelist",
+      "callback": "django.contrib.admin.options.changelist_view"
+    },
+    {
+      "route": "admin/maintenance/equipment/add/",
+      "name": "maintenance_equipment_add",
+      "callback": "django.contrib.admin.options.add_view"
+    },
+    {
+      "route": "admin/maintenance/equipment/<path:object_id>/history/",
+      "name": "maintenance_equipment_history",
+      "callback": "django.contrib.admin.options.history_view"
+    },
+    {
+      "route": "admin/maintenance/equipment/<path:object_id>/delete/",
+      "name": "maintenance_equipment_delete",
+      "callback": "django.contrib.admin.options.delete_view"
+    },
+    {
+      "route": "admin/maintenance/equipment/<path:object_id>/change/",
+      "name": "maintenance_equipment_change",
+      "callback": "django.contrib.admin.options.change_view"
+    },
+    {
+      "route": "admin/maintenance/equipment/<path:object_id>/",
+      "name": null,
+      "callback": "django.views.generic.base.view"
+    },
+    {
+      "route": "admin/maintenance/maintenancechecklistitem/",
+      "name": "maintenance_maintenancechecklistitem_changelist",
+      "callback": "django.contrib.admin.options.changelist_view"
+    },
+    {
+      "route": "admin/maintenance/maintenancechecklistitem/add/",
+      "name": "maintenance_maintenancechecklistitem_add",
+      "callback": "django.contrib.admin.options.add_view"
+    },
+    {
+      "route": "admin/maintenance/maintenancechecklistitem/<path:object_id>/history/",
+      "name": "maintenance_maintenancechecklistitem_history",
+      "callback": "django.contrib.admin.options.history_view"
+    },
+    {
+      "route": "admin/maintenance/maintenancechecklistitem/<path:object_id>/delete/",
+      "name": "maintenance_maintenancechecklistitem_delete",
+      "callback": "django.contrib.admin.options.delete_view"
+    },
+    {
+      "route": "admin/maintenance/maintenancechecklistitem/<path:object_id>/change/",
+      "name": "maintenance_maintenancechecklistitem_change",
+      "callback": "django.contrib.admin.options.change_view"
+    },
+    {
+      "route": "admin/maintenance/maintenancechecklistitem/<path:object_id>/",
+      "name": null,
+      "callback": "django.views.generic.base.view"
+    },
+    {
+      "route": "admin/maintenance/maintenanceorder/",
+      "name": "maintenance_maintenanceorder_changelist",
+      "callback": "django.contrib.admin.options.changelist_view"
+    },
+    {
+      "route": "admin/maintenance/maintenanceorder/add/",
+      "name": "maintenance_maintenanceorder_add",
+      "callback": "django.contrib.admin.options.add_view"
+    },
+    {
+      "route": "admin/maintenance/maintenanceorder/<path:object_id>/history/",
+      "name": "maintenance_maintenanceorder_history",
+      "callback": "django.contrib.admin.options.history_view"
+    },
+    {
+      "route": "admin/maintenance/maintenanceorder/<path:object_id>/delete/",
+      "name": "maintenance_maintenanceorder_delete",
+      "callback": "django.contrib.admin.options.delete_view"
+    },
+    {
+      "route": "admin/maintenance/maintenanceorder/<path:object_id>/change/",
+      "name": "maintenance_maintenanceorder_change",
+      "callback": "django.contrib.admin.options.change_view"
+    },
+    {
+      "route": "admin/maintenance/maintenanceorder/<path:object_id>/",
+      "name": null,
+      "callback": "django.views.generic.base.view"
+    },
+    {
+      "route": "admin/maintenance/calibrationasset/",
+      "name": "maintenance_calibrationasset_changelist",
+      "callback": "django.contrib.admin.options.changelist_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationasset/add/",
+      "name": "maintenance_calibrationasset_add",
+      "callback": "django.contrib.admin.options.add_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationasset/<path:object_id>/history/",
+      "name": "maintenance_calibrationasset_history",
+      "callback": "django.contrib.admin.options.history_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationasset/<path:object_id>/delete/",
+      "name": "maintenance_calibrationasset_delete",
+      "callback": "django.contrib.admin.options.delete_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationasset/<path:object_id>/change/",
+      "name": "maintenance_calibrationasset_change",
+      "callback": "django.contrib.admin.options.change_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationasset/<path:object_id>/",
+      "name": null,
+      "callback": "django.views.generic.base.view"
+    },
+    {
+      "route": "admin/maintenance/calibrationrecord/",
+      "name": "maintenance_calibrationrecord_changelist",
+      "callback": "django.contrib.admin.options.changelist_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationrecord/add/",
+      "name": "maintenance_calibrationrecord_add",
+      "callback": "django.contrib.admin.options.add_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationrecord/<path:object_id>/history/",
+      "name": "maintenance_calibrationrecord_history",
+      "callback": "django.contrib.admin.options.history_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationrecord/<path:object_id>/delete/",
+      "name": "maintenance_calibrationrecord_delete",
+      "callback": "django.contrib.admin.options.delete_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationrecord/<path:object_id>/change/",
+      "name": "maintenance_calibrationrecord_change",
+      "callback": "django.contrib.admin.options.change_view"
+    },
+    {
+      "route": "admin/maintenance/calibrationrecord/<path:object_id>/",
+      "name": null,
+      "callback": "django.views.generic.base.view"
+    },
+    {
+      "route": "admin/^(?P<app_label>maintenance)/$",
+      "name": "app_list",
+      "callback": "django.contrib.admin.sites.app_index"
+    },
+    {
+      "route": "admin/(?P<url>.*)$",
+      "name": null,
+      "callback": "django.contrib.admin.sites.catch_all_view"
+    },
+    {
+      "route": "calibration/table/",
+      "name": "calibration-full-table",
+      "callback": "maintenance.views.calibration_full_table"
+    },
+    {
+      "route": "maintenance/dashboard/",
+      "name": "maintenance-dashboard-shortcut",
+      "callback": "django.views.generic.base.view"
+    },
+    {
+      "route": "admin/maintenance/",
+      "name": "maintenance-root-redirect",
+      "callback": "django.views.generic.base.view"
+    },
+    {
+      "route": "",
+      "name": null,
+      "callback": "django.views.generic.base.view"
+    }
+  ],
+  "models": [
+    {
+      "app_label": "admin",
+      "model_name": "LogEntry",
+      "model_label": "admin.LogEntry",
+      "db_table": "django_admin_log",
+      "fields": [
+        {
+          "name": "id",
+          "type": "AutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "action_time",
+          "type": "DateTimeField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "user",
+          "type": "ForeignKey",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "auth.User",
+          "null": false,
+          "blank": false,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "content_type",
+          "type": "ForeignKey",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "contenttypes.ContentType",
+          "null": true,
+          "blank": true,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "object_id",
+          "type": "TextField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "object_repr",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "action_flag",
+          "type": "PositiveSmallIntegerField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": [
+            "1",
+            "2",
+            "3"
+          ]
+        },
+        {
+          "name": "change_message",
+          "type": "TextField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "auth",
+      "model_name": "Group",
+      "model_label": "auth.Group",
+      "db_table": "auth_group",
+      "fields": [
+        {
+          "name": "user",
+          "type": "ManyToManyRel",
+          "is_relation": true,
+          "many_to_many": true,
+          "related_model": "auth.User",
+          "null": true
+        },
+        {
+          "name": "id",
+          "type": "AutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "name",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "permissions",
+          "type": "ManyToManyField",
+          "is_relation": true,
+          "many_to_many": true,
+          "related_model": "auth.Permission",
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "auth",
+      "model_name": "Permission",
+      "model_label": "auth.Permission",
+      "db_table": "auth_permission",
+      "fields": [
+        {
+          "name": "group",
+          "type": "ManyToManyRel",
+          "is_relation": true,
+          "many_to_many": true,
+          "related_model": "auth.Group",
+          "null": true
+        },
+        {
+          "name": "user",
+          "type": "ManyToManyRel",
+          "is_relation": true,
+          "many_to_many": true,
+          "related_model": "auth.User",
+          "null": true
+        },
+        {
+          "name": "id",
+          "type": "AutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "name",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "content_type",
+          "type": "ForeignKey",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "contenttypes.ContentType",
+          "null": false,
+          "blank": false,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "codename",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "auth",
+      "model_name": "User",
+      "model_label": "auth.User",
+      "db_table": "auth_user",
+      "fields": [
+        {
+          "name": "logentry",
+          "type": "ManyToOneRel",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "admin.LogEntry",
+          "null": true
+        },
+        {
+          "name": "id",
+          "type": "AutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "password",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "last_login",
+          "type": "DateTimeField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "is_superuser",
+          "type": "BooleanField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "username",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "first_name",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "last_name",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "email",
+          "type": "EmailField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "is_staff",
+          "type": "BooleanField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "is_active",
+          "type": "BooleanField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "date_joined",
+          "type": "DateTimeField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "groups",
+          "type": "ManyToManyField",
+          "is_relation": true,
+          "many_to_many": true,
+          "related_model": "auth.Group",
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "user_permissions",
+          "type": "ManyToManyField",
+          "is_relation": true,
+          "many_to_many": true,
+          "related_model": "auth.Permission",
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "contenttypes",
+      "model_name": "ContentType",
+      "model_label": "contenttypes.ContentType",
+      "db_table": "django_content_type",
+      "fields": [
+        {
+          "name": "logentry",
+          "type": "ManyToOneRel",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "admin.LogEntry",
+          "null": true
+        },
+        {
+          "name": "permission",
+          "type": "ManyToOneRel",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "auth.Permission",
+          "null": true
+        },
+        {
+          "name": "id",
+          "type": "AutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "app_label",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "model",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "maintenance",
+      "model_name": "CalibrationAsset",
+      "model_label": "maintenance.CalibrationAsset",
+      "db_table": "maintenance_calibrationasset",
+      "fields": [
+        {
+          "name": "records",
+          "type": "ManyToOneRel",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.CalibrationRecord",
+          "null": true
+        },
+        {
+          "name": "id",
+          "type": "BigAutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "equipment",
+          "type": "ForeignKey",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.Equipment",
+          "null": true,
+          "blank": true,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "asset_code",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "asset_name",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "location",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "brand",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "model",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "serial_no",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "measure_range",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "resolution",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "unit",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "accuracy",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "uncertainty",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "acceptance_criteria",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "calibration_method",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "standard_device",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "standard_id",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "owner",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "responsible_email",
+          "type": "EmailField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "is_active",
+          "type": "BooleanField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "maintenance",
+      "model_name": "CalibrationRecord",
+      "model_label": "maintenance.CalibrationRecord",
+      "db_table": "maintenance_calibrationrecord",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BigAutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "asset",
+          "type": "ForeignKey",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.CalibrationAsset",
+          "null": false,
+          "blank": false,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "last_calibration",
+          "type": "DateField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "next_calibration",
+          "type": "DateField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "result",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "certificate_no",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "total_deviation",
+          "type": "DecimalField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "notes",
+          "type": "TextField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "maintenance",
+      "model_name": "Equipment",
+      "model_label": "maintenance.Equipment",
+      "db_table": "maintenance_equipment",
+      "fields": [
+        {
+          "name": "sparepart",
+          "type": "ManyToOneRel",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.SparePart",
+          "null": true
+        },
+        {
+          "name": "calibrationasset",
+          "type": "ManyToOneRel",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.CalibrationAsset",
+          "null": true
+        },
+        {
+          "name": "maintenancechecklistitem",
+          "type": "ManyToOneRel",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.MaintenanceChecklistItem",
+          "null": true
+        },
+        {
+          "name": "maintenanceorder",
+          "type": "ManyToOneRel",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.MaintenanceOrder",
+          "null": true
+        },
+        {
+          "name": "id",
+          "type": "BigAutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "code",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "name",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "area",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "manufacturer",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "discipline",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": [
+            "ELEC",
+            "MECH",
+            "PNEU"
+          ]
+        },
+        {
+          "name": "criticality",
+          "type": "PositiveSmallIntegerField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "is_active",
+          "type": "BooleanField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "maintenance",
+      "model_name": "MaintenanceChecklistItem",
+      "model_label": "maintenance.MaintenanceChecklistItem",
+      "db_table": "maintenance_maintenancechecklistitem",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BigAutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "equipment",
+          "type": "ForeignKey",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.Equipment",
+          "null": false,
+          "blank": false,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "name",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "is_mandatory",
+          "type": "BooleanField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "frequency",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": [
+            "DAILY",
+            "WEEKLY",
+            "MONTHLY",
+            "QTR",
+            "YEARLY"
+          ]
+        }
+      ]
+    },
+    {
+      "app_label": "maintenance",
+      "model_name": "MaintenanceOrder",
+      "model_label": "maintenance.MaintenanceOrder",
+      "db_table": "maintenance_maintenanceorder",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BigAutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "equipment",
+          "type": "ForeignKey",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.Equipment",
+          "null": false,
+          "blank": false,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "order_type",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": [
+            "PLN",
+            "PRD",
+            "BRK"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "description",
+          "type": "TextField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "technician",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "start_date",
+          "type": "DateField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "due_date",
+          "type": "DateField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "completed_at",
+          "type": "DateTimeField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": true,
+          "blank": true,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "status",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": [
+            "SCHEDULED",
+            "COMPLETED",
+            "OVERDUE"
+          ]
+        },
+        {
+          "name": "duration_hours",
+          "type": "DecimalField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "cost_total",
+          "type": "DecimalField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "maintenance",
+      "model_name": "SparePart",
+      "model_label": "maintenance.SparePart",
+      "db_table": "maintenance_sparepart",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BigAutoField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": true,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "name",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "is_critical",
+          "type": "BooleanField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "stock_qty",
+          "type": "DecimalField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "min_qty",
+          "type": "DecimalField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "equipment",
+          "type": "ForeignKey",
+          "is_relation": true,
+          "many_to_many": false,
+          "related_model": "maintenance.Equipment",
+          "null": true,
+          "blank": true,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    },
+    {
+      "app_label": "sessions",
+      "model_name": "Session",
+      "model_label": "sessions.Session",
+      "db_table": "django_session",
+      "fields": [
+        {
+          "name": "session_key",
+          "type": "CharField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": true,
+          "unique": true,
+          "choices": null
+        },
+        {
+          "name": "session_data",
+          "type": "TextField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": false,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        },
+        {
+          "name": "expire_date",
+          "type": "DateTimeField",
+          "is_relation": false,
+          "many_to_many": null,
+          "related_model": null,
+          "null": false,
+          "blank": false,
+          "db_index": true,
+          "primary_key": false,
+          "unique": false,
+          "choices": null
+        }
+      ]
+    }
+  ],
+  "hr_lms_focus": {
+    "training_plan": null,
+    "training_plan_attendee": null
+  },
+  "signature": {
+    "sha256": "b90fbce1d5011c63920e8270121cd90df217f1d54284fc4ca28cbcf5daad746b",
+    "short": "b90fbce1d501"
+  }
+}
