@@ -1,3 +1,4 @@
+# REV: 1.0 | 2025-09-25 | Hash: bfa8286c | Parça: 1/1
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # REV: 1.1 | tools/playwright_tests.py (BOM-safe)
