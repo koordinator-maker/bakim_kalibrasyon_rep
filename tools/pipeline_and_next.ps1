@@ -1,31 +1,40 @@
 param(
-  [string]$BindHost="127.0.0.1",
-  [int]$Port=8000,
+  [string]$BindHost = "127.0.0.1",
+  [int]$Port = 8000,
   [string]$NextCard = ".\ops\next_ok_runcard.txt",
   [switch]$NoAccept,
   [switch]$DryRun
 )
-$ErrorActionPreference="Stop"
+$ErrorActionPreference = "Stop"
 
 $root    = Get-Location
-$serve   = Join-Path $PSScriptRoot 'serve_then_pipeline.ps1'
-$accept  = Join-Path $PSScriptRoot 'accept_visual.ps1'
-$statusD = Join-Path $root '_otokodlama'
+$statusD = Join-Path $root "_otokodlama"
+$serve   = Join-Path $PSScriptRoot "serve_then_pipeline.ps1"
+$accept  = Join-Path $PSScriptRoot "accept_visual.ps1"
 New-Item -ItemType Directory -Force -Path $statusD | Out-Null
 
-# 1) Pipeline’ı ÇALIŞTIR + ÇIKTISINI YAKALA
-$pipeOut = & powershell -ExecutionPolicy Bypass -File $serve -BindHost $BindHost -Port $Port 2>&1
-$pipeExit = $LASTEXITCODE
-$logPath = Join-Path $statusD 'pipeline_last.log'
+# 1) Run pipeline (fail-safe) and capture output
+$oldEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+  $pipeOut  = & powershell -ExecutionPolicy Bypass -File $serve -BindHost $BindHost -Port $Port 2>&1
+  $pipeExit = $LASTEXITCODE
+} finally {
+  $ErrorActionPreference = $oldEap
+}
+if ($null -eq $pipeExit) { $pipeExit = 1 }
+
+$logPath = Join-Path $statusD "pipeline_last.log"
 $pipeOut | Out-String | Set-Content $logPath -Encoding utf8
 
-# 2) Config yükle
-$cfgPath = Join-Path $root 'pipeline.config.json'
-$cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
+# 2) Load config (tolerant)
+$cfgPath = Join-Path $root "pipeline.config.json"
+$cfg = $null
+try { $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json } catch { }
 
-# Auto-accept eşiği: yoksa screenshot_similarity, o da yoksa 0.98
+# Auto-accept threshold: acceptance.auto_accept_if -> acceptance.screenshot_similarity -> 0.98
 $auto = 0.98
-if ($cfg.acceptance) {
+if ($cfg -and $cfg.acceptance) {
   if ($cfg.acceptance.auto_accept_if) {
     $auto = [double]$cfg.acceptance.auto_accept_if
   } elseif ($cfg.acceptance.screenshot_similarity) {
@@ -33,37 +42,32 @@ if ($cfg.acceptance) {
   }
 }
 
-# 3) Raporu oku; yoksa ÇIKTIDAN PARSE ET (fallback)
-$repPath = Join-Path $root 'layout_report.json'
+# 3) Read layout_report.json or parse from captured output
+$repPath = Join-Path $root "layout_report.json"
 $rep = $null
 if (Test-Path $repPath) {
-  $rep = Get-Content $repPath -Raw | ConvertFrom-Json
-} else {
-  # Fallback: [LAYOUT] similarity=0.8497 ok=False (shot>=0.9=False, improvements=True, tests=True)
+  try { $rep = Get-Content $repPath -Raw | ConvertFrom-Json } catch { $rep = $null }
+}
+if (-not $rep) {
   $txt = $pipeOut | Out-String
 
+  # Example line:
+  # [LAYOUT] similarity=0.8497 ok=False (shot>=0.9=False, improvements=True, tests=True)
   $similarity = $null
-  $okTok = $null
-  $impr = $null
-  $tst  = $null
-  $shot = $null
-  $target = $null
-
-  if ($txt -match '\[LAYOUT\]\s*similarity=([0-9.]+)\s*ok=(True|False)\s*\((?:[^)]*?)improvements=(True|False),\s*tests=(True|False)\)') {
+  $okTok = $null; $impr = $false; $tst = $false
+  if ($txt -imatch '\[LAYOUT\]\s*similarity\s*=\s*([0-9\.]+)\s*ok\s*=\s*(True|False).*?improvements\s*=\s*(True|False).*?tests\s*=\s*(True|False)') {
     $similarity = [double]$Matches[1]
-    $okTok      = $Matches[2]
-    $impr       = ($Matches[3] -eq 'True')
-    $tst        = ($Matches[4] -eq 'True')
+    $okTok = $Matches[2]
+    $impr  = ($Matches[3] -eq 'True')
+    $tst   = ($Matches[4] -eq 'True')
   }
-  # [SCREENSHOT] C:\...\screenshot-YYYYMMDD-HHMMSS.png
-  if ($txt -match '\[SCREENSHOT\]\s*(\S+\.png)') { $shot = $Matches[1] }
 
-  # hedefi tahmin et (config’ten)
-  if ($cfg.target_screenshot) {
-    $target = $cfg.target_screenshot
-  } else {
-    $target = 'targets\target.png'
-  }
+  # Screenshot path (best-effort)
+  $shot = $null
+  if ($txt -imatch '\[SCREENSHOT\]\s*(\S+?\.png)') { $shot = $Matches[1] }
+
+  # Target guess from config or default
+  $target = if ($cfg -and $cfg.target_screenshot) { $cfg.target_screenshot } else { 'targets\target.png' }
 
   if ($similarity -ne $null) {
     $rep = [pscustomobject]@{
@@ -76,19 +80,23 @@ if (Test-Path $repPath) {
       target = $target
     }
   } else {
-    throw "layout_report.json yok ve pipeline çıktısından similarity parse edilemedi. Log: $logPath"
+    throw "layout_report.json not found and similarity could not be parsed. See log: $logPath"
   }
 }
 
-# 4) Geçti mi?
+# 4) Decide pass
 $pass = ($rep.similarity -ge $auto) -and ($rep.tests_ok -eq $true) -and ($rep.improvements_ok -eq $true)
 
-# 5) Geçtiyse baseline kabul et (isteğe bağlı)
+# 5) Accept baseline if pass and not suppressed
 if ($pass -and -not $NoAccept) {
-  & powershell -ExecutionPolicy Bypass -File $accept | Out-Host
+  try {
+    & powershell -ExecutionPolicy Bypass -File $accept | Out-Host
+  } catch {
+    Write-Warning "[ACCEPT] failed: $($_.Exception.Message)"
+  }
 }
 
-# 6) Durum yaz
+# 6) Write status.json
 [pscustomobject]@{
   when = (Get-Date).ToString("s")
   similarity = $rep.similarity
@@ -98,16 +106,17 @@ if ($pass -and -not $NoAccept) {
   target = $rep.target
   pipeline_exit = $pipeExit
   has_layout_json = (Test-Path $repPath)
-} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $statusD 'status.json') -Encoding utf8
+  log = (Resolve-Path $logPath).Path
+} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $statusD "status.json") -Encoding utf8
 
-# 7) Sonraki adım
+# 7) Next step
 if ($pass) {
-  Write-Host "[NEXT] condition satisfied (similarity=$($rep.similarity) >= $auto)."
+  Write-Host "[NEXT] condition satisfied (similarity=$([math]::Round($rep.similarity,4)) >= $auto)."
   if (Test-Path $NextCard) {
     if ($DryRun) {
-      Write-Host "[DRY] tools\\apply_runcard.ps1 -Card $NextCard -NoConfirm"
+      Write-Host "[DRY] tools\apply_runcard.ps1 -Card $NextCard -NoConfirm"
     } else {
-      & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'apply_runcard.ps1') -Card $NextCard -NoConfirm
+      & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "apply_runcard.ps1") -Card $NextCard -NoConfirm
     }
   } else {
     Write-Host "[NEXT] Runcard not found: $NextCard (skipped)"
@@ -115,6 +124,6 @@ if ($pass) {
   exit 0
 } else {
   Write-Warning "[NEXT] NOT satisfied. similarity=$([math]::Round($rep.similarity,4)) threshold=$auto (tests=$($rep.tests_ok) improvements=$($rep.improvements_ok))"
-  Write-Host "See log: $logPath"
+  Write-Host  "See log: $logPath"
   exit 1
 }
