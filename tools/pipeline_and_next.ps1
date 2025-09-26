@@ -1,4 +1,3 @@
-# tools/pipeline_and_next.ps1
 param(
   [string]$BindHost = "127.0.0.1",
   [int]$Port = 8000,
@@ -16,24 +15,33 @@ $accept  = Join-Path $PSScriptRoot "accept_visual.ps1"
 $runflows= Join-Path $PSScriptRoot "run_flows.ps1"
 New-Item -ItemType Directory -Force -Path $statusD | Out-Null
 
-# 1) PIPELINE (fail-safe)
-$oldEap = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-try { $pipeOut = & powershell -ExecutionPolicy Bypass -File $serve -BindHost $BindHost -Port $Port 2>&1; $pipeExit=$LASTEXITCODE } finally { $ErrorActionPreference=$oldEap }
+# 1) Pipeline (fail-safe) ve çıktıyı yakala
+$oldEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+  $pipeOut  = & powershell -NoProfile -ExecutionPolicy Bypass -File $serve -BindHost $BindHost -Port $Port 2>&1
+  $pipeExit = $LASTEXITCODE
+} finally {
+  $ErrorActionPreference = $oldEap
+}
 if ($null -eq $pipeExit) { $pipeExit = 1 }
 $logPath = Join-Path $statusD "pipeline_last.log"
 $pipeOut | Out-String | Set-Content $logPath -Encoding utf8
 
-# 2) CONFIG
+# 2) Config oku
 $auto = 0.98
 try {
   $cfg = Get-Content (Join-Path $root "pipeline.config.json") -Raw | ConvertFrom-Json
   if ($cfg -and $cfg.acceptance) {
-    if ($cfg.acceptance.auto_accept_if) { $auto = [double]$cfg.acceptance.auto_accept_if }
-    elseif ($cfg.acceptance.screenshot_similarity) { $auto = [double]$cfg.acceptance.screenshot_similarity }
+    if ($cfg.acceptance.auto_accept_if) {
+      $auto = [double]$cfg.acceptance.auto_accept_if
+    } elseif ($cfg.acceptance.screenshot_similarity) {
+      $auto = [double]$cfg.acceptance.screenshot_similarity
+    }
   }
 } catch {}
 
-# 3) LAYOUT REPORT veya PIPELINE Ã§Ä±ktÄ±sÄ±ndan parse
+# 3) Rapor: layout_report.json varsa onu kullan; yoksa stdout’tan parse et
 $repPath = Join-Path $root "layout_report.json"
 $rep = $null
 if (Test-Path $repPath) {
@@ -41,39 +49,51 @@ if (Test-Path $repPath) {
 }
 if (-not $rep) {
   $txt = $pipeOut | Out-String
+  $sim  = $null
+  $impr = $false
+  $tst  = $false
   if ($txt -imatch '\[LAYOUT\]\s*similarity\s*=\s*([0-9\.]+).*?improvements\s*=\s*(True|False).*?tests\s*=\s*(True|False)') {
-    $rep = [pscustomobject]@{
-      ok = $null
-      similarity = [double]$Matches[1]
-      improvements_ok = ($Matches[2] -eq 'True')
-      tests_ok = ($Matches[3] -eq 'True')
-      latest_screenshot = ($txt -imatch '\[SCREENSHOT\]\s*(\S+?\.png)') ? $Matches[1] : $null
-      target = if ($cfg -and $cfg.target_screenshot) { $cfg.target_screenshot } else { 'targets\target.png' }
-    }
+    $sim  = [double]$Matches[1]
+    $impr = ($Matches[2] -eq 'True')
+    $tst  = ($Matches[3] -eq 'True')
   } else {
     throw "layout_report.json not found and similarity could not be parsed. See log: $logPath"
   }
+  $latestShot = $null
+  if ($txt -imatch '\[SCREENSHOT\]\s*(\S+?\.png)') { $latestShot = $Matches[1] }
+
+  $target = 'targets\target.png'
+  if ($cfg -and $cfg.target_screenshot) { $target = $cfg.target_screenshot }
+
+  $rep = [pscustomobject]@{
+    ok = $null
+    similarity = $sim
+    improvements_ok = $impr
+    tests_ok = $tst
+    latest_screenshot = $latestShot
+    target = $target
+  }
 }
 
-# 4) FLOWS (ops/flows/*.flow) -> flows_ok
+# 4) Flows gate (opsiyonel)
 $flows_ok = $true
 $flows_rc = $null
 if (-not $SkipFlows -and (Test-Path $runflows)) {
-  & powershell -ExecutionPolicy Bypass -File $runflows -FailFast
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $runflows -FailFast
   $flows_rc = $LASTEXITCODE
   $flows_ok = ($flows_rc -eq 0)
 }
 
-# 5) PASS KARARI
+# 5) PASS kararı
 $layout_ok = ($rep.similarity -ge $auto) -and ($rep.tests_ok -eq $true) -and ($rep.improvements_ok -eq $true)
 $pass = $layout_ok -and $flows_ok
 
-# 6) Baseline accept (opsiyonel)
+# 6) Baseline accept (isteğe bağlı)
 if ($pass -and -not $NoAccept) {
-  try { & powershell -ExecutionPolicy Bypass -File $accept | Out-Host } catch { Write-Warning "[ACCEPT] failed: $($_.Exception.Message)" }
+  try { & powershell -NoProfile -ExecutionPolicy Bypass -File $accept | Out-Host } catch { Write-Warning "[ACCEPT] failed: $($_.Exception.Message)" }
 }
 
-# 7) STATUS JSON
+# 7) status.json
 [pscustomobject]@{
   when = (Get-Date).ToString("s")
   similarity = $rep.similarity
@@ -92,8 +112,11 @@ if ($pass -and -not $NoAccept) {
 if ($pass) {
   Write-Host "[NEXT] OK (layout>=$auto AND flows)."
   if (Test-Path $NextCard) {
-    if ($DryRun) { Write-Host "[DRY] tools\apply_runcard.ps1 -Card $NextCard -NoConfirm" }
-    else { & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "apply_runcard.ps1") -Card $NextCard -NoConfirm }
+    if ($DryRun) {
+      Write-Host "[DRY] tools\apply_runcard.ps1 -Card $NextCard -NoConfirm"
+    } else {
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "apply_runcard.ps1") -Card $NextCard -NoConfirm
+    }
   } else {
     Write-Host "[NEXT] Runcard not found: $NextCard (skipped)"
   }
