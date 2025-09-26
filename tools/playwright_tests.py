@@ -8,7 +8,7 @@ from pathlib import Path
 
 def load_config(repo_root: Path):
     cfg_path = repo_root / "pipeline.config.json"
-    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8-sig"))
     return cfg
 
 def normalize_urls(lines, base_url: str):
@@ -50,7 +50,7 @@ def main():
         for url in urls:
             page = context.new_page()
             console_errors = []
-            page.on("console", lambda m: console_errors.append(m.text()) if m.type == "error" else None)
+            page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
             status = None; ok = False; err = None; title = None
             try:
                 resp = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
@@ -93,5 +93,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
 
 
