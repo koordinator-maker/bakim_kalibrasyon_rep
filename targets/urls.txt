@@ -1,4 +1,3 @@
-﻿/
- /admin/login/
-/admin/maintenance/calibrations/
-/admin/maintenance/checklists/
+﻿/admin/login/
+ /admin/maintenance/calibrations/
+ /admin/maintenance/checklists/
