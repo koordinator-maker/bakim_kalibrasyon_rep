@@ -1,4 +1,4 @@
-﻿# Admin -> Plan sayfası (metin regex ile)
+﻿# Admin -> Plan sayfası (doğrudan URL)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -7,10 +7,8 @@ CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 
-# "Plan", "Planlar", "Maintenance Plan" vb. yakalamak için regex:
-WAIT SELECTOR text=/plan(lar|ları)?|maintenance\s*plan/i
-CLICK text=/plan(lar|ları)?|maintenance\s*plan/i
-
+# Burayı bulduğun gerçek URL ile değiştir
+GOTO /admin/maintenance/plan/
 WAIT SELECTOR h1
 SCREENSHOT targets/screens/admin-plan.png
-# Başlık termi değişkense bu EXPECT'i geçici kaldırabilirsin
+EXPECT URL CONTAINS /admin/maintenance/plan/
