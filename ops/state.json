@@ -1,34 +1,14 @@
-# tools\visual_gate.ps1  (BOM'suz)
-$vg = @'
-param([string]$State="ops\state.json")
-$ErrorActionPreference="Stop"
-$outD = "_otokodlama\out"; New-Item -ItemType Directory -Force -Path $outD | Out-Null
-$report = @{ ok=$true; items=@() }
-
-if (!(Test-Path $State)) { Write-Host "[VISUAL] no state.json, skipping"; $report.ok=$true; $report.items=@(); $report | ConvertTo-Json | Set-Content "$outD\visual_report.json"; exit 0 }
-
-$state = Get-Content $State -Raw | ConvertFrom-Json
-$steps = @($state.steps) | Where-Object { $_.visual -and $_.visual.baseline -and $_.visual.actual }
-if ($steps.Count -eq 0) { Write-Host "[VISUAL] no visual steps"; $report.ok=$true; $report.items=@(); $report | ConvertTo-Json | Set-Content "$outD\visual_report.json"; exit 0 }
-
-$allOk = $true
-foreach ($s in $steps) {
-  $base = $s.visual.baseline
-  $curr = $s.visual.actual
-  $thr  = [double]$s.visual.threshold
-  if (!(Test-Path $curr)) { 
-    $report.items += @{ id=$s.id; url=$s.url; ok=$false; error="actual not found: $curr" }
-    $allOk = $false; continue
-  }
-  $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "img_hash_compare.ps1") -A $base -B $curr
-  $rc = $LASTEXITCODE
-  $obj = $json | ConvertFrom-Json
-  $ok  = ($obj.similarity -ge $thr)
-  if (-not $ok) { $allOk = $false }
-  $report.items += @{ id=$s.id; url=$s.url; ok=$ok; similarity=$obj.similarity; threshold=$thr; baseline=$base; actual=$curr }
+﻿{
+  "steps": [
+    {
+      "id": "admin-calibrations",
+      "name": "Calibrations list",
+      "url": "/admin/maintenance/calibrations/",
+      "visual": {
+        "baseline": "targets/baselines/admin-calibrations.png",
+        "actual":   "targets/screens/admin-calibrations.png",
+        "threshold": 0.90
+      }
+    }
+  ]
 }
-$report.ok = $allOk
-$report | ConvertTo-Json -Depth 5 | Set-Content "$outD\visual_report.json"
-if ($allOk) { Write-Host "[VISUAL] ALL PASSED"; exit 0 } else { Write-Warning "[VISUAL] SOME FAILED"; exit 1 }
-'@
-[IO.File]::WriteAllText("$PWD\tools\visual_gate.ps1", $vg, [Text.UTF8Encoding]::new($false))
