@@ -1,4 +1,4 @@
-﻿{
+{
     "line_limit":  650,
     "screenshots_dir":  "targets/screens",
     "target_screenshot":  "targets/target.png",
@@ -13,7 +13,7 @@
                    },
     "playwright":  {
                        "base_url":  "http://127.0.0.1:8000",
-                       "headless":  true,
+                       "headless":  false,
                        "viewport":  {
                                         "width":  1280,
                                         "height":  800
