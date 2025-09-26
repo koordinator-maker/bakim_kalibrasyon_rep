@@ -1,4 +1,4 @@
-# Admin -> Calibrations (doğrudan URL)
+# Admin -> Checklists (doğrudan URL)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -8,7 +8,7 @@ WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 
 # hedef sayfa
-GOTO /admin/maintenance/calibrations/
+GOTO /admin/maintenance/checklists/
 WAIT SELECTOR h1
-SCREENSHOT targets/screens/admin-calibrations.png
-EXPECT URL CONTAINS /admin/maintenance/calibrations/
+SCREENSHOT targets/screens/admin-checklists.png
+EXPECT URL CONTAINS /admin/maintenance/checklists/
