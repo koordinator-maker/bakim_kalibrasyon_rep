@@ -12,7 +12,7 @@
                        "require_improvements_checked":  true
                    },
     "playwright":  {
-                       "base_url":  "http://127.0.0.1:8000",
+                       "base_url": "http://127.0.0.1:8010",
                        "headless": false,
                        "viewport":  {
                                         "width":  1280,
@@ -24,6 +24,7 @@
                                   ]
                    }
 }
+
 
 
 
