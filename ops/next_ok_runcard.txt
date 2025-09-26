@@ -2,11 +2,15 @@
 # Not: '&&' kullanma, PS satÃ„Â±r satÃ„Â±r ÃƒÂ§alÃ„Â±Ã…Å¸Ã„Â±r.
 
 # 1) Etiketle
-ps> $tag = "ci-pass-" + (Get-Date -Format yyyyMMdd-HHmmss)
-ps> git tag $tag
+$tag = "ci-pass-" + (Get-Date -Format yyyyMMdd-HHmmss)
+git tag $tag
 
 # 2) Origin'e gÃƒÂ¶nder (kimlik doÃ„Å¸rulama gerekli)
-ps> git push origin $tag
+git push origin $tag
 
 # 3) (opsiyonel) revstamp
-ps> ps> git rev
+ps> git rev
+
+
+
+

@@ -38,9 +38,15 @@ if ($flows.Count -eq 0) { Write-Host "[FLOWS] no .flow files found, skipping."; 
 $visualOk = $true
 $vg = Join-Path $PSScriptRoot "visual_gate.ps1"
 if (Test-Path $vg) {
-  & powershell -NoProfile -ExecutionPolicy Bypass -File $vg
+  $statePath = Join-Path (Get-Location) "ops\state.json"
+  if (Test-Path $statePath) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $vg -State $statePath
+  } else {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $vg
+  }
   $visualOk = ($LASTEXITCODE -eq 0)
 }
+
 
 if ($visualOk) { Write-Host "[VISUAL] OK" } else { Write-Warning "[VISUAL] FAILED" }
 

@@ -1,51 +1,60 @@
 param([string]$State="ops\state.json")
 $ErrorActionPreference="Stop"
 
-$repo  = Get-Location
-$outD  = "_otokodlama\out"
+# Repo kökü: tools klasörünün bir üstü
+$repoRoot = Split-Path $PSScriptRoot -Parent
+
+# state.json mutlak değilse repo köküne göre çöz
+if ([IO.Path]::IsPathRooted($State)) { $statePath = $State } else { $statePath = Join-Path $repoRoot $State }
+
+$outD  = Join-Path $repoRoot "_otokodlama\out"
 New-Item -ItemType Directory -Force -Path $outD | Out-Null
 
-$report = @{ ok=$true; items=@() }
+$report = @{ ok=$true; items=@(); state=$statePath }
 
-if (!(Test-Path $State)) {
-  Write-Host "[VISUAL] no state.json, skipping"
-  $report | ConvertTo-Json | Set-Content "$outD\visual_report.json"
+if (!(Test-Path $statePath)) {
+  Write-Host "[VISUAL] no state.json, skipping -> $statePath"
+  $report | ConvertTo-Json -Depth 5 | Set-Content "$outD\visual_report.json"
   exit 0
 }
 
-$state = Get-Content $State -Raw | ConvertFrom-Json
+$state = Get-Content $statePath -Raw | ConvertFrom-Json
 $steps = @($state.steps)
 
 if ($null -eq $steps -or $steps.Count -eq 0) {
   Write-Host "[VISUAL] no steps in state.json"
-  $report | ConvertTo-Json | Set-Content "$outD\visual_report.json"
+  $report | ConvertTo-Json -Depth 5 | Set-Content "$outD\visual_report.json"
   exit 0
+}
+
+function Resolve-Rel([string]$p) {
+  if ([string]::IsNullOrWhiteSpace($p)) { return $null }
+  if ([IO.Path]::IsPathRooted($p)) { return $p }
+  return (Join-Path $repoRoot $p)
 }
 
 $allOk = $true
 foreach ($s in $steps) {
-  $id   = $s.id
-  $url  = $s.url
-  $vis  = $s.visual
+  $id  = $s.id
+  $url = $s.url
+  $vis = $s.visual
 
-  if (-not $vis) {
+  $hasVis = ($null -ne $vis) -and ($vis.PSObject.Properties.Count -gt 0)
+  if (-not $hasVis) {
     $report.items += @{ id=$id; url=$url; ok=$true; note="no visual config (skipped)" }
     continue
   }
 
-  # Yolları repo köküne göre çöz
-  function R([string]$p) { if ([string]::IsNullOrWhiteSpace($p)) { return $null } else { return (Join-Path $repo $p) } }
-
-  $base = R $vis.baseline
-  $curr = R $vis.actual
-  $thr  = if ($vis.threshold) { [double]$vis.threshold } else { 0.90 }
+  $base = Resolve-Rel $vis.baseline
+  $curr = Resolve-Rel $vis.actual
+  $thr  = 0.90
+  if ($vis.threshold) { $thr = [double]$vis.threshold }
 
   if ([string]::IsNullOrWhiteSpace($base) -or [string]::IsNullOrWhiteSpace($curr)) {
     $report.items += @{ id=$id; url=$url; ok=$false; error="visual.baseline/actual missing" }
     $allOk = $false
     continue
   }
-
   if (!(Test-Path $base)) {
     $report.items += @{ id=$id; url=$url; ok=$false; error="baseline not found: $base" }
     $allOk = $false
@@ -58,9 +67,8 @@ foreach ($s in $steps) {
   }
 
   $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "img_hash_compare.ps1") -A $base -B $curr
-  $rc = $LASTEXITCODE
-  $obj = $json | ConvertFrom-Json
-  $ok  = ($obj.similarity -ge $thr)
+  $obj  = $json | ConvertFrom-Json
+  $ok   = ([double]$obj.similarity -ge $thr)
   if (-not $ok) { $allOk = $false }
 
   $report.items += @{

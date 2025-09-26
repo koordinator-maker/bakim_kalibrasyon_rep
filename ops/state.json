@@ -1,14 +1,10 @@
 ﻿{
-  "steps": [
-    {
-      "id": "admin-calibrations",
-      "name": "Calibrations list",
-      "url": "/admin/maintenance/calibrations/",
-      "visual": {
-        "baseline": "targets/baselines/admin-calibrations.png",
-        "actual":   "targets/screens/admin-calibrations.png",
-        "threshold": 0.90
-      }
-    }
-  ]
+  "id": "admin-calibrations",
+  "name": "Calibrations list",
+  "url": "/admin/maintenance/calibrations/",
+  "visual": {
+    "baseline": "targets/baselines/admin-calibrations.png",
+    "actual":   "targets/screens/admin-calibrations.png",
+    "threshold": 0.90
+  }
 }
