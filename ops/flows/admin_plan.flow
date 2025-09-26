@@ -1,16 +1,14 @@
-$flow = @'
-# Admin plan sayfası smoke
-# Admin giriş + sayfaya git + ekran görüntüsü
+﻿# Admin plan sayfası smoke
 GOTO /admin/login/
-FILL input#id_username ${ADMIN_USER}
-FILL input#id_password ${ADMIN_PASS}
-CLICK input[type="submit"]
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=""submit""]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR div#content-main
-GOTO ${PLAN_PATH:/admin/}
-WAIT URL CONTAINS ${PLAN_PATH:/admin/}
-WAIT SELECTOR body
+
+# Hedef sayfa
+GOTO /admin/plan/
+WAIT SELECTOR h1
 SCREENSHOT targets/screens/admin-plan.png
-# EXPECT SELECTOR h1 "Plan"  # (i18n karışmasın diye şimdilik kapalı)
-'@
-[IO.File]::WriteAllText("$PWD\ops\flows\admin_plan.flow",$flow,[Text.UTF8Encoding]::new($false))
+EXPECT URL CONTAINS /admin/plan/
+EXPECT SELECTOR h1 "Plan"

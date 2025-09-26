@@ -1,4 +1,4 @@
-# REV: 1.0 | 2025-09-25 | Hash: bfa8286c | Parça: 1/1
+﻿# REV: 1.0 | 2025-09-25 | Hash: bfa8286c | ParÃ§a: 1/1
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # REV: 1.1 | tools/playwright_tests.py (BOM-safe)
@@ -14,7 +14,7 @@ def load_config(repo_root: Path):
 def normalize_urls(lines, base_url: str):
     out = []
     for raw in lines:
-        u = raw.strip().lstrip("\ufeff")  # satır başındaki BOM'u süpür
+        u = raw.strip().lstrip("\ufeff")  # satÄ±r baÅŸÄ±ndaki BOM'u sÃ¼pÃ¼r
         if not u or u.startswith("#"):
             continue
         if u.startswith("/"):
@@ -24,7 +24,7 @@ def normalize_urls(lines, base_url: str):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--urls", required=True, help="URL listesi dosyası")
+    ap.add_argument("--urls", required=True, help="URL listesi dosyasÄ±")
     ap.add_argument("--out", required=True, help="JSON rapor ('.json' ile biter)")
     args = ap.parse_args()
 
@@ -36,7 +36,7 @@ def main():
     viewport = pwcfg.get("viewport", {"width": 1280, "height": 800})
     timeout_ms = 15000  # 15s
 
-    # KRİTİK: URL dosyasında gizli BOM olursa otomatik temizle
+    # KRÄ°TÄ°K: URL dosyasÄ±nda gizli BOM olursa otomatik temizle
     lines = Path(args.urls).read_text(encoding="utf-8-sig").splitlines()
     urls = normalize_urls(lines, base_url)
 
@@ -50,7 +50,7 @@ def main():
         for url in urls:
             page = context.new_page()
             console_errors = []
-            page.on("console", lambda m: console_errors.append(m.text()) if m.type()=="error" else None)
+            page.on("console", lambda m: console_errors.append(m.text()) if m.type == "error" else None)
             status = None; ok = False; err = None; title = None
             try:
                 resp = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
