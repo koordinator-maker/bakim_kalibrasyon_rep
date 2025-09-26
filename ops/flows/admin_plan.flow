@@ -1,3 +1,4 @@
+$flow = @'
 # Admin plan sayfası smoke
 GOTO /admin/login/
 FILL input#id_username ${ADMIN_USER}
@@ -11,5 +12,6 @@ WAIT URL CONTAINS ${PLAN_PATH:/admin/plan/}
 WAIT SELECTOR body
 
 SCREENSHOT targets/screens/admin-plan.png
-# İstersen başlık kontrolü ekleyebilirsin ama i18n yüzünden kapalı tuttum
-# EXPECT SELECTOR h1 "Plan"
+# EXPECT SELECTOR h1 "Plan"  # (i18n karışmasın diye şimdilik kapalı)
+'@
+[IO.File]::WriteAllText("$PWD\ops\flows\admin_plan.flow",$flow,[Text.UTF8Encoding]::new($false))
