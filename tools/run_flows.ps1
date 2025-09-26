@@ -55,3 +55,12 @@ if ($allOk) {
   Write-Warning "[FLOWS] SOME FAILED"
   exit 1
 }
+# tools\run_flows.ps1 — SONUNA ŞU BLOĞU EKLE (flows döngüsünden ve [FLOWS] sonucundan hemen sonra):
+
+# --- Visual gate (ops/state.json) ---
+$vg = Join-Path $PSScriptRoot "visual_gate.ps1"
+if (Test-Path $vg) {
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $vg
+  $vg_rc = $LASTEXITCODE
+  if ($vg_rc -ne 0) { exit 1 }
+}
