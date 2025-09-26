@@ -1,9 +1,9 @@
-﻿# Sadece admin ana sayfayı doğrula
+﻿# Admin ana sayfa smoke
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
-CLICK input[type=""submit""]
+CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 SCREENSHOT targets/screens/admin-home.png
