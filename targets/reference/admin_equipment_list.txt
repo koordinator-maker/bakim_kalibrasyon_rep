@@ -1,0 +1,44 @@
+Skip to main content
+Bakım Kalibrasyon
+WELCOME, ADMIN. VIEW SITE / CHANGE PASSWORD / LOG OUT 
+Toggle theme (current theme: auto)
+Equipment with ID “_direct” doesn’t exist. Perhaps it was deleted?
+Yönetim
+BAKIM MODÜLÜ
+MODEL NAME	ADD LINK	CHANGE OR VIEW LIST LINK
+Calibration records	
+Add
+	
+Change
+
+Equipments	
+Add
+	
+Change
+
+Kalibrasyon Cihazları	
+Add
+	
+Change
+
+Maintenance checklist items	
+Add
+	
+Change
+
+Maintenance orders	
+Add
+	
+Change
+Recent actions
+My actions
+Added:
+A322 - Filtre temizliği
+Maintenance checklist item
+Changed:
+A322 - Fan Kontrolü
+Maintenance checklist item
+Changed:
+A322 - Fan Kontrolü
+Maintenance checklist item
+
