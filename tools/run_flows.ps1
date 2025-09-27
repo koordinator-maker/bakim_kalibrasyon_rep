@@ -1,128 +1,132 @@
-﻿param(
-  [switch]$FailFast,
-  [switch]$Soft
+param(
+  [switch],
+  [switch]
 )
-$ErrorActionPreference = "Stop"
+\Continue = "Stop"
 
-$repo = Get-Location
-$outD = Join-Path $repo "_otokodlama\out"
-New-Item -ItemType Directory -Force -Path $outD | Out-Null
+\ = Get-Location
+\ = Join-Path \ "_otokodlama\out"
+New-Item -ItemType Directory -Force -Path \ | Out-Null
 
-# BASE_URL garanti olsun (pipeline set ediyorsa bunu kullanır)
-if (-not $env:BASE_URL -or [string]::IsNullOrWhiteSpace($env:BASE_URL)) {
-  $env:BASE_URL = "http://127.0.0.1:8010"
+# BASE_URL garanti olsun
+if (-not \http://127.0.0.1:8010 -or [string]::IsNullOrWhiteSpace(\http://127.0.0.1:8010)) {
+  \http://127.0.0.1:8010 = "http://127.0.0.1:8010"
 }
 
-# Koşturulacak flow listesi
-$flows = @(
+# Koşturulacak flow listesi (klasörde varsa)
+\ = @(
   "ops\flows\admin_home.flow",
   "ops\flows\admin_plan.flow",
   "ops\flows\admin_calibrations.flow",
   "ops\flows\admin_checklists.flow",
-  "ops\flows\admin_equipment.flow"
-) | Where-Object { Test-Path $_ }
+  "ops\flows\admin_equipment.flow",
+  # Genel validatorlar:
+  "ops\flows\admin_order_add_validate.flow",
+  "ops\flows\admin_app_index_validate.flow"
+) | Where-Object { Test-Path \ }
 
-$results = @()
-$anyFail = $false
+\ = @()
+\ = \False
 
-foreach ($flow in $flows) {
-  $name = [IO.Path]::GetFileName($flow)
-  $stem = [IO.Path]::GetFileNameWithoutExtension($flow)
-  $json = Join-Path $outD ($stem + ".json")
+foreach (\# Admin > Equipment (click path; tolerate error pages)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
+CLICK a[href="/admin/maintenance/equipment/"]
+WAIT SELECTOR body
+SCREENSHOT targets/screens/admin-equipment.png in \) {
+  \ = [IO.Path]::GetFileName(\# Admin > Equipment (click path; tolerate error pages)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
+CLICK a[href="/admin/maintenance/equipment/"]
+WAIT SELECTOR body
+SCREENSHOT targets/screens/admin-equipment.png)
+  \ = [IO.Path]::GetFileNameWithoutExtension(\# Admin > Equipment (click path; tolerate error pages)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
+CLICK a[href="/admin/maintenance/equipment/"]
+WAIT SELECTOR body
+SCREENSHOT targets/screens/admin-equipment.png)
+  \ = Join-Path \ (\ + ".json")
 
-  Write-Host "[FLOW] $flow"
-  # Not: pw_flow.py BASE_URL ortam değişkenini kullanır
-  & python tools\pw_flow.py --steps $flow --out $json
-  $rc = $LASTEXITCODE
+  Write-Host "[FLOW] \# Admin > Equipment (click path; tolerate error pages)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
+CLICK a[href="/admin/maintenance/equipment/"]
+WAIT SELECTOR body
+SCREENSHOT targets/screens/admin-equipment.png"
+  & python tools\pw_flow.py --steps \# Admin > Equipment (click path; tolerate error pages)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
+CLICK a[href="/admin/maintenance/equipment/"]
+WAIT SELECTOR body
+SCREENSHOT targets/screens/admin-equipment.png --out \
+  \ = \1
 
-  $ok = $false
-  $firstErr = $null
-  if (Test-Path $json) {
+  \ = \False
+  \ = \
+  if (Test-Path \) {
     try {
-      $j = Get-Content $json -Raw | ConvertFrom-Json
-      $ok = [bool]$j.ok
-      if (-not $ok -and $j.results) {
-        $firstErr = ($j.results | Where-Object { -not $_.ok } | Select-Object -First 1)
+      \ = Get-Content \ -Raw | ConvertFrom-Json
+      \ = [bool]\.ok
+      if (-not \ -and \.results) {
+        \ = (\.results | Where-Object { -not \.ok } | Select-Object -First 1)
       }
     } catch {
-      $ok = $false
-      $firstErr = @{ cmd="PARSE_JSON"; arg=$json; url=""; error=$_.Exception.Message }
+      \ = \False
+      \ = @{ cmd="PARSE_JSON"; arg=\; url=""; error=\.Exception.Message }
     }
   } else {
-    $ok = $false
-    $firstErr = @{ cmd="NO_JSON"; arg=$json; url=""; error="json üretilmedi (rc=$rc)" }
+    \ = \False
+    \ = @{ cmd="NO_JSON"; arg=\; url=""; error="json üretilmedi (rc=\)" }
   }
 
-  if ($ok) {
-    Write-Host "[FLOW] PASSED: $stem"
+  if (\) {
+    Write-Host "[FLOW] PASSED: \"
   } else {
-    Write-Warning "[FLOW] FAILED: $stem"
-    $anyFail = $true
-    if ($FailFast -and -not $Soft) { break }
+    Write-Warning "[FLOW] FAILED: \"
+    \ = \True
+    if (\ -and -not \) { break }
   }
 
-  $results += [pscustomobject]@{
-    name = $stem
-    flow = $name
-    ok   = $ok
-    out  = ".\_otokodlama\out\$($stem).json"
-    first_error = $firstErr
+  \ += [pscustomobject]@{
+    name = \
+    flow = \
+    ok   = \
+    out  = ".\_otokodlama\out\.json"
+    first_error = \
   }
 }
 
-elif cmd == "SELECT":
-    # SELECT select#id_order_type label=Planlı
-    # SELECT select#id_order_type value=PLN
-    # SELECT select#id_equipment index=1
-    parts = arg.split()
-    if not parts:
-        raise PWError("SELECT requires arguments")
-    sel = parts[0]
-    kv = {}
-    for p in parts[1:]:
-        if "=" in p:
-            k, v = p.split("=", 1)
-            kv[k.strip().lower()] = v.strip()
-    if not kv:
-        raise PWError("SELECT needs value=... or label=... or index=...")
-    opt = {}
-    if "value" in kv: opt["value"] = kv["value"]
-    if "label" in kv: opt["label"] = kv["label"]
-    if "index" in kv: opt["index"] = int(kv["index"])
-    page.select_option(sel, opt)
-
-elif cmd == "EXPECTTEXT":
-    # EXPECTTEXT label[for="id_title"] equals Başlık
-    # EXPECTTEXT label[for="id_title"] contains Başlık
-    parts = arg.split(None, 2)
-    if len(parts) < 3:
-        raise PWError("EXPECTTEXT <selector> <equals|contains> <text>")
-    sel, mode, text = parts[0], parts[1].lower(), parts[2]
-    actual = page.inner_text(sel).strip()
-    if mode in ("equals", "=="):
-        if actual != text:
-            raise AssertionError(f'EXPECTTEXT equals failed: "{actual}" != "{text}"')
-    elif mode in ("contains", "~="):
-        if text not in actual:
-            raise AssertionError(f'EXPECTTEXT contains failed: "{text}" not in "{actual}"')
-    else:
-        raise PWError(f"Unsupported EXPECTTEXT mode: {mode}")
-
-elif cmd == "EXPECTVALUE":
-    # EXPECTVALUE #id_order_type PLN
-    parts = arg.split(None, 1)
-    if len(parts) < 2:
-        raise PWError("EXPECTVALUE <selector> <expected>")
-    sel, expected = parts[0], parts[1]
-    val = page.locator(sel).input_value()
-    if val != expected:
-        raise AssertionError(f'EXPECTVALUE failed: "{val}" != "{expected}"')
-
 # flows_report.json: { "flows": [...] }
-@{ flows = $results } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $outD "flows_report.json") -Encoding utf8
+@{ flows = \ } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path \ "flows_report.json") -Encoding utf8
 
-if ($Soft) {
+if (\) {
   exit 0
 } else {
-  if ($anyFail) { exit 1 } else { exit 0 }
+  if (\) { exit 1 } else { exit 0 }
 }

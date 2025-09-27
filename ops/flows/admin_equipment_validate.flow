@@ -1,13 +1,10 @@
-﻿# Admin > Equipment (validate via AUTOVALIDATE)
-
-GOTO /admin/login/
+﻿GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
 CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
-# Menüdeki linke tıklayalım, direkt GOTO yapmıyoruz
 WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
 CLICK a[href="/admin/maintenance/equipment/"]
-# Burada AUTOVALIDATE: baseline OCR -> canlı DOM+OCR, select etkileşimi, görsel benzerlik
+# Genel doğrulayıcı:
 AUTOVALIDATE key=admin_equipment baseline=targets/reference/admin_equipment.png words_recall=0.90 live_source=dom+ocr check_selects=yes vis_thresh=0.90 alert=on alert_dir=_otokodlama/alerts alert_open=no
