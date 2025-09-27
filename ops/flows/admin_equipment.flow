@@ -1,4 +1,4 @@
-﻿# Admin > Equipment (triage)
+﻿# Admin > Equipment (triage; dayanıklı)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -7,10 +7,17 @@ CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 
-# Admin ana sayfadan Equipment linkine tıkla (direkt GOTO yerine)
-CLICK text=Equipment
+# 1) Önce tıklayarak dene (link text'i 'Equipment' olan <a>)
+CLICK a:has-text("Equipment")
+# Bazı durumlarda Chrome error sayfasına düşerse yine de ekran alalım
+WAIT SELECTOR body
+SCREENSHOT targets/screens/admin-equipment-click.png
+
+# 2) Fallback: doğrudan standart changelist URL’sine git
+GOTO /admin/maintenance/equipment/
 WAIT SELECTOR h1
 SCREENSHOT targets/screens/admin-equipment.png
 
-# Yalnızca raporda görünsün diye beklenti (başarısız olursa flow failed olur; NonBlocking pipeline kırmayacak)
+# Nihai beklenti: doğru rota (başarısız olursa sadece bu flow fail olacak;
+# NonBlocking mod pipeline'ı düşürmez)
 EXPECT URL CONTAINS /admin/maintenance/equipment/

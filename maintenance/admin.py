@@ -318,7 +318,8 @@ class MaintenanceAdminSite(AdminSite):
             path("maintenance/orders/new/", self.admin_view(self.order_create), name="maintenance-order-create"),
 
             # Makine listesi/ekleme (footer linkleri)
-            path("maintenance/equipment/", self.admin_view(self.equipment_list), name="maintenance-equipment-list"),
+            # DİKKAT: changelist ile ÇAKIŞMAMASI için 'maintenance/equipment/list/' kullanıyoruz
+            path("maintenance/equipment/list/", self.admin_view(self.equipment_list), name="maintenance-equipment-list"),
             path("maintenance/equipment/new/", self.admin_view(self.equipment_create), name="maintenance-equipment-create"),
 
             # Kalibrasyon menüsü

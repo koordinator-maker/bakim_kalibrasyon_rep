@@ -1,1 +1,1 @@
-﻿- [ ] admin_equipment: EXPECT URL CONTAINS /admin/maintenance/equipment/  (url=chrome-error://chromewebdata/)
+﻿- [ ] admin_equipment: GOTO /admin/maintenance/equipment/  (url=chrome-error://chromewebdata/)

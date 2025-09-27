@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-25 | Hash: 45ddb718 | Parça: 1/1
+﻿# REV: 1.1 | 2025-09-25 | Hash: 45ddb718 | ParÃ§a: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-3PR10E2P
 # -*- coding: utf-8 -*-
 # core/urls.py
@@ -11,13 +11,13 @@ from maintenance.views import calibration_full_table
 # <<< BLOK SONU: ID:PY-IMP-3PR10E2P
 # >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-32TCAEFD
 urlpatterns = [
-    # Özel admin site (/admin/ altında)
+    # Ã–zel admin site (/admin/ altÄ±nda)
     path("admin/", admin_site.urls),
 
-    # Kalibrasyon tam tablo görünümü
+    # Kalibrasyon tam tablo gÃ¶rÃ¼nÃ¼mÃ¼
     path("calibration/table/", calibration_full_table, name="calibration-full-table"),
 
-    # Kısa yollar (kolaylık için):
+    # KÄ±sa yollar (kolaylÄ±k iÃ§in):
     # /maintenance/dashboard/ -> /admin/maintenance/dashboard/
     path(
         "maintenance/dashboard/",
@@ -35,3 +35,4 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/admin/maintenance/dashboard/", permanent=False)),
 ]
 # <<< BLOK SONU: ID:PY-HEL-32TCAEFD
+

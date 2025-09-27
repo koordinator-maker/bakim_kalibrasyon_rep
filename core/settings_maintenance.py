@@ -1,26 +1,27 @@
-# REV: 1.1 | 2025-09-25 | Hash: 9d3d12bb | Parça: 1/1
+﻿# REV: 1.1 | 2025-09-25 | Hash: 9d3d12bb | ParÃ§a: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-D2RZ41ZJ
 # -*- coding: utf-8 -*-
-# Özel bakım/kalibrasyon ortamı
-from .settings import *  # projedeki ortak ayarları içe al
+# Ã–zel bakÄ±m/kalibrasyon ortamÄ±
+from .settings import *  # projedeki ortak ayarlarÄ± iÃ§e al
 
-# Bu ortamda kullanılacak URLConf
+# Bu ortamda kullanÄ±lacak URLConf
 # <<< BLOK SONU: ID:PY-IMP-D2RZ41ZJ
 # >>> BLOK: SETTINGS | Proje ayarlari | ID:PY-SET-P3NAYWXZ
 ROOT_URLCONF = "core.urls"
 
-# Maintenance app MUTLAKA burada kayıtlı olmalı
+# Maintenance app MUTLAKA burada kayÄ±tlÄ± olmalÄ±
 # Tercihen AppConfig yolu ile ekleyelim:
 if "maintenance.apps.MaintenanceConfig" not in INSTALLED_APPS:
     INSTALLED_APPS = list(INSTALLED_APPS) + ["maintenance.apps.MaintenanceConfig"]
 
-# (İsteğe bağlı) Yönetim paneli görünümü vs. için tema/ek ayarlar ileride gelebilir
+# (Ä°steÄŸe baÄŸlÄ±) YÃ¶netim paneli gÃ¶rÃ¼nÃ¼mÃ¼ vs. iÃ§in tema/ek ayarlar ileride gelebilir
 
-# Geliştirme için basit e-posta backend'i
+# GeliÅŸtirme iÃ§in basit e-posta backend'i
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = "noreply@example.com"
 
-# Zaman dilimi/yerel ayar (projenin genelinden farklı kullanmak istersen)
+# Zaman dilimi/yerel ayar (projenin genelinden farklÄ± kullanmak istersen)
 # TIME_ZONE = "Europe/Istanbul"
 # USE_TZ = True
 # <<< BLOK SONU: ID:PY-SET-P3NAYWXZ
+
