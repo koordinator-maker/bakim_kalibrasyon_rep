@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-import os, sys, json, time, re, pathlib, io, math, unicodedata, csv, datetime
-from typing import List, Tuple, Dict, Any
+import os, sys, json, time, re, pathlib, unicodedata, csv, datetime
+from typing import Tuple, Dict, Any
 from contextlib import contextmanager
 
 from PIL import Image
@@ -58,7 +58,6 @@ def _nowstamp() -> str:
     return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 def _norm_text(s: str) -> str:
-    # Türkçe için düzgün normalize
     s = s.replace("İ", "i").replace("I", "ı")
     s = s.lower()
     s = unicodedata.normalize("NFKD", s)
@@ -135,14 +134,15 @@ def _write_alert(key: str, ok: bool, recall: float, misses: list, paths: dict, a
 @contextmanager
 def browser_ctx(headless: bool, har_path: str = None):
     with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=headless)
         if har_path:
-            browser = pw.chromium.launch(headless=headless)
             context = browser.new_context(record_har_path=_abs_path(har_path), record_har_content="embed")
         else:
-            browser = pw.chromium.launch(headless=headless)
             context = browser.new_context()
         page = context.new_page()
         page.set_default_timeout(30_000)
+        # Auto-close any popup windows (just in case)
+        page.on("popup", lambda p: (p.close() if not p.is_closed() else None))
         try:
             yield page, context, browser
         finally:
@@ -161,7 +161,7 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
                 continue
 
             step_ok, err = True, None
-            # AUTOVALIDATE için metrikler
+            # AUTOVALIDATE metrikleri
             recall=1.0; sim=1.0; ok_words=True; ok_vis=True; ok_selects=True; missing=[]
 
             try:
@@ -186,21 +186,54 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
 
                 elif cmd == "FILL":
                     sp = arg.split(None, 1)
-                    if len(sp) < 2:
-                        raise PWError("FILL requires 'selector text'")
+                    if len(sp) < 2: raise PWError("FILL requires 'selector text'")
                     sel, txt = sp[0], sp[1]
                     page.fill(sel, txt)
 
                 elif cmd == "CLICK":
-                    page.click(arg.strip())
+                    sel = arg.strip()
+                    href = None
+                    try:
+                        href = page.eval_on_selector(sel, "el => el.getAttribute('href') || (el.href || null)")
+                    except Exception:
+                        pass
+                    page.click(sel)
+                    # kısa bekleme
+                    try:
+                        page.wait_for_load_state("domcontentloaded", timeout=10000)
+                    except Exception:
+                        pass
+                    # chrome-error ise, href'i absolute yapıp doğrudan git
+                    def _abs_href(h):
+                        if not h: return None
+                        if h.startswith("http://") or h.startswith("https://"): return h
+                        if h.startswith("/"): return BASE_URL + h
+                        return BASE_URL + "/" + h
+                    if page.url.startswith("chrome-error://") and href:
+                        tgt = _abs_href(href)
+                        if tgt:
+                            page.goto(tgt, wait_until="domcontentloaded")
+
+                elif cmd == "NAVTO":
+                    # NAVTO <css-selector> : selector'dan href al, absolute yap, goto
+                    sel = arg.strip()
+                    href = page.eval_on_selector(sel, "el => el.getAttribute('href') || (el.href || null)")
+                    if not href:
+                        raise PWError(f"NAVTO: selector has no href: {sel}")
+                    if href.startswith("http://") or href.startswith("https://"):
+                        tgt = href
+                    elif href.startswith("/"):
+                        tgt = BASE_URL + href
+                    else:
+                        tgt = BASE_URL + "/" + href
+                    page.goto(tgt, wait_until="domcontentloaded")
 
                 elif cmd == "SCREENSHOT":
                     page.screenshot(path=_abs_path(arg.strip()), full_page=False)
 
                 elif cmd == "SELECT":
                     m = re.match(r"(\S+)\s+(.+)$", arg.strip())
-                    if not m:
-                        raise PWError("SELECT needs: <selector> key=value")
+                    if not m: raise PWError("SELECT needs: <selector> key=value")
                     sel, rest = m.group(1), m.group(2); kv = _parse_kv(rest)
                     if   "label" in kv: page.select_option(sel, label=kv["label"])
                     elif "value" in kv: page.select_option(sel, value=kv["value"])
@@ -209,25 +242,20 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
 
                 elif cmd == "EXPECTTEXT":
                     m = re.match(r"(\S+)\s+(equals|contains)\s+(.+)$", arg.strip(), re.I)
-                    if not m:
-                        raise PWError("EXPECTTEXT: '<selector> equals|contains <text>'")
+                    if not m: raise PWError("EXPECTTEXT: '<selector> equals|contains <text>'")
                     sel, mode, text = m.group(1), m.group(2).lower(), m.group(3)
                     got = page.inner_text(sel).strip()
                     if mode == "equals":
-                        if _norm_text(got) != _norm_text(text):
-                            raise AssertionError(f"EXPECTTEXT equals fail: got='{got}' want='{text}'")
+                        if _norm_text(got) != _norm_text(text): raise AssertionError(f"EXPECTTEXT equals fail: got='{got}' want='{text}'")
                     else:
-                        if _norm_text(text) not in _norm_text(got):
-                            raise AssertionError(f"EXPECTTEXT contains fail: got='{got}' want contains '{text}'")
+                        if _norm_text(text) not in _norm_text(got): raise AssertionError(f"EXPECTTEXT contains fail: got='{got}' want contains '{text}'")
 
                 elif cmd == "EXPECTVALUE":
                     m = re.match(r"(\S+)\s+(.+)$", arg.strip())
-                    if not m:
-                        raise PWError("EXPECTVALUE: '<selector> <value>'")
+                    if not m: raise PWError("EXPECTVALUE: '<selector> <value>'")
                     sel, want = m.group(1), m.group(2)
                     val = page.eval_on_selector(sel, "el => el.value")
-                    if _norm_text(str(val)) != _norm_text(str(want)):
-                        raise AssertionError(f"EXPECTVALUE fail: got='{val}' want='{want}'")
+                    if _norm_text(str(val)) != _norm_text(str(want)): raise AssertionError(f"EXPECTVALUE fail: got='{val}' want='{want}'")
 
                 elif cmd == "AUTOVALIDATE":
                     kv = _parse_kv(arg)
@@ -259,7 +287,7 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
                         live_shot = f"_otokodlama/alerts/{key}-live-{_nowstamp()}.png"
                         live_shot_abs = _page_screenshot(page, live_shot)
 
-                        # Hata sayfası explicit işaretle
+                        # Hata sayfası işareti
                         if page.url.startswith("chrome-error://"):
                             reasons.append("navigation-error")
 
@@ -281,7 +309,7 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
                             if sim < vis_thresh:
                                 ok_vis = False; reasons.append(f"visual<{vis_thresh:.2f} ({sim:.3f})")
 
-                        # 5) Açılır menü etkileşim denetimi (genel)
+                        # 5) Açılır menü etkileşimi
                         ok_selects = True
                         if check_selects:
                             try:
@@ -290,15 +318,12 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
                                         id:e.id, name:e.name, disabled:e.disabled,
                                         options:[...e.options].map(o => ({value:o.value, label:o.label, disabled:o.disabled, selected:o.selected}))
                                     }))""")
-                                tried = 0
                                 for s in info:
-                                    if s.get("disabled"):
-                                        continue
+                                    if s.get("disabled"): continue
                                     opts = [o for o in s.get("options", []) if not o.get("disabled")]
                                     if len(opts) >= 1:
                                         sel = f"select#{s['id']}" if s.get("id") else (f"select[name='{s.get('name','')}']" if s.get("name") else "select")
                                         page.select_option(sel, value=opts[0]["value"])
-                                        tried += 1
                                         break
                             except Exception:
                                 ok_selects = False; reasons.append("selects-fail")
@@ -348,7 +373,7 @@ def main():
     ap.add_argument("--steps", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--headful", action="store_true")
-    ap.add_argument("--har", default=None, help="HAR dosya yolu (opsiyonel)")
+    ap.add_argument("--har", default=None, help="HAR path (optional)")
     args = ap.parse_args()
 
     with open(args.steps, "r", encoding="utf-8-sig") as f:

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 from django.contrib import admin
 from django.contrib.admin import AdminSite
 
@@ -11,11 +11,11 @@ from .models import (
 )
 
 class MaintenanceAdminSite(AdminSite):
-    site_header = "Bakım Kalibrasyon"
-    site_title  = "Bakım Kalibrasyon"
-    index_title = "Yönetim"
+    site_header = "BakÄ±m Kalibrasyon"
+    site_title  = "BakÄ±m Kalibrasyon"
+    index_title = "YÃ¶netim"
 
-admin_site = MaintenanceAdminSite(name="admin")
+admin_site = MaintenanceAdminSite(name="maintenance_admin")
 
 @admin.register(Equipment, site=admin_site)
 class EquipmentAdmin(admin.ModelAdmin):

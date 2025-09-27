@@ -7,3 +7,4 @@ WAIT URL CONTAINS /admin/
 WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
 CLICK a[href="/admin/maintenance/equipment/"]
 WAIT SELECTOR #content-main
+SCREENSHOT targets/reference/admin_equipment.png
