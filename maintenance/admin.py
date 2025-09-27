@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 from django.contrib import admin
 from django.contrib.admin import AdminSite
 from django.contrib.admin.sites import AlreadyRegistered
@@ -12,9 +12,18 @@ from .models import (
 )
 
 class MaintenanceAdminSite(AdminSite):
-    site_header = "Bakım Kalibrasyon"
-    site_title  = "Bakım Kalibrasyon"
-    index_title = "Yönetim"
+    def get_app_list(self, request):
+        app_list = super().get_app_list(request)
+        for app in app_list:
+            for m in app.get("models", []):
+                # Model adları Django'nun admin menü sözlüğünde ObjectName olarak gelir
+                if m.get("object_name") == "Equipment":
+                    m["admin_url"] = "/admin/maintenance/equipment/_direct/"
+        return app_list
+
+    site_header = "BakÄ±m Kalibrasyon"
+    site_title  = "BakÄ±m Kalibrasyon"
+    index_title = "YÃ¶netim"
 
 admin_site = MaintenanceAdminSite(name="maintenance_admin")
 
