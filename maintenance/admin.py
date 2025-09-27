@@ -1,5 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 from django.contrib import admin
+from django.contrib.admin.sites import AlreadyRegistered
 from django.contrib.admin import AdminSite
 
 from .models import (
@@ -17,9 +18,12 @@ class MaintenanceAdminSite(AdminSite):
 
 admin_site = MaintenanceAdminSite(name="maintenance_admin")
 
-@admin.register(Equipment, site=admin_site)
 class EquipmentAdmin(admin.ModelAdmin):
-    list_display  = ("code", "name")
+        def get_preserved_filters(self, request):
+        # Admin preserved_filters yeniden yönlendirme döngüsünü engelle
+        return ""
+
+list_display  = ("code", "name")
     search_fields = ("code", "name")
     list_filter   = ()
 
@@ -50,7 +54,11 @@ class CalibrationRecordAdmin(admin.ModelAdmin):
 from django.contrib import admin
 from .models import Equipment
 
-@admin.register(Equipment, site=admin_site)
+# maintenance/admin.py
+from django.contrib import admin
+from .models import Equipment
+from maintenance.admin import admin_site
+
 class EquipmentAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         resp = super().changelist_view(request, extra_context)
@@ -58,5 +66,9 @@ class EquipmentAdmin(admin.ModelAdmin):
             loc = resp.headers.get('Location')
         except Exception:
             loc = None
-        print("[DBG] changelist_view status=", getattr(resp, 'status_code', None), "Location=", loc)
+        print("[DBG equipment list]", getattr(resp,'status_code',None), "Location=", loc)
         return resp
+try:
+    admin_site.register(Equipment, EquipmentAdmin)
+except AlreadyRegistered:
+    pass
