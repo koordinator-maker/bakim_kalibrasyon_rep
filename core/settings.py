@@ -1,4 +1,4 @@
-# REV: 1.2 | 2025-09-25 | Hash: a7864e49 | Parça: 1/1
+﻿# REV: 1.2 | 2025-09-25 | Hash: a7864e49 | ParÃ§a: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-3REMVA2D
 # <<< BLOK SONU: ID:PY-IMP-3REMVA2D
 # >>> BLOK: SETTINGS | Proje ayarlari | ID:PY-SET-10HDCS31
@@ -42,7 +42,6 @@ INSTALLED_APPS = [    'maintenance.apps.MaintenanceConfig',
         'django.contrib.sessions',
         'django.contrib.messages',
         'django.contrib.staticfiles',
-        'django.contrib.maintenance',
 ]
 
 MIDDLEWARE = [
@@ -127,3 +126,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # <<< BLOK SONU: ID:PY-SET-10HDCS31
+
+
+

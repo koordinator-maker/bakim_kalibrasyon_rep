@@ -2,12 +2,29 @@
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-D2RZ41ZJ
 # -*- coding: utf-8 -*-
 # Ã–zel bakÄ±m/kalibrasyon ortamÄ±
-from .settings import *  # projedeki ortak ayarlarÄ± iÃ§e al
+# -*- coding: utf-8 -*-
+# core/settings_maintenance.py  (tam içerik)
 
-# Bu ortamda kullanÄ±lacak URLConf
-# <<< BLOK SONU: ID:PY-IMP-D2RZ41ZJ
-# >>> BLOK: SETTINGS | Proje ayarlari | ID:PY-SET-P3NAYWXZ
+from .settings import *  # base settings'i miras al
+
+# maintenance app'ini listede TEK kez bırak
+_clean = []
+_seen = set()
+for app in INSTALLED_APPS:
+    if app in ("maintenance", "maintenance.apps.MaintenanceConfig"):
+        key = "maintenance.apps.MaintenanceConfig"
+    else:
+        key = app
+    if key not in _seen:
+        _seen.add(key)
+        _clean.append(key)
+INSTALLED_APPS = [a for a in _clean if a != "maintenance"]  # çıplak 'maintenance' varsa at
+if "maintenance.apps.MaintenanceConfig" not in INSTALLED_APPS:
+    INSTALLED_APPS.insert(0, "maintenance.apps.MaintenanceConfig")
+
+# custom admin site urls
 ROOT_URLCONF = "core.urls"
+
 
 # Maintenance app MUTLAKA burada kayÄ±tlÄ± olmalÄ±
 # Tercihen AppConfig yolu ile ekleyelim:

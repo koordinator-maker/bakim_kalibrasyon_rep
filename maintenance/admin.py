@@ -1,4 +1,4 @@
-# REV: 1.1 | 2025-09-25 | Hash: 45922179 | Parça: 1/1
+﻿# REV: 1.1 | 2025-09-25 | Hash: 45922179 | ParÃ§a: 1/1
 # >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-WBM30A3D
 # -*- coding: utf-8 -*-
 from __future__ import annotations
@@ -25,9 +25,9 @@ from .models import (
 # Admin Site
 # -----------------------------
 class MaintenanceAdminSite(AdminSite):
-    site_header = "Bakım Kalibrasyon"
-    site_title = "Bakım Kalibrasyon"
-    index_title = "Yönetim"
+    site_header = "BakÄ±m Kalibrasyon"
+    site_title = "BakÄ±m Kalibrasyon"
+    index_title = "YÃ¶netim"
 
     # CSV export endpoint
     def calibration_export_csv(self, request):
@@ -35,9 +35,9 @@ class MaintenanceAdminSite(AdminSite):
         response["Content-Disposition"] = 'attachment; filename="calibrations.csv"'
         writer = csv.writer(response)
         writer.writerow([
-            "Cihaz Kodu", "Cihaz Adı", "Lokasyon", "Marka", "Model",
+            "Cihaz Kodu", "Cihaz AdÄ±", "Lokasyon", "Marka", "Model",
             "Seri No", "Son Kalibrasyon", "Sonraki Kalibrasyon",
-            "Sonuç", "Sertifika No", "Toplam Sapma"
+            "SonuÃ§", "Sertifika No", "Toplam Sapma"
         ])
         qs = CalibrationRecord.objects.select_related("asset").all().order_by("-next_calibration")
         for r in qs:
@@ -74,25 +74,25 @@ class MaintenanceAdminSite(AdminSite):
         """Yer tutucu."""
         return redirect("admin:maintenance-orders")
 
-    # ---- Makine listesi/ekleme (footer linkleri için)
+    # ---- Makine listesi/ekleme (footer linkleri iÃ§in)
     def equipment_list(self, request):
-        # Django admin Equipment liste ekranına yönlendir
+        # Django admin Equipment liste ekranÄ±na yÃ¶nlendir
         return redirect("admin:maintenance_equipment_changelist")
 
     def equipment_create(self, request):
-        # Django admin Equipment ekleme ekranına yönlendir
+        # Django admin Equipment ekleme ekranÄ±na yÃ¶nlendir
         return redirect("admin:maintenance_equipment_add")
 
     # -----------------------------
-    # Kalibrasyon – menü sayfaları
+    # Kalibrasyon â€“ menÃ¼ sayfalarÄ±
     # -----------------------------
     def calibration_list(self, request):
-        """Ölçüm cihazı listesi (soldaki menünün ana sayfası)."""
+        """Ã–lÃ§Ã¼m cihazÄ± listesi (soldaki menÃ¼nÃ¼n ana sayfasÄ±)."""
         assets = CalibrationAsset.objects.select_related("equipment").order_by("asset_code")
         return render(request, "maintenance/calibration_list.html", {"assets": assets})
 
     def _parse_limit(self, txt: str) -> Decimal | None:
-        """acceptance_criteria içinden ilk sayıyı ayıklar (örn ±0,05 => 0.05)."""
+        """acceptance_criteria iÃ§inden ilk sayÄ±yÄ± ayÄ±klar (Ã¶rn Â±0,05 => 0.05)."""
         if not txt:
             return None
         s = ""
@@ -108,7 +108,7 @@ class MaintenanceAdminSite(AdminSite):
             return None
 
     def calibration_follow(self, request):
-        """Kalibrasyon Takip Listesi – son kayıt + kabul kriteri + toplam sapma."""
+        """Kalibrasyon Takip Listesi â€“ son kayÄ±t + kabul kriteri + toplam sapma."""
         rows = []
         assets = CalibrationAsset.objects.order_by("asset_code")
         for a in assets:
@@ -124,15 +124,15 @@ class MaintenanceAdminSite(AdminSite):
                         status = "Uygun"
                         status_class += " ok"
                     else:
-                        status = "Uygun Değil"
+                        status = "Uygun DeÄŸil"
                         status_class += " late"
                 except InvalidOperation:
-                    status = "Değerlendirilemedi"
+                    status = "DeÄŸerlendirilemedi"
             elif rec and rec.result:
                 status = rec.result
                 status_class += " ok" if rec.result.lower().startswith(("ok", "uygun")) else "late"
             else:
-                status = "Kayıt Yok"
+                status = "KayÄ±t Yok"
                 status_class += " due"
 
             rows.append({
@@ -146,7 +146,7 @@ class MaintenanceAdminSite(AdminSite):
 
         return render(request, "maintenance/calibration_table.html", {"rows": rows})
 
-    # ---- Yeni Ölçüm Cihazı Girişi (form)
+    # ---- Yeni Ã–lÃ§Ã¼m CihazÄ± GiriÅŸi (form)
     class CalibrationAssetForm(forms.ModelForm):
         class Meta:
             model = CalibrationAsset
@@ -161,7 +161,7 @@ class MaintenanceAdminSite(AdminSite):
             widgets = {
                 "asset_code": forms.TextInput(attrs={"class": "input-lg"}),
                 "asset_name": forms.TextInput(attrs={"class": "input-lg"}),
-                "acceptance_criteria": forms.TextInput(attrs={"placeholder": "örn: ±0.05"}),
+                "acceptance_criteria": forms.TextInput(attrs={"placeholder": "Ã¶rn: Â±0.05"}),
             }
 
     def cal_asset_create(self, request):
@@ -174,9 +174,9 @@ class MaintenanceAdminSite(AdminSite):
             form = self.CalibrationAssetForm()
         return render(request, "maintenance/calibration_asset_form.html", {"form": form})
 
-    # ---- Yeni Kalibrasyon Kaydı (form)
+    # ---- Yeni Kalibrasyon KaydÄ± (form)
     class CalibrationRecordForm(forms.ModelForm):
-        RESULT_CHOICES = (("Uygun", "Uygun"), ("Uygun Değil", "Uygun Değil"), ("Bilgi", "Bilgi"))
+        RESULT_CHOICES = (("Uygun", "Uygun"), ("Uygun DeÄŸil", "Uygun DeÄŸil"), ("Bilgi", "Bilgi"))
         result = forms.ChoiceField(choices=RESULT_CHOICES, required=False)
 
         class Meta:
@@ -197,7 +197,7 @@ class MaintenanceAdminSite(AdminSite):
             form = self.CalibrationRecordForm()
         return render(request, "maintenance/calibration_record_form.html", {"form": form})
 
-    # ---- Ölçüm Cihazı Bilgi Formu
+    # ---- Ã–lÃ§Ã¼m CihazÄ± Bilgi Formu
     class AssetLookupForm(forms.Form):
         asset = forms.ModelChoiceField(
             label="Cihaz",
@@ -216,40 +216,40 @@ class MaintenanceAdminSite(AdminSite):
             "form": form, "asset": selected, "record": last_record
         })
 
-    # ---- Ölçüm Cihazı Listesi (tam liste)
+    # ---- Ã–lÃ§Ã¼m CihazÄ± Listesi (tam liste)
     def cal_assets_all(self, request):
         assets = CalibrationAsset.objects.select_related("equipment").order_by("location", "asset_code")
         return render(request, "maintenance/calibration_assets_all.html", {"assets": assets})
 
     def calibration_remind(self, request):
-        return HttpResponse("Kalibrasyon hatırlatma kuru çalıştırma (dev).")
+        return HttpResponse("Kalibrasyon hatÄ±rlatma kuru Ã§alÄ±ÅŸtÄ±rma (dev).")
 
     # -----------------------------
-    # Checklist Create — Excel alanlarıyla birebir
+    # Checklist Create â€” Excel alanlarÄ±yla birebir
     # -----------------------------
     class ChecklistCreateForm(forms.Form):
-        bulunduğu_bölüm = forms.CharField(label="Bulunduğu bölüm", max_length=120, required=False,
+        bulunduÄŸu_bÃ¶lÃ¼m = forms.CharField(label="BulunduÄŸu bÃ¶lÃ¼m", max_length=120, required=False,
                                            widget=forms.TextInput(attrs={"class": "input-lg"}))
         makine_no = forms.CharField(label="Makine No", max_length=50,
                                     widget=forms.TextInput(attrs={"class": "input-lg"}))
-        makine_adı = forms.CharField(label="Makine Adı", max_length=200,
+        makine_adÄ± = forms.CharField(label="Makine AdÄ±", max_length=200,
                                      widget=forms.TextInput(attrs={"class": "input-lg"}))
-        üretici_firma = forms.CharField(label="Üretici Firma", max_length=200, required=False,
+        Ã¼retici_firma = forms.CharField(label="Ãœretici Firma", max_length=200, required=False,
                                         widget=forms.TextInput(attrs={"class": "input-lg"}))
 
-        bakım_kontrol_periyodu = forms.ChoiceField(
-            label="Bakım / Kontrol Periyodu",
+        bakÄ±m_kontrol_periyodu = forms.ChoiceField(
+            label="BakÄ±m / Kontrol Periyodu",
             choices=MaintenanceChecklistItem.FREQ,
             widget=forms.Select(attrs={"class": "input-lg"})
         )
-        bakım_kontrol_tanımı = forms.CharField(
-            label="Bakım / Kontrol Tanımı",
+        bakÄ±m_kontrol_tanÄ±mÄ± = forms.CharField(
+            label="BakÄ±m / Kontrol TanÄ±mÄ±",
             max_length=200,
             widget=forms.TextInput(attrs={"class": "input-lg"})
         )
 
         existing_equipment = forms.ModelChoiceField(
-            label="(İsteğe bağlı) Mevcut Makine",
+            label="(Ä°steÄŸe baÄŸlÄ±) Mevcut Makine",
             queryset=Equipment.objects.all().order_by("code"),
             required=False
         )
@@ -268,9 +268,9 @@ class MaintenanceAdminSite(AdminSite):
                 eq = form.cleaned_data.get("existing_equipment")
                 if not eq:
                     code = form.cleaned_data["makine_no"].strip()
-                    name = form.cleaned_data["makine_adı"].strip()
-                    area = form.cleaned_data.get("bulunduğu_bölüm", "").strip()
-                    manufacturer = form.cleaned_data.get("üretici_firma", "").strip()
+                    name = form.cleaned_data["makine_adÄ±"].strip()
+                    area = form.cleaned_data.get("bulunduÄŸu_bÃ¶lÃ¼m", "").strip()
+                    manufacturer = form.cleaned_data.get("Ã¼retici_firma", "").strip()
                     eq, _created = Equipment.objects.get_or_create(code=code, defaults={
                         "name": name,
                         "area": area,
@@ -289,8 +289,8 @@ class MaintenanceAdminSite(AdminSite):
                     if changed:
                         eq.save()
 
-                freq = form.cleaned_data["bakım_kontrol_periyodu"]
-                desc = form.cleaned_data["bakım_kontrol_tanımı"].strip()
+                freq = form.cleaned_data["bakÄ±m_kontrol_periyodu"]
+                desc = form.cleaned_data["bakÄ±m_kontrol_tanÄ±mÄ±"].strip()
 
                 MaintenanceChecklistItem.objects.create(
                     equipment=eq,
@@ -316,13 +316,13 @@ class MaintenanceAdminSite(AdminSite):
             path("maintenance/dashboard/", self.admin_view(self.dashboard), name="maintenance-dashboard"),
             path("maintenance/orders/", self.admin_view(self.orders), name="maintenance-orders"),
             path("maintenance/orders/new/", self.admin_view(self.order_create), name="maintenance-order-create"),
+            path("maintenance/equipment/list/", self.admin_view(self.equipment_list), name="maintenance-equipment-list"),
 
             # Makine listesi/ekleme (footer linkleri)
-            # DİKKAT: changelist ile ÇAKIŞMAMASI için 'maintenance/equipment/list/' kullanıyoruz
             path("maintenance/equipment/list/", self.admin_view(self.equipment_list), name="maintenance-equipment-list"),
             path("maintenance/equipment/new/", self.admin_view(self.equipment_create), name="maintenance-equipment-create"),
 
-            # Kalibrasyon menüsü
+            # Kalibrasyon menÃ¼sÃ¼
             path("maintenance/calibrations/", self.admin_view(self.calibration_list), name="maintenance-calibrations"),
             path("maintenance/calibrations/follow/", self.admin_view(self.calibration_follow), name="maintenance-calibration-follow"),
             path("maintenance/calibrations/asset/new/", self.admin_view(self.cal_asset_create), name="maintenance-cal-asset-create"),
@@ -376,3 +376,5 @@ class CalibrationRecordAdmin(admin.ModelAdmin):
     list_filter = ("result", "next_calibration")
     search_fields = ("asset__asset_code", "asset__asset_name", "certificate_no")
 # <<< BLOK SONU: ID:PY-ADM-J611F820
+
+
