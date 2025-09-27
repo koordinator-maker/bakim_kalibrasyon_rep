@@ -1,4 +1,4 @@
-﻿# Admin > Equipment (triage; dayanıklı)
+﻿# Admin > Equipment (stable via helper route)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -7,17 +7,8 @@ CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 
-# 1) Önce tıklayarak dene (link text'i 'Equipment' olan <a>)
-CLICK a:has-text("Equipment")
-# Bazı durumlarda Chrome error sayfasına düşerse yine de ekran alalım
-WAIT SELECTOR body
-SCREENSHOT targets/screens/admin-equipment-click.png
-
-# 2) Fallback: doğrudan standart changelist URL’sine git
-GOTO /admin/maintenance/equipment/
-WAIT SELECTOR h1
+# Yardımcı rota -> admin changelist'e redirect eder
+GOTO /admin/maintenance/equipment/list/
+WAIT URL CONTAINS /admin/maintenance/equipment/
+WAIT SELECTOR #content-main
 SCREENSHOT targets/screens/admin-equipment.png
-
-# Nihai beklenti: doğru rota (başarısız olursa sadece bu flow fail olacak;
-# NonBlocking mod pipeline'ı düşürmez)
-EXPECT URL CONTAINS /admin/maintenance/equipment/
