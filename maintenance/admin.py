@@ -46,3 +46,17 @@ class CalibrationRecordAdmin(admin.ModelAdmin):
     list_display  = ("asset", "last_calibration", "next_calibration", "result", "certificate_no", "total_deviation")
     list_filter   = ("result", "next_calibration")
     search_fields = ("asset__asset_code", "asset__asset_name", "certificate_no")
+# maintenance/admin.py
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment, site=admin_site)
+class EquipmentAdmin(admin.ModelAdmin):
+    def changelist_view(self, request, extra_context=None):
+        resp = super().changelist_view(request, extra_context)
+        try:
+            loc = resp.headers.get('Location')
+        except Exception:
+            loc = None
+        print("[DBG] changelist_view status=", getattr(resp, 'status_code', None), "Location=", loc)
+        return resp

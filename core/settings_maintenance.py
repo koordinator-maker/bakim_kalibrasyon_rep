@@ -32,3 +32,23 @@ if "maintenance.apps.MaintenanceConfig" not in INSTALLED_APPS:
 ROOT_URLCONF = "core.urls"
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
+
+MIDDLEWARE = ['core.mw_no_append_admin.NoAppendSlashForAdmin']
+
+SESSION_COOKIE_SECURE = False
+
+CSRF_COOKIE_SECURE = False
+
+# --- AUTO PATCH (admin redirect loop & required middleware) ---
+APPEND_SLASH = False  # admin altındaki /equipment/ 302 döngülerini kes
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'core.mw_no_append_admin.NoAppendSlashForAdmin',  # CommonMiddleware yerine admin'de append_slash yok
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
