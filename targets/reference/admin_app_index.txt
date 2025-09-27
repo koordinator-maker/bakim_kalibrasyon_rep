@@ -1,0 +1,33 @@
+Skip to main content
+Bakım Kalibrasyon
+WELCOME, ADMIN. VIEW SITE / CHANGE PASSWORD / LOG OUT 
+Toggle theme (current theme: auto)
+Home › Bakım Modülü
+Bakım Modülü administration
+BAKIM MODÜLÜ
+MODEL NAME	ADD LINK	CHANGE OR VIEW LIST LINK
+Calibration records	
+Add
+	
+Change
+
+Equipments	
+Add
+	
+Change
+
+Kalibrasyon Cihazları	
+Add
+	
+Change
+
+Maintenance checklist items	
+Add
+	
+Change
+
+Maintenance orders	
+Add
+	
+Change
+

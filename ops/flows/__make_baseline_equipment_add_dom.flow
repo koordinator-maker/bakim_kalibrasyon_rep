@@ -4,5 +4,7 @@ FILL input#id_username admin
 FILL input#id_password Admin!2345
 CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
-GOTO /admin/maintenance/equipment/
+GOTO /admin/maintenance/equipment/add/
 WAIT SELECTOR body
+DUMPDOM targets/reference/admin_equipment_add.txt
+SCREENSHOT targets/reference/admin_equipment_add.png

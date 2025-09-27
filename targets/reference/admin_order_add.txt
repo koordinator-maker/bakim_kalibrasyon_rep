@@ -1,0 +1,54 @@
+Skip to main content
+Bakım Kalibrasyon
+WELCOME, ADMIN. VIEW SITE / CHANGE PASSWORD / LOG OUT 
+Toggle theme (current theme: auto)
+Home › Bakım Modülü › Maintenance orders › Add maintenance order
+BAKIM MODÜLÜ
+MODEL NAME	ADD LINK	CHANGE OR VIEW LIST LINK
+Calibration records	Add
+Equipments	Add
+Kalibrasyon Cihazları	Add
+Maintenance checklist items	Add
+Maintenance orders	Add
+Add maintenance order
+Equipment:
+---------
+A322 - Kumlama
+FR1 - Ütüleme Fırını
+MC-001 - Hat 1 Makine 1
+MC-002 - Hat 1 Makine 2
+MC-003 - Hat 1 Makine 3
+MC-004 - Hat 2 Makine 4
+MC-005 - Hat 2 Makine 5
+MC-006 - Hat 2 Makine 6
+MC-007 - Hat 3 Makine 7
+Order type:
+Planlı
+Kestirimci
+Arızi
+Title:
+Description:
+Technician:
+Start date:
+
+ Today | 
+Note: You are 3 hours ahead of server time.
+
+Due date:
+
+ Today | 
+Note: You are 3 hours ahead of server time.
+
+Completed at:
+
+Date:  Today | 
+Time:  Now | 
+Note: You are 3 hours ahead of server time.
+
+Status:
+Planlandı
+Tamamlandı
+Gecikmiş
+Duration hours:
+Cost total:
+

@@ -1,0 +1,25 @@
+Skip to main content
+Bakım Kalibrasyon
+WELCOME, ADMIN. VIEW SITE / CHANGE PASSWORD / LOG OUT 
+Toggle theme (current theme: auto)
+Home › Bakım Modülü › Equipments › Add equipment
+BAKIM MODÜLÜ
+MODEL NAME	ADD LINK	CHANGE OR VIEW LIST LINK
+Calibration records	Add
+Equipments	Add
+Kalibrasyon Cihazları	Add
+Maintenance checklist items	Add
+Maintenance orders	Add
+Add equipment
+Code:
+Name:
+Area:
+Üretici Firma:
+Discipline:
+Elektrik
+Mekanik
+Pnömatik
+Criticality:
+1=En kritik, 5=En az kritik
+Is active
+

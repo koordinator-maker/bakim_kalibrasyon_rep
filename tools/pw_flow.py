@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-import os, sys, json, time, re, pathlib, unicodedata, csv, datetime
-from typing import Tuple, Dict, Any
+import os, sys, json, time, re, pathlib, io, math, unicodedata, csv, datetime
+from typing import Tuple, Dict
 from contextlib import contextmanager
 
 from PIL import Image
@@ -58,6 +58,7 @@ def _nowstamp() -> str:
     return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 def _norm_text(s: str) -> str:
+    # Türkçe normalize
     s = s.replace("İ", "i").replace("I", "ı")
     s = s.lower()
     s = unicodedata.normalize("NFKD", s)
@@ -66,9 +67,30 @@ def _norm_text(s: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
-def _tokens(s: str) -> list:
-    s = _norm_text(s)
-    return [t for t in re.split(r"\s+", s) if len(t) >= 2]
+def _tokenize_for_compare(text: str, min_len: int = 3, ignore_numbers: bool = True, ignore_patterns=None):
+    txt = _norm_text(text)
+    toks = [t for t in re.split(r"\s+", txt) if t]
+    out = []
+    regexes = []
+    if ignore_patterns:
+        for pat in ignore_patterns:
+            try:
+                regexes.append(re.compile(pat, re.I))
+            except Exception:
+                pass
+    for t in toks:
+        if len(t) < min_len:
+            continue
+        if ignore_numbers and t.isdigit():
+            continue
+        skip = False
+        for rgx in regexes:
+            if rgx.search(t):
+                skip = True
+                break
+        if not skip:
+            out.append(t)
+    return out
 
 def _ocr_text(img_path: str, lang: str = "tur+eng") -> str:
     if not pytesseract:
@@ -83,6 +105,11 @@ def _page_screenshot(page, out_path: str) -> str:
     path = _abs_path(out_path)
     page.screenshot(path=path, full_page=False)
     return path
+
+def _write_text(path: str, text: str):
+    ap = _abs_path(path)
+    with open(ap, "w", encoding="utf-8") as f:
+        f.write(text if text is not None else "")
 
 # --- Görsel benzerlik: aHash + Hamming ---
 def _ahash_path(path: str, hash_size: int = 8) -> int:
@@ -141,8 +168,7 @@ def browser_ctx(headless: bool, har_path: str = None):
             context = browser.new_context()
         page = context.new_page()
         page.set_default_timeout(30_000)
-        # Auto-close any popup windows (just in case)
-        page.on("popup", lambda p: (p.close() if not p.is_closed() else None))
+        page.on('popup', lambda p: (p.close() if not p.is_closed() else None))
         try:
             yield page, context, browser
         finally:
@@ -186,54 +212,35 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
 
                 elif cmd == "FILL":
                     sp = arg.split(None, 1)
-                    if len(sp) < 2: raise PWError("FILL requires 'selector text'")
+                    if len(sp) < 2:
+                        raise PWError("FILL requires 'selector text'")
                     sel, txt = sp[0], sp[1]
                     page.fill(sel, txt)
 
                 elif cmd == "CLICK":
-                    sel = arg.strip()
-                    href = None
-                    try:
-                        href = page.eval_on_selector(sel, "el => el.getAttribute('href') || (el.href || null)")
-                    except Exception:
-                        pass
-                    page.click(sel)
-                    # kısa bekleme
+                    page.click(arg.strip())
                     try:
                         page.wait_for_load_state("domcontentloaded", timeout=10000)
                     except Exception:
                         pass
-                    # chrome-error ise, href'i absolute yapıp doğrudan git
-                    def _abs_href(h):
-                        if not h: return None
-                        if h.startswith("http://") or h.startswith("https://"): return h
-                        if h.startswith("/"): return BASE_URL + h
-                        return BASE_URL + "/" + h
-                    if page.url.startswith("chrome-error://") and href:
-                        tgt = _abs_href(href)
-                        if tgt:
-                            page.goto(tgt, wait_until="domcontentloaded")
+                    if page.url.startswith("chrome-error://"):
+                        raise PWError("navigation-error")
 
-                elif cmd == "NAVTO":
-                    # NAVTO <css-selector> : selector'dan href al, absolute yap, goto
-                    sel = arg.strip()
-                    href = page.eval_on_selector(sel, "el => el.getAttribute('href') || (el.href || null)")
-                    if not href:
-                        raise PWError(f"NAVTO: selector has no href: {sel}")
-                    if href.startswith("http://") or href.startswith("https://"):
-                        tgt = href
-                    elif href.startswith("/"):
-                        tgt = BASE_URL + href
-                    else:
-                        tgt = BASE_URL + "/" + href
-                    page.goto(tgt, wait_until="domcontentloaded")
+                elif cmd == "DUMPDOM":
+                    path = arg.strip()
+                    try:
+                        text = page.locator("body").inner_text()
+                    except Exception:
+                        text = ""
+                    _write_text(path, text)
 
                 elif cmd == "SCREENSHOT":
                     page.screenshot(path=_abs_path(arg.strip()), full_page=False)
 
                 elif cmd == "SELECT":
                     m = re.match(r"(\S+)\s+(.+)$", arg.strip())
-                    if not m: raise PWError("SELECT needs: <selector> key=value")
+                    if not m:
+                        raise PWError("SELECT needs: <selector> key=value")
                     sel, rest = m.group(1), m.group(2); kv = _parse_kv(rest)
                     if   "label" in kv: page.select_option(sel, label=kv["label"])
                     elif "value" in kv: page.select_option(sel, value=kv["value"])
@@ -242,25 +249,31 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
 
                 elif cmd == "EXPECTTEXT":
                     m = re.match(r"(\S+)\s+(equals|contains)\s+(.+)$", arg.strip(), re.I)
-                    if not m: raise PWError("EXPECTTEXT: '<selector> equals|contains <text>'")
+                    if not m:
+                        raise PWError("EXPECTTEXT: '<selector> equals|contains <text>'")
                     sel, mode, text = m.group(1), m.group(2).lower(), m.group(3)
                     got = page.inner_text(sel).strip()
                     if mode == "equals":
-                        if _norm_text(got) != _norm_text(text): raise AssertionError(f"EXPECTTEXT equals fail: got='{got}' want='{text}'")
+                        if _norm_text(got) != _norm_text(text):
+                            raise AssertionError(f"EXPECTTEXT equals fail: got='{got}' want='{text}'")
                     else:
-                        if _norm_text(text) not in _norm_text(got): raise AssertionError(f"EXPECTTEXT contains fail: got='{got}' want contains '{text}'")
+                        if _norm_text(text) not in _norm_text(got):
+                            raise AssertionError(f"EXPECTTEXT contains fail: got='{got}' want contains '{text}'")
 
                 elif cmd == "EXPECTVALUE":
                     m = re.match(r"(\S+)\s+(.+)$", arg.strip())
-                    if not m: raise PWError("EXPECTVALUE: '<selector> <value>'")
+                    if not m:
+                        raise PWError("EXPECTVALUE: '<selector> <value>'")
                     sel, want = m.group(1), m.group(2)
                     val = page.eval_on_selector(sel, "el => el.value")
-                    if _norm_text(str(val)) != _norm_text(str(want)): raise AssertionError(f"EXPECTVALUE fail: got='{val}' want='{want}'")
+                    if _norm_text(str(val)) != _norm_text(str(want)):
+                        raise AssertionError(f"EXPECTVALUE fail: got='{val}' want='{want}'")
 
                 elif cmd == "AUTOVALIDATE":
                     kv = _parse_kv(arg)
                     key = kv.get("key", "page")
-                    baseline = _abs_path(kv["baseline"]) if "baseline" in kv else None
+                    baseline_img = _abs_path(kv["baseline"]) if "baseline" in kv else None
+                    baseline_txt_path = _abs_path(kv["baseline_text"]) if "baseline_text" in kv else None
                     words_recall = float(kv.get("words_recall", "0.9"))
                     live_source = kv.get("live_source", "dom+ocr").lower()
                     check_selects = kv.get("check_selects", "yes").lower() == "yes"
@@ -268,12 +281,23 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
                     alert_on = kv.get("alert", "on").lower() == "on"
                     alert_dir = kv.get("alert_dir", "_otokodlama/alerts")
 
+                    # token filtreleri
+                    min_token_len = int(kv.get("min_token_len", "3"))
+                    ignore_numbers = kv.get("ignore_numbers", "yes").lower() == "yes"
+                    ignore_patterns_csv = kv.get("ignore_patterns", "")
+                    ignore_patterns = [p for p in (x.strip() for x in ignore_patterns_csv.split(",")) if p]
+
                     reasons = []
                     try:
-                        # 1) Baseline OCR
+                        # 1) Baseline TEXT: varsa dosyadan oku; yoksa baseline görüntü OCR
                         baseline_text = ""
-                        if baseline and os.path.exists(baseline):
-                            baseline_text = _ocr_text(baseline) if pytesseract else ""
+                        if baseline_txt_path and os.path.exists(baseline_txt_path):
+                            try:
+                                baseline_text = open(baseline_txt_path, "r", encoding="utf-8").read()
+                            except Exception:
+                                baseline_text = ""
+                        elif baseline_img and os.path.exists(baseline_img):
+                            baseline_text = _ocr_text(baseline_img) if pytesseract else ""
 
                         # 2) Canlı metin: DOM ve/veya OCR
                         live_texts = []
@@ -287,16 +311,23 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
                         live_shot = f"_otokodlama/alerts/{key}-live-{_nowstamp()}.png"
                         live_shot_abs = _page_screenshot(page, live_shot)
 
-                        # Hata sayfası işareti
                         if page.url.startswith("chrome-error://"):
                             reasons.append("navigation-error")
 
                         if live_source in ("ocr","dom+ocr") and pytesseract:
                             live_texts.append(_ocr_text(live_shot_abs))
 
-                        # 3) Kelime recall (baseline -> canlı)
-                        base_tokens = set(_tokens(baseline_text))
-                        live_tokens = set(_tokens(" ".join(live_texts)))
+                        # 3) Kelime recall (baseline -> canlı), gelişmiş filtre
+                        base_tokens = set(_tokenize_for_compare(
+                            baseline_text, min_len=min_token_len,
+                            ignore_numbers=ignore_numbers,
+                            ignore_patterns=ignore_patterns
+                        ))
+                        live_tokens = set(_tokenize_for_compare(
+                            " ".join(live_texts), min_len=min_token_len,
+                            ignore_numbers=ignore_numbers,
+                            ignore_patterns=ignore_patterns
+                        ))
                         inter = base_tokens & live_tokens if base_tokens else set()
                         recall = (len(inter) / max(1, len(base_tokens))) if base_tokens else 1.0
                         ok_words = (recall >= words_recall)
@@ -304,12 +335,12 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
 
                         # 4) Görsel benzerlik (aHash)
                         ok_vis = True; sim = 1.0
-                        if baseline and os.path.exists(baseline):
-                            sim = _visual_similarity_phash(baseline, live_shot_abs)
+                        if baseline_img and os.path.exists(baseline_img):
+                            sim = _visual_similarity_phash(baseline_img, live_shot_abs)
                             if sim < vis_thresh:
                                 ok_vis = False; reasons.append(f"visual<{vis_thresh:.2f} ({sim:.3f})")
 
-                        # 5) Açılır menü etkileşimi
+                        # 5) Açılır menü etkileşim denetimi
                         ok_selects = True
                         if check_selects:
                             try:
@@ -333,18 +364,25 @@ def run_flow(steps: list, headless: bool=False, har_path: str=None):
 
                         ok = ok_words and ok_vis and ok_selects
                         if alert_on and (not ok):
-                            _write_alert(key, ok, recall, missing, {"baseline": baseline or "(yok)", "live_screenshot": live_shot_abs}, alert_dir, reasons)
+                            _write_alert(key, ok, recall, missing, {
+                                "baseline": baseline_img or "(yok)",
+                                "baseline_text": baseline_txt_path or "(yok)",
+                                "live_screenshot": live_shot_abs
+                            }, alert_dir, reasons)
                         if not ok:
                             raise AssertionError("AUTOVALIDATE FAIL: " + ", ".join(reasons))
 
                     except Exception as e:
-                        # Her durumda fail logu bırak
                         try:
                             live_shot = f"_otokodlama/alerts/{key}-live-{_nowstamp()}.png"
                             live_shot_abs = _page_screenshot(page, live_shot)
                         except Exception:
                             live_shot_abs = "(no-shot)"
-                        _write_alert(key, False, float(recall), missing, {"baseline": baseline or "(yok)", "live_screenshot": live_shot_abs}, alert_dir, reasons + [f"exception:{e}"])
+                        _write_alert(key, False, float(recall), missing, {
+                            "baseline": baseline_img or "(yok)",
+                            "baseline_text": baseline_txt_path or "(yok)",
+                            "live_screenshot": live_shot_abs
+                        }, alert_dir, reasons + [f"exception:{e}"])
                         raise
 
                 else:
@@ -373,7 +411,7 @@ def main():
     ap.add_argument("--steps", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--headful", action="store_true")
-    ap.add_argument("--har", default=None, help="HAR path (optional)")
+    ap.add_argument("--har", default=None, help="HAR dosya yolu (opsiyonel)")
     args = ap.parse_args()
 
     with open(args.steps, "r", encoding="utf-8-sig") as f:
