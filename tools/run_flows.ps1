@@ -8,55 +8,68 @@ $repo = Get-Location
 $outD = Join-Path $repo "_otokodlama\out"
 New-Item -ItemType Directory -Force -Path $outD | Out-Null
 
-# ops/flows altÄ±ndaki tÃ¼m .flow dosyalarÄ±
-$flows = Get-ChildItem "ops\flows\*.flow" -ErrorAction SilentlyContinue | % { $_.FullName }
+# Koşturulacak flow listesi
+$flows = @(
+  "ops\flows\admin_home.flow",
+  "ops\flows\admin_plan.flow",
+  "ops\flows\admin_calibrations.flow",
+  "ops\flows\admin_checklists.flow",
+  "ops\flows\admin_equipment.flow"   # <-- eklendi
+) | Where-Object { Test-Path $_ }
 
-if (-not $flows -or $flows.Count -eq 0) {
-  Write-Host "[FLOWS] no .flow files found, skipping."
-  # rapor boÅŸ da olsa yaz
-  @{ ok=$true; flows=@() } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $outD "flows_report.json") -Encoding utf8
-  exit 0
-}
-
-$allOk = $true
-$report = @{ ok = $true; flows = @() }
+$results = @()
+$anyFail = $false
 
 foreach ($flow in $flows) {
-  $name = [IO.Path]::GetFileNameWithoutExtension($flow)
-  $json = Join-Path $outD ($name + ".json")
-  Write-Host "[FLOW] $flow"
+  $name = [IO.Path]::GetFileName($flow)
+  $stem = [IO.Path]::GetFileNameWithoutExtension($flow)
+  $json = Join-Path $outD ($stem + ".json")
 
+  Write-Host "[FLOW] $flow"
   & python tools\pw_flow.py --steps $flow --out $json
   $rc = $LASTEXITCODE
 
-  if (-not (Test-Path $json)) {
-    Write-Warning "[FLOW] no json produced: $name (rc=$rc)"
-    $allOk = $false
-    $report.flows += @{ name=$name; ok=$false; error="no json"; first_error=$null; out=$null }
-    if ($FailFast -and -not $Soft) { $report.ok=$false; $report | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $outD "flows_report.json") -Encoding utf8; exit 1 }
-    continue
+  $ok = $false
+  $firstErr = $null
+  if (Test-Path $json) {
+    try {
+      $j = Get-Content $json -Raw | ConvertFrom-Json
+      $ok = [bool]$j.ok
+      if (-not $ok -and $j.results) {
+        $firstErr = ($j.results | Where-Object { -not $_.ok } | Select-Object -First 1)
+      }
+    } catch {
+      $ok = $false
+      $firstErr = @{ cmd="PARSE_JSON"; arg=$json; url=""; error=$_.Exception.Message }
+    }
+  } else {
+    $ok = $false
+    $firstErr = @{ cmd="NO_JSON"; arg=$json; url=""; error="json üretilmedi (rc=$rc)" }
   }
 
-  try {
-    $j = Get-Content $json -Raw | ConvertFrom-Json
-    $firstErr = $null
-    if (-not $j.ok) {
-      $allOk = $false
-      $firstErr = @($j.results | Where-Object { -not $_.ok })[0]
-      Write-Warning "[FLOW] FAILED: $name -> $($firstErr.cmd) $($firstErr.arg)"
-    } else {
-      Write-Host "[FLOW] PASSED: $name"
-    }
-    $report.flows += @{ name=$name; ok=$j.ok; first_error=$firstErr; out=$json }
-  } catch {
-    Write-Warning "[FLOW] invalid json: $name -> $($_.Exception.Message)"
-    $allOk = $false
-    $report.flows += @{ name=$name; ok=$false; error="invalid json"; first_error=$null; out=$json }
+  if ($ok) {
+    Write-Host "[FLOW] PASSED: $stem"
+  } else {
+    Write-Warning "[FLOW] FAILED: $stem"
+    $anyFail = $true
+    if ($FailFast -and -not $Soft) { break }
+  }
+
+  $results += [pscustomobject]@{
+    name = $stem
+    flow = $name
+    ok   = $ok
+    out  = ".\_otokodlama\out\$($stem).json"
+    first_error = $firstErr
   }
 }
 
-$report.ok = $allOk
-$report | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $outD "flows_report.json") -Encoding utf8
+# flows_report.json: { "flows": [...] } şeklinde yaz
+@{ flows = $results } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $outD "flows_report.json") -Encoding utf8
 
-# Soft modda asla kÄ±rma, normal modda kÄ±r
-if ($Soft) { exit 0 } else { if ($allOk) { exit 0 } else { exit 1 } }
+if ($Soft) {
+  # Non-blocking modda her zaman 0 ile çık
+  exit 0
+} else {
+  if ($anyFail) { exit 1 } else { exit 0 }
+}

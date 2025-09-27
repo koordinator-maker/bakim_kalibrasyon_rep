@@ -7,10 +7,10 @@ CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 
-# Linke tıkla ve ekranı kaydet
+# Admin ana sayfadan Equipment linkine tıkla (direkt GOTO yerine)
 CLICK text=Equipment
+WAIT SELECTOR h1
 SCREENSHOT targets/screens/admin-equipment.png
 
-# Beklenen rota: /admin/maintenance/equipment/
-# (Yanlışsa step FAIL olur ama pipeline’ı patlatmayacağız)
+# Yalnızca raporda görünsün diye beklenti (başarısız olursa flow failed olur; NonBlocking pipeline kırmayacak)
 EXPECT URL CONTAINS /admin/maintenance/equipment/

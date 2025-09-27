@@ -79,7 +79,11 @@ if (-not $rep) {
 $flows_ok = $true
 $flows_rc = $null
 if (-not $SkipFlows -and (Test-Path $runflows)) {
-  & powershell -NoProfile -ExecutionPolicy Bypass -File $runflows -FailFast:(!$NonBlocking) -Soft:$NonBlocking
+  if ($NonBlocking) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $runflows -Soft
+  } else {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $runflows -FailFast
+  }
   $flows_rc = $LASTEXITCODE
   $flows_ok = ($NonBlocking) -or ($flows_rc -eq 0)
 }
@@ -126,4 +130,5 @@ if ($pass) {
   Write-Host  "See log: $logPath"
   exit 1
 }
+
 
