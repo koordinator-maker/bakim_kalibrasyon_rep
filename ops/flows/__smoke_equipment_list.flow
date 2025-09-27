@@ -6,5 +6,3 @@ CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 GOTO /admin/maintenance/equipment/
 WAIT SELECTOR body
-DUMPDOM targets/reference/admin_equipment_list.txt
-SCREENSHOT targets/reference/admin_equipment_list.png

@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 core/settings_maintenance.py
-Base settings'i miras alÃƒâ€Ã‚Â±r, 'maintenance' app'ini tekilleÃƒâ€¦Ã…Â¸tirir ve custom admin urlconf'u tanÃƒâ€Ã‚Â±mlar.
+Base settings'i miras alÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±r, 'maintenance' app'ini tekilleÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸tirir ve custom admin urlconf'u tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar.
 """
 
 from .settings import *  # noqa
@@ -11,7 +11,7 @@ def _normalize_installed(apps):
     out = []
     seen = set()
     for app in apps:
-        # 'maintenance' veya 'maintenance.apps.MaintenanceConfig' geldiÃƒâ€Ã…Â¸inde
+        # 'maintenance' veya 'maintenance.apps.MaintenanceConfig' geldiÃƒÆ’Ã¢â‚¬ÂÃƒâ€¦Ã‚Â¸inde
         # tek bir canonical entry'ye indiriyoruz:
         if app in ("maintenance", "maintenance.apps.MaintenanceConfig"):
             key = "maintenance.apps.MaintenanceConfig"
@@ -23,7 +23,7 @@ def _normalize_installed(apps):
     return out
 
 
-# TekilleÃƒâ€¦Ã…Â¸tir
+# TekilleÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸tir
 INSTALLED_APPS = _normalize_installed(INSTALLED_APPS)
 if "maintenance.apps.MaintenanceConfig" not in INSTALLED_APPS:
     INSTALLED_APPS.insert(0, "maintenance.apps.MaintenanceConfig")
@@ -40,7 +40,7 @@ SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
 # --- AUTO PATCH (admin redirect loop & required middleware) ---
-APPEND_SLASH = False  # admin altÃ„Â±ndaki /equipment/ 302 dÃƒÂ¶ngÃƒÂ¼lerini kes
+APPEND_SLASH = False  # admin altÃƒâ€Ã‚Â±ndaki /equipment/ 302 dÃƒÆ’Ã‚Â¶ngÃƒÆ’Ã‚Â¼lerini kes
 ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
 
 MIDDLEWARE = [
@@ -88,6 +88,22 @@ ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (canonical redirect middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    # Kanonik admin liste isteklerini erken yakala:
+    'core.mw_admin_canonical.AdminEquipmentCanonicalRedirectMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
