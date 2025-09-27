@@ -1,11 +1,11 @@
-param(
+﻿param(
   [string]$BindHost = "127.0.0.1",
   [int]$Port = 8000,
   [string]$NextCard = ".\ops\next_ok_runcard.txt",
   [switch]$NoAccept,
   [switch]$DryRun,
   [switch]$SkipFlows
-)
+, [switch]$NonBlocking)
 $ErrorActionPreference = "Stop"
 
 $root    = Get-Location
@@ -15,7 +15,7 @@ $accept  = Join-Path $PSScriptRoot "accept_visual.ps1"
 $runflows= Join-Path $PSScriptRoot "run_flows.ps1"
 New-Item -ItemType Directory -Force -Path $statusD | Out-Null
 
-# 1) Pipeline (fail-safe) ve çıktıyı yakala
+# 1) Pipeline (fail-safe) ve Ã§Ä±ktÄ±yÄ± yakala
 $oldEap = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
 try {
@@ -41,7 +41,7 @@ try {
   }
 } catch {}
 
-# 3) Rapor: layout_report.json varsa onu kullan; yoksa stdout’tan parse et
+# 3) Rapor: layout_report.json varsa onu kullan; yoksa stdoutâ€™tan parse et
 $repPath = Join-Path $root "layout_report.json"
 $rep = $null
 if (Test-Path $repPath) {
@@ -79,16 +79,16 @@ if (-not $rep) {
 $flows_ok = $true
 $flows_rc = $null
 if (-not $SkipFlows -and (Test-Path $runflows)) {
-  & powershell -NoProfile -ExecutionPolicy Bypass -File $runflows -FailFast
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $runflows -FailFast:(!$NonBlocking) -Soft:$NonBlocking
   $flows_rc = $LASTEXITCODE
-  $flows_ok = ($flows_rc -eq 0)
+  $flows_ok = ($NonBlocking) -or ($flows_rc -eq 0)
 }
 
-# 5) PASS kararı
+# 5) PASS kararÄ±
 $layout_ok = ($rep.similarity -ge $auto) -and ($rep.tests_ok -eq $true) -and ($rep.improvements_ok -eq $true)
 $pass = $layout_ok -and $flows_ok
 
-# 6) Baseline accept (isteğe bağlı)
+# 6) Baseline accept (isteÄŸe baÄŸlÄ±)
 if ($pass -and -not $NoAccept) {
   try { & powershell -NoProfile -ExecutionPolicy Bypass -File $accept | Out-Host } catch { Write-Warning "[ACCEPT] failed: $($_.Exception.Message)" }
 }
@@ -126,3 +126,4 @@ if ($pass) {
   Write-Host  "See log: $logPath"
   exit 1
 }
+
