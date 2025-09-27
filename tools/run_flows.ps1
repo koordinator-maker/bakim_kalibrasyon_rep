@@ -70,6 +70,54 @@ foreach ($flow in $flows) {
   }
 }
 
+elif cmd == "SELECT":
+    # SELECT select#id_order_type label=Planlı
+    # SELECT select#id_order_type value=PLN
+    # SELECT select#id_equipment index=1
+    parts = arg.split()
+    if not parts:
+        raise PWError("SELECT requires arguments")
+    sel = parts[0]
+    kv = {}
+    for p in parts[1:]:
+        if "=" in p:
+            k, v = p.split("=", 1)
+            kv[k.strip().lower()] = v.strip()
+    if not kv:
+        raise PWError("SELECT needs value=... or label=... or index=...")
+    opt = {}
+    if "value" in kv: opt["value"] = kv["value"]
+    if "label" in kv: opt["label"] = kv["label"]
+    if "index" in kv: opt["index"] = int(kv["index"])
+    page.select_option(sel, opt)
+
+elif cmd == "EXPECTTEXT":
+    # EXPECTTEXT label[for="id_title"] equals Başlık
+    # EXPECTTEXT label[for="id_title"] contains Başlık
+    parts = arg.split(None, 2)
+    if len(parts) < 3:
+        raise PWError("EXPECTTEXT <selector> <equals|contains> <text>")
+    sel, mode, text = parts[0], parts[1].lower(), parts[2]
+    actual = page.inner_text(sel).strip()
+    if mode in ("equals", "=="):
+        if actual != text:
+            raise AssertionError(f'EXPECTTEXT equals failed: "{actual}" != "{text}"')
+    elif mode in ("contains", "~="):
+        if text not in actual:
+            raise AssertionError(f'EXPECTTEXT contains failed: "{text}" not in "{actual}"')
+    else:
+        raise PWError(f"Unsupported EXPECTTEXT mode: {mode}")
+
+elif cmd == "EXPECTVALUE":
+    # EXPECTVALUE #id_order_type PLN
+    parts = arg.split(None, 1)
+    if len(parts) < 2:
+        raise PWError("EXPECTVALUE <selector> <expected>")
+    sel, expected = parts[0], parts[1]
+    val = page.locator(sel).input_value()
+    if val != expected:
+        raise AssertionError(f'EXPECTVALUE failed: "{val}" != "{expected}"')
+
 # flows_report.json: { "flows": [...] }
 @{ flows = $results } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $outD "flows_report.json") -Encoding utf8
 
