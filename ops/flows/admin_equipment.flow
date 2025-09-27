@@ -1,10 +1,5 @@
-﻿# Admin > Equipment (idempotent login)
+# Admin > Equipment (fresh session login)
 
-# Her koşulda önce çıkış yap (oturum varsa temizler)
-GOTO /admin/logout/
-WAIT URL CONTAINS /admin/
-
-# Sonra login sayfasına git ve giriş yap
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -13,8 +8,8 @@ CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 
-# Yardımcı rota: admin changelist'e redirect eder (stabil)
-GOTO /admin/maintenance/equipment/list/
+# Doğrudan changelist
+GOTO /admin/maintenance/equipment/
 WAIT URL CONTAINS /admin/maintenance/equipment/
 WAIT SELECTOR #content-main
 SCREENSHOT targets/screens/admin-equipment.png
