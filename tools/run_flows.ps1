@@ -1,4 +1,4 @@
-param(
+﻿param(
   [switch]$FailFast,
   [switch]$Soft
 )
@@ -8,13 +8,18 @@ $repo = Get-Location
 $outD = Join-Path $repo "_otokodlama\out"
 New-Item -ItemType Directory -Force -Path $outD | Out-Null
 
+# BASE_URL garanti olsun (pipeline set ediyorsa bunu kullanır)
+if (-not $env:BASE_URL -or [string]::IsNullOrWhiteSpace($env:BASE_URL)) {
+  $env:BASE_URL = "http://127.0.0.1:8010"
+}
+
 # Koşturulacak flow listesi
 $flows = @(
   "ops\flows\admin_home.flow",
   "ops\flows\admin_plan.flow",
   "ops\flows\admin_calibrations.flow",
   "ops\flows\admin_checklists.flow",
-  "ops\flows\admin_equipment.flow"   # <-- eklendi
+  "ops\flows\admin_equipment.flow"
 ) | Where-Object { Test-Path $_ }
 
 $results = @()
@@ -26,6 +31,7 @@ foreach ($flow in $flows) {
   $json = Join-Path $outD ($stem + ".json")
 
   Write-Host "[FLOW] $flow"
+  # Not: pw_flow.py BASE_URL ortam değişkenini kullanır
   & python tools\pw_flow.py --steps $flow --out $json
   $rc = $LASTEXITCODE
 
@@ -64,11 +70,10 @@ foreach ($flow in $flows) {
   }
 }
 
-# flows_report.json: { "flows": [...] } şeklinde yaz
+# flows_report.json: { "flows": [...] }
 @{ flows = $results } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $outD "flows_report.json") -Encoding utf8
 
 if ($Soft) {
-  # Non-blocking modda her zaman 0 ile çık
   exit 0
 } else {
   if ($anyFail) { exit 1 } else { exit 0 }

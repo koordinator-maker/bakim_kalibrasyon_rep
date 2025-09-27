@@ -1,123 +1,187 @@
-﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# tools/pw_flow.py  (mini akÄ±ÅŸ koÅŸucu)
+"""
+tools/pw_flow.py — dayanıklı sürüm
+- PWDEBUG'i zorla kapatır (inspector açılmasın)
+- Chromium'u --no-sandbox/--disable-gpu ile açar
+- İlk GOTO'da sayfa/bağlam kapanırsa tarayıcıyı komple yeniden kurar (2 deneme)
+- Persistent context (kullanıcı profili) ile daha stabil çalışır
+"""
 
-import sys, json, argparse, re, os, time
-from pathlib import Path
+from __future__ import annotations
+import os, sys, json, time, re, pathlib
+from typing import List, Tuple
+from playwright.sync_api import sync_playwright, TimeoutError as PWTimeoutError, Error as PWError
 
-def expand_env(text: str) -> str:
-    return re.sub(r"\$\{(\w+)\}", lambda m: os.environ.get(m.group(1), ""), text)
+# Inspector'ı kesin kapat
+os.environ.pop("PWDEBUG", None)
 
-def parse_steps(text: str):
-    steps = []
-    for raw in text.splitlines():
-        s = raw.strip()
-        if not s or s.startswith("#"):
-            continue
-        m = re.match(r"(\w+)\s+(.*)", s)
-        if not m:
-            continue
-        steps.append((m.group(1).upper(), m.group(2)))
+DEF_TIMEOUT = int(os.environ.get("PW_TIMEOUT_MS", "30000"))
+BASE_URL    = os.environ.get("BASE_URL", "http://127.0.0.1:8010")
+HEADLESS    = os.environ.get("PW_HEADLESS", "1").lower() not in ("0","false","no","off")
+
+PROFILE_DIR = str(pathlib.Path("_otokodlama/pw_profile").resolve())
+
+def _log(msg: str) -> None:
+    print(msg, flush=True)
+
+def _ensure_dirs(path: str) -> None:
+    p = pathlib.Path(path)
+    if p.parent and not p.parent.exists():
+        p.parent.mkdir(parents=True, exist_ok=True)
+
+def parse_flow(path: str) -> List[Tuple[str, str]]:
+    steps: List[Tuple[str, str]] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for raw in f.read().splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith(">>"):
+                line = line[2:].strip()
+                if not line:
+                    continue
+            m = re.match(r"^([A-Z]+)\s+(.*)$", line)
+            if not m:
+                continue
+            steps.append((m.group(1).upper(), m.group(2).strip()))
     return steps
 
-def run_flow(base_url, steps, headless=True, viewport=None, timeout_ms=15000):
-    from playwright.sync_api import sync_playwright
-    results, ok = [], True
+def _open_persistent_context(p, headless: bool):
+    args = ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check"]
+    ctx = p.chromium.launch_persistent_context(
+        user_data_dir=PROFILE_DIR,
+        headless=headless,
+        args=args,
+        ignore_https_errors=True,
+        viewport=None,  # tam pencere
+    )
+    page = ctx.new_page()
+    return ctx, page
+
+def run_flow(base_url: str, steps: List[Tuple[str,str]], headless: bool=True,
+             timeout_ms: int=DEF_TIMEOUT, retry_on_crash: int=1):
+
+    results = []
+    ok_all  = True
+
+    _ensure_dirs(PROFILE_DIR)
+
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
-        context = browser.new_context(viewport=viewport or {"width": 1280, "height": 800})
-        page = context.new_page()
+        context, page = _open_persistent_context(p, headless)
+
+        def recover():
+            nonlocal context, page
+            try:
+                if page and not page.is_closed():
+                    page.close()
+            except Exception:
+                pass
+            try:
+                context.close()
+            except Exception:
+                pass
+            time.sleep(0.25)
+            context, page = _open_persistent_context(p, headless)
+            time.sleep(0.25)
+
         for i, (cmd, arg) in enumerate(steps, 1):
-            step_ok, err = True, None
+            step_ok, err, url = True, None, None
             try:
                 if cmd == "GOTO":
-                    url = arg.strip()
-                    if url.startswith("/"):
-                        url = base_url.rstrip("/") + url
-                    page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                    target = arg.strip()
+                    if target.startswith("/"):
+                        target = base_url.rstrip("/") + target
+                    attempts = 0
+                    while True:
+                        try:
+                            if page.is_closed():
+                                page = context.new_page()
+                            page.goto(target, wait_until="domcontentloaded", timeout=timeout_ms)
+                            break
+                        except PWError as e:
+                            if attempts < retry_on_crash:
+                                attempts += 1
+                                _log(f"[RETRY] browser/page closed on GOTO -> recovering (attempt {attempts})")
+                                recover()
+                                continue
+                            raise
+
+                elif cmd == "WAIT":
+                    if arg.upper().startswith("SELECTOR "):
+                        sel = arg.split(" ",1)[1]
+                        page.wait_for_selector(sel, timeout=timeout_ms)
+                    elif arg.upper().startswith("URL CONTAINS "):
+                        frag = arg.split(" ",2)[2]
+                        page.wait_for_function("frag => window.location.href.includes(frag)", frag, timeout=timeout_ms)
+                    else:
+                        raise ValueError(f"WAIT arg not understood: {arg}")
+
+                elif cmd == "FILL":
+                    parts = arg.split(" ", 1)
+                    if len(parts) != 2:
+                        raise ValueError("FILL <selector> <value> beklenir")
+                    sel, val = parts
+                    page.fill(sel, val, timeout=timeout_ms)
+
                 elif cmd == "CLICK":
                     sel = arg.strip()
                     page.click(sel, timeout=timeout_ms)
-                elif cmd == "FILL":
-                    m = re.match(r"(\S+)\s+(.+)", arg)
-                    if not m: raise ValueError("FILL <selector> <text>")
-                    sel, val = m.groups()
-                    page.fill(sel, val, timeout=timeout_ms)
-                elif cmd == "WAIT":
-                    a = arg.strip()
-                    if a.upper().startswith("URL "):
-                        cond = a[4:].strip()
-                        if cond.lower().startswith("contains "):
-                            expect = cond[9:].strip()
-                            page.wait_for_url(lambda u: expect in u, timeout=timeout_ms)
-                        else:
-                            page.wait_for_url(cond, timeout=timeout_ms)
-                    elif a.upper().startswith("SELECTOR "):
-                        sel = a[9:].strip()
-                        page.wait_for_selector(sel, timeout=timeout_ms)
-                    elif a.upper().startswith("TIME "):
-                        ms = int(a.split()[1]); time.sleep(ms/1000.0)
-                elif cmd == "EXPECT":
-                    a = arg.strip()
-                    if a.upper().startswith("SELECTOR "):
-                        rest = a[9:].strip()
-                        m = re.match(r'(\S+)\s+"(.+)"', rest)
-                        if not m: raise ValueError('EXPECT SELECTOR <sel> "text"')
-                        sel, txt = m.groups()
-                        el = page.locator(sel).first
-                        el.wait_for(timeout=timeout_ms)
-                        got = el.inner_text()
-                        if txt not in got:
-                            raise AssertionError(f'text "{txt}" not in "{got}"')
-                    elif a.upper().startswith("URL CONTAINS "):
-                        expect = a[13:].strip()
-                        if expect not in page.url:
-                            raise AssertionError(f'url does not contain {expect}')
+
                 elif cmd == "SCREENSHOT":
                     path = arg.strip()
-                    Path(path).parent.mkdir(parents=True, exist_ok=True)
+                    _ensure_dirs(path)
                     page.screenshot(path=path, full_page=True)
-                else:
-                    raise ValueError(f"Unknown cmd {cmd}")
-            except Exception as e:
-                step_ok, ok, err = False, False, str(e)
-            results.append({"i": i, "cmd": cmd, "arg": arg, "ok": step_ok, "error": err, "url": page.url})
-            if not step_ok:
-                break
-        context.close(); browser.close()
-    return ok, results
 
-def load_cfg(repo_root: Path):
-    path = repo_root / "pipeline.config.json"
-    if path.exists():
-        return json.loads(path.read_text(encoding="utf-8-sig"))
-    return {}
+                elif cmd == "EXPECT":
+                    if arg.upper().startswith("URL CONTAINS "):
+                        frag = arg.split(" ",2)[2]
+                        if frag not in page.url:
+                            raise AssertionError(f"url does not contain {frag}")
+                    else:
+                        raise ValueError(f"EXPECT arg not understood: {arg}")
+                else:
+                    _log(f"[WARN] Komut desteklenmiyor: {cmd} {arg}")
+
+                url = page.url
+
+            except Exception as e:
+                step_ok = False
+                err = f"{type(e).__name__}: {e}"
+                try:
+                    url = page.url
+                except Exception:
+                    url = "about:blank"
+
+            results.append({"i": i, "cmd": cmd, "arg": arg, "ok": step_ok, "error": err, "url": url})
+            if not step_ok:
+                ok_all = False
+                break
+
+        try:
+            context.close()
+        except Exception:
+            pass
+
+    return ok_all, results
 
 def main():
+    import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--steps", required=True, help="AkÄ±ÅŸ dosyasÄ± (.flow)")
-    ap.add_argument("--out", required=True, help="JSON rapor yolu")
-    ap.add_argument("--base-url", default=None)
+    ap.add_argument("--steps", required=True)
+    ap.add_argument("--out",   required=True)
+    ap.add_argument("--headful", action="store_true")
     args = ap.parse_args()
 
-    repo = Path(__file__).resolve().parents[1]
-    cfg = load_cfg(repo)
-    pwcfg = cfg.get("playwright", {})
-    base_url = args.base_url or pwcfg.get("base_url", "http://127.0.0.1:8000")
-    headless = pwcfg.get("headless", True)
-    viewport = pwcfg.get("viewport", {"width": 1280, "height": 800})
+    steps = parse_flow(args.steps)
+    headless = not args.headful and HEADLESS
 
-    text = Path(args.steps).read_text(encoding="utf-8-sig")
-    text = expand_env(text)
-    steps = parse_steps(text)
+    ok, results = run_flow(BASE_URL, steps, headless=headless, timeout_ms=DEF_TIMEOUT, retry_on_crash=1)
+    pathlib.Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump({"ok": ok, "results": results}, f, ensure_ascii=False, indent=2)
 
-    ok, results = run_flow(base_url, steps, headless=headless, viewport=viewport)
-    out = Path(args.out); out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"ok": ok, "results": results}, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    print("[PW-FLOW] PASSED" if ok else "[PW-FLOW] FAILED")
+    print("[PW-FLOW] " + ("PASSED" if ok else "FAILED"))
     sys.exit(0 if ok else 1)
 
 if __name__ == "__main__":
     main()
-

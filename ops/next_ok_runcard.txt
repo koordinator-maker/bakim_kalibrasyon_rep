@@ -9,7 +9,7 @@ git tag $tag
 git push origin $tag
 
 # 3) (opsiyonel) revstamp
-ps> git rev
+
 
 
 
