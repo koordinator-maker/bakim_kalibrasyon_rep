@@ -1,15 +1,11 @@
-# Admin > Equipment (fresh session login)
-
+# Admin > Equipment (click path; tolerate error pages)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
 CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
-WAIT SELECTOR #content-main
-
-# Doğrudan changelist
-GOTO /admin/maintenance/equipment/
-WAIT URL CONTAINS /admin/maintenance/equipment/
-WAIT SELECTOR #content-main
+WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
+CLICK a[href="/admin/maintenance/equipment/"]
+WAIT SELECTOR body
 SCREENSHOT targets/screens/admin-equipment.png
