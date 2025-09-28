@@ -65,7 +65,7 @@ foreach ($f in $files) {
     $raw = [IO.File]::ReadAllText($f.FullName, [Text.UTF8Encoding]::new($true))
   }
   try {
-    $j = $raw | ConvertFrom-Json -Depth 32
+    $j = $raw | ConvertFrom-Json
   } catch {
     $rows += [pscustomobject]@{
       Flow=[IO.Path]::GetFileNameWithoutExtension($f.Name); Pass=$false; FirstFailStep=''; Cmd='';
@@ -165,3 +165,4 @@ Write-Host ""
 Write-Host ("CSV : " + $csvPath)
 Write-Host ("JSON: " + $jsonPath)
 Write-Host ("MD  : " + $mdPath)
+

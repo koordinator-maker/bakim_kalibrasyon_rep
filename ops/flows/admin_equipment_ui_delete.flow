@@ -4,19 +4,16 @@ FILL input#id_username admin
 FILL input#id_password Admin!2345
 CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
-GOTO /admin/maintenance/equipment/_direct/
-WAIT SELECTOR form#changelist-search input[name=q]
-FILL form#changelist-search input[name=q] EQ-CRUD-UI
-PRESS form#changelist-search input[name=q] Enter
+GOTO /admin/maintenance/equipment/_direct/?q=EQ-CRUD-UI
+WAIT SELECTOR body
+DUMPDOM _otokodlama/debug/delete_list_dom.txt
+SCREENSHOT _otokodlama/debug/delete_list.png
 WAIT SELECTOR table#result_list tbody tr:first-child th > a
 CLICK table#result_list tbody tr:first-child th > a
 WAIT SELECTOR a.deletelink
 CLICK a.deletelink
 WAIT SELECTOR form[action$="/delete/"] input[type=submit]
 CLICK form[action$="/delete/"] input[type=submit]
-WAIT SELECTOR .messagelist .success
-SCREENSHOT targets/reference/admin_equipment_delete_success.png
-
-
-
-
+WAIT SELECTOR .messagelist
+DUMPDOM _otokodlama/debug/delete_after_confirm_dom.txt
+SCREENSHOT _otokodlama/debug/delete_after_confirm.png

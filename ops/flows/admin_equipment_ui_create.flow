@@ -9,8 +9,6 @@ WAIT SELECTOR form#equipment_form
 FILL input#id_code EQ-CRUD-UI
 FILL input#id_name UI CRUD Cihazi 1
 CLICK input[name=_save]
-WAIT SELECTOR table#result_list`nWAIT SELECTOR .messagelist
-SCREENSHOT targets/reference/admin_equipment_create_success.png
-
-
-
+WAIT SELECTOR .messagelist
+DUMPDOM _otokodlama/debug/create_after_save_dom.txt
+SCREENSHOT _otokodlama/debug/create_after_save.png
