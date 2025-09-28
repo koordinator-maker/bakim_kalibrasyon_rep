@@ -1,60 +1,33 @@
 ﻿param(
-  [Parameter(Mandatory=$true)][string]$Steps,
-  [Parameter(Mandatory=$true)][string]$Out,
-  [string]$ExtraArgs = "",
-  [string]$Har = ""
+  [Parameter(Mandatory=$true)][string]$flow,         # .flow dosyasının tam yolu
+  [Parameter(Mandatory=$true)][string]$outPath,      # JSON çıktı yolu
+  [string]$BaseUrl = "http://127.0.0.1:8010",        # BASE_URL env
+  [string]$ExtraArgs = ""                            # pw_flow.py'ye ham argümanlar ("--timeout 5000" gibi)
 )
 
-$null = New-Item -ItemType Directory -Force -Path (Split-Path $Out) -ErrorAction SilentlyContinue
-$logPath = [IO.Path]::ChangeExtension($Out,'log')
+$ErrorActionPreference = "Stop"
 
-# Çalıştır ve stdout+stderr yakala
-$psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName = "python"
-$argsCore = "tools\pw_flow.py --steps `"$Steps`" --out `"$Out`""
-if ($Har -ne "") { $argsCore += " --har `"$Har`"" }
-if ($ExtraArgs -ne "") { $argsCore += " " + $ExtraArgs }
-$psi.Arguments = $argsCore
-$psi.RedirectStandardOutput = $true
-$psi.RedirectStandardError  = $true
-$psi.UseShellExecute = $false
-$p = [System.Diagnostics.Process]::Start($psi)
-$stdout = $p.StandardOutput.ReadToEnd()
-$stderr = $p.StandardError.ReadToEnd()
-$p.WaitForExit()
-"$stdout`n$stderr" | Out-File $logPath -Encoding utf8
+# Ortam değişkenleri
+$env:BASE_URL = $BaseUrl
+$env:PYTHONUNBUFFERED = "1"
 
-# JSON geçerli mi?
-$needFix = $true
-if (Test-Path $Out) {
-  try { $tmp = Get-Content $Out -Raw -Encoding UTF8 | ConvertFrom-Json; $needFix = $false } catch { $needFix = $true }
+# Çıktı klasörünü garanti et
+$op = Split-Path -Parent $outPath
+if ($op -and -not (Test-Path $op)) { New-Item -ItemType Directory -Force -Path $op | Out-Null }
+
+# Extra argümanları güvenli diziye çevir
+$ea = @()
+if ($ExtraArgs) {
+  # whitespace'e göre böl (ör: "--timeout 5000")
+  $ea = $ExtraArgs -split '\s+'
 }
 
-# Gerekirse fallback JSON yaz
-if ($needFix) {
-  $errSnip = ($stderr + " " + $stdout) -replace "\s+"," "
-  if ($errSnip.Length -gt 1200) { $errSnip = $errSnip.Substring(0,1200) }
-  $fallback = @{
-    ok = $false
-    results = @()
-    tool_error = $errSnip
-  } | ConvertTo-Json
-  $fallback | Out-File $Out -Encoding utf8
-}
+# Python çağrısı (doğrudan, güvenli)
+Write-Host ("[run_and_guard] python tools\pw_flow.py --steps {0} --out {1} {2}" -f $flow, $outPath, ($ea -join " "))
+& python -u "tools\pw_flow.py" --steps $flow --out $outPath @ea
+$exitCode = $LASTEXITCODE
 
-# Yazdıktan sonra tekrar doğrula; parse edilemiyorsa minimum JSON'a düş
-$recheckInvalid = $false
-try { $null = (Get-Content $Out -Raw -Encoding UTF8) | ConvertFrom-Json } catch { $recheckInvalid = $true }
-if ($recheckInvalid) {
-  $min = '{"ok": false, "results": [], "tool_error": "fallback-json-parse-failed"}'
-  [IO.File]::WriteAllText($Out, $min, [Text.UTF8Encoding]::new($false))
-}
+# Guard tarzı bilgi satırı (izleme kolaylığı için)
+if (Test-Path $outPath) { Write-Host "[guard] wrote: $outPath" }
 
-Write-Host "[guard] wrote: $Out"
-
-
-
-
-
-
-
+exit $exitCode

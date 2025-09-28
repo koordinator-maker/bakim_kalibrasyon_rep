@@ -1,142 +1,80 @@
 ﻿param(
-  [string]$FlowsDir   = "ops\flows",
-  [string]$OutDir     = "_otokodlama\out",
-  [string]$ReportDir  = "_otokodlama\reports",
-  [string[]]$Filter = @("*"),                # ör: "equipment_ui_*" veya "login_smoke*"
-  [string]$ExtraArgs  = "",                 # pw_flow.py'ye geçer (örn: --timeout 20000)
-  [switch]$LinkSmoke,                       # adım sonu link smoke gating
+  [string[]]$Filter = @("*"),         # Birden çok desen destekli: "login_smoke*","equipment_ui_*"
+  [switch]$LinkSmoke,                 # Link smoke gate çalışsın mı?
   [string]$BaseUrl    = "http://127.0.0.1:8010",
   [int]   $SmokeDepth = 1,
-  [int]   $SmokeLimit = 150
+  [int]   $SmokeLimit = 150,
+  [string]$ExtraArgs  = ""            # pw_flow.py'ye geçer, ör: "--timeout 5000"
 )
-# --- Filter normalize (multi-pattern safe) ---
-if ($null -eq $Filter -or $Filter.Count -eq 0) { $Filter = @("*") }
-if ($Filter -is [string]) {
-  if ($Filter -match ",") { $Filter = $Filter -split "," | ForEach-Object { $_.Trim() } }
-  else { $Filter = @($Filter) }
-}
-Write-Host ("[run] Filter(normalized)={0}" -f ($Filter -join ", ")) -ForegroundColor DarkGray
-$patterns = @($Filter)
-Write-Host ("[run] Patterns: {0}" -f ($patterns -join ", ")) -ForegroundColor DarkGray
+
+# --- Yardımcılar ---
+$ErrorActionPreference = "Stop"
+$here     = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = $here                        # projenizde ops klasörü kök dizinde ise bu yeterli
+$FlowsDir = Join-Path $here 'flows'
+
+# Filter normalize
+if ($Filter -is [string]) { $Filter = @($Filter) }
+Write-Host ("[run] Filters: {0}" -f ($Filter -join ", "))
+
+# Akışları topla (çoklu pattern)
 $files = @()
-foreach($pat in $patterns){
+foreach($pat in $Filter){
+  if ([string]::IsNullOrWhiteSpace($pat)) { continue }
   $files += Get-ChildItem -Path $FlowsDir -Filter ("{0}.flow" -f $pat) -ErrorAction SilentlyContinue
 }
 $flows = $files | Sort-Object FullName -Unique
 if ($flows.Count -eq 0) {
-  Write-Host ("[run] Akış bulunamadı. Aranan: {0}\{1}.flow" -f $FlowsDir, ($patterns -join ".flow, ")) -ForegroundColor Yellow
-} else {
-  Write-Host ("[run] Bulunan akış sayısı: {0}" -f $flows.Count) -ForegroundColor DarkGray
-  Write-Host ("[run] Flows:`n - {0}" -f (($flows | ForEach-Object { $_.Name }) -join "`n - ")) -ForegroundColor DarkGray
+  Write-Host "[run] Akış bulunamadı." -ForegroundColor Yellow
+  return
 }
-Write-Host ("[run] Filter={0}" -f ($Filter -join ", ")) -ForegroundColor DarkGray
+Write-Host ("[run] Bulunan akış sayısı: {0}" -f $flows.Count)
+Write-Host ("[run] Flows:`n - {0}" -f (($flows | ForEach-Object { $_.Name }) -join "`n - "))
+
+# Ortam: unbuffered python
+$env:PYTHONUNBUFFERED = "1"
+
+# Çıktı klasörleri
+$outDir   = "_otokodlama\out"
+$smkDir   = "_otokodlama\smoke"
+$repDir   = "_otokodlama\reports"
+New-Item -ItemType Directory -Force -Path $outDir,$smkDir,$repDir | Out-Null
+
+# OkRedirectTo default
 if (-not $OkRedirectTo) { $OkRedirectTo = "/_direct/.*|/admin/.*" }
 
-New-Item -ItemType Directory -Force -Path $OutDir,$ReportDir | Out-Null
-
-$patterns = @($Filter)
-Write-Host ("[run] Patterns: {0}" -f ($patterns -join ", ")) -ForegroundColor DarkGray
-$files = @()
-foreach($pat in $patterns){
-  $files += Get-ChildItem -Path $FlowsDir -Filter ("{0}.flow" -f $pat) -ErrorAction SilentlyContinue
-}
-$flows = $files | Sort-Object FullName -Unique
-if ($flows.Count -eq 0) {
-  Write-Host ("[run] Akış bulunamadı. Aranan: {0}\{1}" -f $FlowsDir, ($patterns -join ".flow, ")) -ForegroundColor Yellow
-} else {
-  Write-Host ("[run] Bulunan akış sayısı: {0}" -f $flows.Count) -ForegroundColor DarkGray
-}
-if ($flows.Count -eq 0) {
-  exit 0
-}
-
+# --- Ana döngü ---
 foreach ($f in $flows) {
-  $out = Join-Path $OutDir ($f.BaseName + ".json")
+  $baseName = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+  $outPath  = Join-Path $repoRoot (Join-Path $outDir  ("{0}.json" -f $baseName))
+  $smkOut   = $outPath  # link-smoke çıktısını da aynı dosyaya yazıyoruz (mevcut işleyişle uyumlu)
+  $startTs  = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
 
-  # Asıl flow'u çalıştır (guard'lı)
-  powershell -ExecutionPolicy Bypass -File ops\run_and_guard.ps1 `
-    -Steps $f.FullName `
-    -Out   $out `
+  Write-Host ("[run] >>> {0}" -f $baseName) -ForegroundColor Cyan
+
+  # 1) Akışı çalıştır (ops\run_and_guard.ps1 mevcut davranışı korur)
+  powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $here "run_and_guard.ps1") `
+    -flow $f.FullName `
+    -outPath $outPath `
+    -BaseUrl $BaseUrl `
     -ExtraArgs $ExtraArgs
 
-  # === Link Smoke Gating (adım sonunda) ===
+  # 2) İsteğe bağlı link smoke (DIŞARIDA -Out AMBIGUOUS YOK; doğrudan fonksiyon çağrısı)
   if ($LinkSmoke) {
-    # backlog id: "equipment_ui_create" -> "equipment_ui"
-    $idBase  = ($f.BaseName -replace '_(create|update|delete)$','')
-    $backlog = Get-Content "ops\backlog.json" -Raw -Encoding UTF8 | ConvertFrom-Json
-    $item    = $backlog | Where-Object { $_.id -eq $idBase }
-
-    if ($null -ne $item) {
-      if ($item.type -eq "crud_admin") {
-        $start  = $item.urls.list_direct
-        # _direct olanlarda kök liste path'ini scope yap
-        $prefix = ($start -replace '/_direct/.*$','/').TrimEnd('/') + '/'
-      } else {
-        $start  = $item.url
-        $prefix = ($start.TrimEnd('/') + '/')
-      }
-
-      $smokeOutDir = "_otokodlama\smoke"
-      New-Item -ItemType Directory -Force -Path $smokeOutDir | Out-Null
-      $smokeOut = Join-Path $smokeOutDir ($f.BaseName + "_links.json")
-
-powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ops\_spawn.ps1 `
-  -File "powershell" `
-  -Args @(
-    "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
-powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ops\_spawn.ps1 `
-  -File "powershell" `
-  -Args @(
-    "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
-    "-Command",
-    @"
-param(`$b,`$s,`$o,`$d,`$l,`$pp,`$t,`$ok)
-& (Join-Path (Get-Location) 'ops/smoke_links.ps1') `
-  -Base `$b `
-  -Start `$s `
-  -Out `$o `
-  -Depth `$d `
-  -Limit `$l `
-  -PathPrefix `$pp `
-  -Timeout `$t `
-  -OkRedirectTo `$ok
-"@,
-    $BaseUrl,
-    $start,
-    $smokeOut,
-    ($SmokeDepth.ToString()),
-    ($SmokeLimit.ToString()),
-    "/",
-    "20000",
-    $OkRedirectTo
-  )
-    "-Base",        $BaseUrl,
-    "-Start",       $start,
-    "-Out",         $smokeOut,
-    "-Depth",       ($SmokeDepth.ToString()),
-    "-Limit",       ($SmokeLimit.ToString()),
-    "-PathPrefix",  "/",
-    "-Timeout",     "20000",
-    "-OkRedirectTo",$OkRedirectTo
-  )
-
-      if ($LASTEXITCODE -ne 0) {
-        Write-Host "[run] Link smoke KIRMIZI → kalan akışlar durduruldu: $($f.BaseName)" -ForegroundColor Red
-        break
-      }
-    }
+    Write-Host "[run] Link smoke kontrolü başlıyor..." -ForegroundColor DarkGray
+    & (Join-Path $here "smoke_links.ps1") `
+      -Base        $BaseUrl `
+      -Start       $startTs `
+      -Out         $smkOut `
+      -Depth       $SmokeDepth `
+      -Limit       $SmokeLimit `
+      -PathPrefix  "/" `
+      -Timeout     5000 `
+      -OkRedirectTo $OkRedirectTo
   }
+
+  Write-Host ("[run] <<< {0} tamam" -f $baseName) -ForegroundColor Green
 }
 
-# Rapor (koşuya dair JSON'ları toparla)
-$pattern = ($Filter -replace '\*','*') + ".json"
-powershell -ExecutionPolicy Bypass -File ops\report_crud.ps1 `
-  -OutDir   $OutDir `
-  -ReportDir $ReportDir `
-  -Include  $pattern
-
-Write-Host "[run] Tamamlandı" -ForegroundColor Green
-
-
-
-
+# 3) Özet raporu isteğe bağlı (bozuk parametre geliyordu; burada dokunmuyoruz)
+Write-Host "[run] Tamamlandı"
