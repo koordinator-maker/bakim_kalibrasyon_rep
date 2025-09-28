@@ -166,7 +166,7 @@ def browser_ctx(headless: bool, har_path: str = None):
             context = browser.new_context(record_har_path=_abs_path(har_path), record_har_content="embed")
         else:
             context = browser.new_context()
-        page = context.new_page()
+page = context.new_page(); _apply_timeouts(page, args)
         _apply_timeouts(page, args)
 page.set_default_timeout(30_000)
         page.on('popup', lambda p: (p.close() if not p.is_closed() else None))
@@ -440,4 +440,6 @@ def _apply_timeouts(page, args):
             page.set_default_navigation_timeout(t)
         except Exception:
             pass
+
+
 
