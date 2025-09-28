@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import os, sys, json, time, re, pathlib, io, math, unicodedata, csv, datetime
 from typing import Tuple, Dict
 from contextlib import contextmanager
@@ -167,7 +167,8 @@ def browser_ctx(headless: bool, har_path: str = None):
         else:
             context = browser.new_context()
         page = context.new_page()
-        page.set_default_timeout(30_000)
+        _apply_timeouts(page, args)
+page.set_default_timeout(30_000)
         page.on('popup', lambda p: (p.close() if not p.is_closed() else None))
         try:
             yield page, context, browser
@@ -430,3 +431,13 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+def _apply_timeouts(page, args):
+    t = getattr(args, "timeout", None)
+    if t:
+        try:
+            page.set_default_timeout(t)
+            page.set_default_navigation_timeout(t)
+        except Exception:
+            pass
+

@@ -2,7 +2,8 @@
   [string]$FlowsDir  = "ops\flows",
   [string]$OutDir    = "_otokodlama\out",
   [string]$ReportDir = "_otokodlama\reports",
-  [string]$Filter    = "*"  # ör: "equipment_ui_*" veya "login_smoke*"
+  [string]$Filter    = "*",
+  [string]$ExtraArgs = ""
 )
 
 New-Item -ItemType Directory -Force -Path $OutDir,$ReportDir | Out-Null
@@ -20,7 +21,8 @@ foreach ($f in $flows) {
   $out = Join-Path $OutDir ($f.BaseName + ".json")
   powershell -ExecutionPolicy Bypass -File ops\run_and_guard.ps1 `
     -Steps $f.FullName `
-    -Out   $out
+    -Out   $out `
+    -ExtraArgs $ExtraArgs
 }
 
 # Rapor
@@ -31,3 +33,4 @@ powershell -ExecutionPolicy Bypass -File ops\report_crud.ps1 `
   -Include  $pattern
 
 Write-Host "[run] Tamamlandı" -ForegroundColor Green
+

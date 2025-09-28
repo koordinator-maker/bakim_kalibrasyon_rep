@@ -7,6 +7,7 @@ if (!(Test-Path $BacklogPath)) { throw "Backlog bulunamadı: $BacklogPath" }
 $items = Get-Content $BacklogPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 New-Item -ItemType Directory -Force -Path $FlowsDir | Out-Null
+New-Item -ItemType Directory -Force -Path _otokodlama\debug | Out-Null
 
 function New-LoginBlock([object]$loginMeta) {
   $u = "/admin/login/"
@@ -17,6 +18,9 @@ WAIT SELECTOR input#id_username
 FILL input#id_username $($loginMeta.username)
 FILL input#id_password $($loginMeta.password)
 CLICK input[type=submit]
+WAIT SELECTOR body
+DUMPDOM _otokodlama/debug/login_after_submit_dom.txt
+SCREENSHOT _otokodlama/debug/login_after_submit.png
 WAIT SELECTOR #user-tools a[href$="/logout/"]
 "@
 }
@@ -28,9 +32,7 @@ foreach ($it in $items) {
   if ($it.type -eq "screen") {
     $login = if ($it.login) { $it.login } else { @{ username="admin"; password="Admin!2345"; url=$it.url } }
     $flow = New-LoginBlock -loginMeta $login
-    $flow += @"
-GOTO $($it.url)
-"@
+    if ($it.url) { $flow += "GOTO $($it.url)`n" }
     foreach ($sel in @($it.checks.must_have_selectors)) {
       if ($sel) { $flow += "WAIT SELECTOR $sel`n" }
     }
@@ -53,7 +55,6 @@ WAIT SELECTOR $($sel.form)
 FILL $($sel.code_input) $($dat.code)
 FILL $($sel.name_input) $($dat.name)
 CLICK input[name=_save]
-WAIT URL CONTAINS $($urls.list_direct.TrimEnd('/'))/
 WAIT SELECTOR $($sel.msg)
 SCREENSHOT _otokodlama/debug/${id}_create.png
 "@
@@ -63,14 +64,12 @@ SCREENSHOT _otokodlama/debug/${id}_create.png
     # UPDATE
     $update = $loginBlock + @"
 GOTO $($urls.list_direct)?q=$($dat.search_q)
-WAIT URL CONTAINS $($urls.list_direct.TrimEnd('/'))/
 WAIT SELECTOR $($sel.list_table)
 WAIT SELECTOR $($sel.row_link)
 CLICK $($sel.row_link)
 WAIT SELECTOR $($sel.form)
 FILL $($sel.name_input) $($dat.name_updated)
 CLICK input[name=_save]
-WAIT URL CONTAINS $($urls.list_direct.TrimEnd('/'))/
 WAIT SELECTOR $($sel.msg)
 SCREENSHOT _otokodlama/debug/${id}_update.png
 "@
@@ -80,7 +79,6 @@ SCREENSHOT _otokodlama/debug/${id}_update.png
     # DELETE
     $delete = $loginBlock + @"
 GOTO $($urls.list_direct)?q=$($dat.search_q)
-WAIT URL CONTAINS $($urls.list_direct.TrimEnd('/'))/
 WAIT SELECTOR $($sel.list_table)
 WAIT SELECTOR $($sel.row_link)
 CLICK $($sel.row_link)
@@ -88,7 +86,6 @@ WAIT SELECTOR $($sel.delete_btn)
 CLICK $($sel.delete_btn)
 WAIT SELECTOR $($sel.delete_confirm)
 CLICK $($sel.delete_confirm)
-WAIT URL CONTAINS $($urls.list_direct.TrimEnd('/'))/
 WAIT SELECTOR $($sel.msg)
 SCREENSHOT _otokodlama/debug/${id}_delete.png
 "@
@@ -98,4 +95,3 @@ SCREENSHOT _otokodlama/debug/${id}_delete.png
 }
 
 Write-Host "[gen] Flow üretimi tamam" -ForegroundColor Green
-
