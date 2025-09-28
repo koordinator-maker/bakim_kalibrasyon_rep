@@ -48,7 +48,7 @@ function Classify-Failure($step) {
   return "diğer"
 }
 
-# Dosyaları topla (Include destekli)
+# Dosya listesi (Include destekli)
 $rows = @()
 $files = @()
 $patterns = $Include -split '[,; ]+' | Where-Object { $_ -and $_.Trim() -ne "" }
@@ -58,13 +58,30 @@ if ($files.Count -eq 0)   { $files  = Get-ChildItem (Join-Path $OutDir "*.json")
 $files = $files | Sort-Object LastWriteTime
 
 foreach ($f in $files) {
-  try { $j = Get-Content $f.FullName -Raw | ConvertFrom-Json -Depth 32 } catch {
-    $rows += [pscustomobject]@{ Flow=[IO.Path]::GetFileNameWithoutExtension($f.Name); Pass=$false; FirstFailStep=''; Cmd=''; Reason='json-parse-error'; ErrorSnippet=Shorten("$($_.Exception.Message)", $MaxErrLen); Url=''; Recall=''; VisualSim=''; OkWords=''; OkVisual=''; OkSelects=''; MissingCount='' }
+  # JSON'u UTF-8 olarak oku; gerekirse .NET fallback
+  try {
+    $raw = Get-Content $f.FullName -Raw -Encoding UTF8
+  } catch {
+    $raw = [IO.File]::ReadAllText($f.FullName, [Text.UTF8Encoding]::new($true))
+  }
+  try {
+    $j = $raw | ConvertFrom-Json -Depth 32
+  } catch {
+    $rows += [pscustomobject]@{
+      Flow=[IO.Path]::GetFileNameWithoutExtension($f.Name); Pass=$false; FirstFailStep=''; Cmd='';
+      Reason='json-parse-error'; ErrorSnippet=(Shorten "$($_.Exception.Message)" $MaxErrLen);
+      Url=''; Recall=''; VisualSim=''; OkWords=''; OkVisual=''; OkSelects=''; MissingCount='';
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
+    }
     continue
   }
 
   if ($null -eq $j.ok -or $null -eq $j.results) {
-    $rows += [pscustomobject]@{ Flow=[IO.Path]::GetFileNameWithoutExtension($f.Name); Pass=$false; FirstFailStep=''; Cmd=''; Reason='schema-mismatch'; ErrorSnippet=''; Url=''; Recall=''; VisualSim=''; OkWords=''; OkVisual=''; OkSelects=''; MissingCount='' }
+    $rows += [pscustomobject]@{
+      Flow=[IO.Path]::GetFileNameWithoutExtension($f.Name); Pass=$false; FirstFailStep=''; Cmd='';
+      Reason='schema-mismatch'; ErrorSnippet=''; Url=''; Recall=''; VisualSim=''; OkWords=''; OkVisual=''; OkSelects=''; MissingCount='';
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
+    }
     continue
   }
 
@@ -82,13 +99,12 @@ foreach ($f in $files) {
   }
 
   if (-not $firstFail -and -not $pass) {
-    $toolErr = ""
-    try { $toolErr = [string]$j.tool_error } catch {}
+    $toolErr = ""; try { $toolErr = [string]$j.tool_error } catch {}
     $rows += [pscustomobject]@{
-      Flow=$flow; Pass=$pass; FirstFailStep=''; Cmd='';
-      Reason='tool-error/no-steps';
-      ErrorSnippet=(Shorten $toolErr, $MaxErrLen);
-      Url=''; Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss
+      Flow=$flow; Pass=$pass; FirstFailStep=''; Cmd=''; Reason='tool-error/no-steps';
+      ErrorSnippet=(Shorten $toolErr $MaxErrLen); Url='';
+      Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss;
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
     }
     continue
   }
@@ -97,14 +113,15 @@ foreach ($f in $files) {
     $rows += [pscustomobject]@{
       Flow=$flow; Pass=$pass; FirstFailStep=$firstFail.i; Cmd=$firstFail.cmd;
       Reason=(Classify-Failure $firstFail); ErrorSnippet=(Shorten([string]$firstFail.error, $MaxErrLen));
-      Url=$firstFail.url; Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss
+      Url=$firstFail.url; Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss;
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
     }
   } else {
     $lastUrl = ''; if ($steps.Count -gt 0) { $lastUrl = $steps[-1].url }
     $rows += [pscustomobject]@{
-      Flow=$flow; Pass=$pass; FirstFailStep=''; Cmd='';
-      Reason='passed'; ErrorSnippet=''; Url=$lastUrl;
-      Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss
+      Flow=$flow; Pass=$pass; FirstFailStep=''; Cmd=''; Reason='passed'; ErrorSnippet=''; Url=$lastUrl;
+      Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss;
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
     }
   }
 }
@@ -114,7 +131,7 @@ $csvPath  = Join-Path $ReportDir "crud_summary.csv"
 $jsonPath = Join-Path $ReportDir "crud_summary.json"
 $mdPath   = Join-Path $ReportDir "crud_summary.md"
 
-New-Item -ItemType Directory -Force -Path $ReportDir -ErrorAction SilentlyContinue | Out-Null
+New-DirIfMissing $ReportDir
 $rows | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
 $rows | ConvertTo-Json -Depth 8 | Out-File $jsonPath -Encoding utf8
 
@@ -132,10 +149,10 @@ foreach ($g in $byReason) { $md += "- **$($g.Name)**: $($g.Count)" }
 $md += ""
 $md += "## Akışlar"
 $md += ""
-$md += "| Flow | Pass | Reason | FirstFailStep | Cmd | Recall | VisualSim | OkWords | OkVisual | OkSelects | Missing | ErrorSnippet |"
-$md += "|------|------|--------|---------------|-----|--------|-----------|---------|----------|-----------|---------|--------------|"
+$md += "| Flow | Pass | Reason | FirstFailStep | Cmd | Recall | VisualSim | OkWords | OkVisual | OkSelects | Missing | ErrorSnippet | Log |"
+$md += "|------|------|--------|---------------|-----|--------|-----------|---------|----------|-----------|---------|--------------|-----|"
 foreach ($r in $rows) {
-  $md += "| $($r.Flow) | $($r.Pass) | $($r.Reason) | $($r.FirstFailStep) | $($r.Cmd) | $($r.Recall) | $($r.VisualSim) | $($r.OkWords) | $($r.OkVisual) | $($r.OkSelects) | $($r.MissingCount) | $(($r.ErrorSnippet -replace '\|','/')) |"
+  $md += "| $($r.Flow) | $($r.Pass) | $($r.Reason) | $($r.FirstFailStep) | $($r.Cmd) | $($r.Recall) | $($r.VisualSim) | $($r.OkWords) | $($r.OkVisual) | $($r.OkSelects) | $($r.MissingCount) | $(($r.ErrorSnippet -replace '\|','/')) | $($r.Log) |"
 }
 $md -join "`r`n" | Out-File $mdPath -Encoding utf8
 

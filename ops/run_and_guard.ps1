@@ -23,7 +23,7 @@ $p.WaitForExit()
 # JSON geçerli mi?
 $needFix = $true
 if (Test-Path $Out) {
-  try { $tmp = Get-Content $Out -Raw | ConvertFrom-Json -Depth 32; $needFix = $false } catch { $needFix = $true }
+  try { $tmp = Get-Content $Out -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 32; $needFix = $false } catch { $needFix = $true }
 }
 
 # Gerekirse fallback JSON yaz
@@ -37,4 +37,13 @@ if ($needFix) {
   } | ConvertTo-Json -Depth 8
   $fallback | Out-File $Out -Encoding utf8
 }
+
+# Yazdıktan sonra tekrar doğrula; parse edilemiyorsa minimum JSON'a düş
+$recheckInvalid = $false
+try { $null = (Get-Content $Out -Raw -Encoding UTF8) | ConvertFrom-Json -Depth 8 } catch { $recheckInvalid = $true }
+if ($recheckInvalid) {
+  $min = '{"ok": false, "results": [], "tool_error": "fallback-json-parse-failed"}'
+  [IO.File]::WriteAllText($Out, $min, [Text.UTF8Encoding]::new($false))
+}
+
 Write-Host "[guard] wrote: $Out"

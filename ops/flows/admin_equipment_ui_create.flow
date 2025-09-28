@@ -13,3 +13,4 @@ WAIT SELECTOR table#result_list`nWAIT SELECTOR .messagelist
 SCREENSHOT targets/reference/admin_equipment_create_success.png
 
 
+
