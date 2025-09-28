@@ -1,13 +1,12 @@
-﻿GOTO /admin/login/
+﻿COMMENT login smoke (robust)
+GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
 CLICK input[type=submit]
-WAIT SELECTOR body
-DUMPDOM _otokodlama/debug/login_after_submit_dom.txt
+WAIT URL CONTAINS /admin/
+WAIT SELECTOR #content-main
+DUMPDOM _otokodlama/debug/login_after_submit_dom.html
 SCREENSHOT _otokodlama/debug/login_after_submit.png
-WAIT SELECTOR #user-tools a[href$="/logout/"]GOTO /admin/login/
-WAIT SELECTOR input#id_username
-WAIT SELECTOR input#id_password
-SCREENSHOT _otokodlama/debug/login_smoke_screen.png
-
+COMMENT Üst bar temaya göre değişebilir; logout tespitini genişlet:
+WAIT SELECTOR-OR a[href*="/logout/"] || a:has-text("LOG OUT") || #user-tools a
