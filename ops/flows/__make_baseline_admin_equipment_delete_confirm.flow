@@ -12,3 +12,6 @@ CLICK a.deletelink
 WAIT SELECTOR form[action$="/delete/"] input[type=submit]
 DUMPDOM targets/reference/admin_equipment_delete_confirm.txt
 SCREENSHOT targets/reference/admin_equipment_delete_confirm.png
+
+
+

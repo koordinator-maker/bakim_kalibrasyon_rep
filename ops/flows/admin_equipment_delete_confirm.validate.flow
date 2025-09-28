@@ -10,3 +10,6 @@ CLICK table#result_list tbody tr:first-child th > a
 WAIT SELECTOR a.deletelink
 CLICK a.deletelink
 AUTOVALIDATE key=admin_equipment_delete_confirm baseline=targets/reference/admin_equipment_delete_confirm.png baseline_text=targets/reference/admin_equipment_delete_confirm.txt words_recall=0.90 live_source=dom+ocr check_selects=yes vis_thresh=0.90 min_token_len=3 ignore_numbers=yes ignore_patterns=\d{2,},csrf,token,page_\d+
+
+
+

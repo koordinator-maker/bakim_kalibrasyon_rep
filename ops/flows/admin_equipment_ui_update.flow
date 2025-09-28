@@ -15,3 +15,6 @@ CLICK input[name=_save]
 WAIT URL CONTAINS /admin/maintenance/equipment/_direct/
 WAIT SELECTOR .messagelist
 SCREENSHOT _otokodlama/debug/update_after_save.png
+
+
+

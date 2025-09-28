@@ -10,3 +10,6 @@ CLICK table#result_list tbody tr:first-child th > a
 WAIT SELECTOR form#equipment_form
 DUMPDOM targets/reference/admin_equipment_change.txt
 SCREENSHOT targets/reference/admin_equipment_change.png
+
+
+

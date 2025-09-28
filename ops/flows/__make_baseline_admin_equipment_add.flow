@@ -8,3 +8,6 @@ GOTO /admin/maintenance/equipment/add/
 WAIT SELECTOR body
 DUMPDOM targets/reference/admin_equipment_add.txt
 SCREENSHOT targets/reference/admin_equipment_add.png
+
+
+

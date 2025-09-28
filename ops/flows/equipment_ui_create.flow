@@ -5,3 +5,6 @@ WAIT URL CONTAINS /admin/maintenance/equipment/
 WAIT SELECTOR-OR table#result_list || form#changelist-form || #changelist || #content-main
 DUMPDOM _otokodlama/debug/equipment_list_dom.html
 SCREENSHOT _otokodlama/debug/equipment_list.png
+
+
+

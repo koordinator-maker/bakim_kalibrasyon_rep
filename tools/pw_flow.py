@@ -116,8 +116,7 @@ def browser_ctx(headless=True, har_path=None):
             context = browser.new_context(record_har_path=_abs_path(har_path), record_har_content="embed")
         else:
             context = browser.new_context()
-        page = context.new_page()
-                page.set_default_navigation_timeout(10_000)
+        page = context.new_page(); page.set_default_timeout(10_000); page.set_default_navigation_timeout(10_000)
         page.on('popup', lambda p: (p.close() if not p.is_closed() else None))
         try:
             yield page, context, browser
@@ -266,4 +265,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
 

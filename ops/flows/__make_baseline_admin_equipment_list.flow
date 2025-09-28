@@ -8,3 +8,6 @@ GOTO /admin/maintenance/equipment/_direct/
 WAIT SELECTOR table#result_list
 DUMPDOM targets/reference/admin_equipment_list.txt
 SCREENSHOT targets/reference/admin_equipment_list.png
+
+
+

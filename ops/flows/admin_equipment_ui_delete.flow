@@ -16,3 +16,6 @@ CLICK form[action$="/delete/"] input[type=submit]
 WAIT URL CONTAINS /admin/maintenance/equipment/_direct/
 WAIT SELECTOR .messagelist
 SCREENSHOT _otokodlama/debug/delete_after_confirm.png
+
+
+
