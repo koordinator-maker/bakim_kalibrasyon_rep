@@ -1,6 +1,7 @@
 ﻿param(
   [string]$OutDir    = "_otokodlama\out",
   [string]$ReportDir = "_otokodlama\reports",
+  [string]$Include   = "*.json",
   [int]   $MaxErrLen = 200
 )
 
@@ -11,7 +12,7 @@ function Shorten([string]$s, [int]$n) {
   if ([string]::IsNullOrWhiteSpace($s)) { return "" }
   $flat = ($s -replace "\s+"," ").Trim()
   if ($flat.Length -le $n) { return $flat }
-  return $flat.Substring(0,[Math]::Min($n,$flat.Length)) + "…"
+  return $flat.Substring(0,[Math]::Min($n,$flat.Length))
 }
 
 function Classify-Failure($step) {
@@ -47,8 +48,15 @@ function Classify-Failure($step) {
   return "diğer"
 }
 
+# Dosyaları topla (Include destekli)
 $rows = @()
-$files = Get-ChildItem $OutDir -Filter *.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime
+$files = @()
+$patterns = $Include -split '[,; ]+' | Where-Object { $_ -and $_.Trim() -ne "" }
+if ($patterns.Count -eq 0) { $patterns = @("*.json") }
+foreach ($p in $patterns) { $files += Get-ChildItem (Join-Path $OutDir $p) -ErrorAction SilentlyContinue }
+if ($files.Count -eq 0)   { $files  = Get-ChildItem (Join-Path $OutDir "*.json") -ErrorAction SilentlyContinue }
+$files = $files | Sort-Object LastWriteTime
+
 foreach ($f in $files) {
   try { $j = Get-Content $f.FullName -Raw | ConvertFrom-Json -Depth 32 } catch {
     $rows += [pscustomobject]@{ Flow=[IO.Path]::GetFileNameWithoutExtension($f.Name); Pass=$false; FirstFailStep=''; Cmd=''; Reason='json-parse-error'; ErrorSnippet=Shorten("$($_.Exception.Message)", $MaxErrLen); Url=''; Recall=''; VisualSim=''; OkWords=''; OkVisual=''; OkSelects=''; MissingCount='' }
@@ -65,11 +73,24 @@ foreach ($f in $files) {
   $steps = @($j.results)
   $firstFail = $steps | Where-Object { $_.ok -ne $true } | Select-Object -First 1
 
+  # Autovalidate metrikleri (varsa)
   $recall=''; $visual=''; $okw=''; $okv=''; $oks=''; $miss=''
   foreach ($s in $steps) {
     if ("$($s.cmd)".ToUpper() -eq "AUTOVALIDATE") {
       $recall=$s.recall; $visual=$s.visual_sim; $okw=$s.ok_words; $okv=$s.ok_visual; $oks=$s.ok_selects; $miss=$s.missing_count
     }
+  }
+
+  if (-not $firstFail -and -not $pass) {
+    $toolErr = ""
+    try { $toolErr = [string]$j.tool_error } catch {}
+    $rows += [pscustomobject]@{
+      Flow=$flow; Pass=$pass; FirstFailStep=''; Cmd='';
+      Reason='tool-error/no-steps';
+      ErrorSnippet=(Shorten $toolErr, $MaxErrLen);
+      Url=''; Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss
+    }
+    continue
   }
 
   if ($firstFail) {
@@ -79,18 +100,21 @@ foreach ($f in $files) {
       Url=$firstFail.url; Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss
     }
   } else {
+    $lastUrl = ''; if ($steps.Count -gt 0) { $lastUrl = $steps[-1].url }
     $rows += [pscustomobject]@{
       Flow=$flow; Pass=$pass; FirstFailStep=''; Cmd='';
-      Reason='passed'; ErrorSnippet=''; Url=($steps[-1].url);
+      Reason='passed'; ErrorSnippet=''; Url=$lastUrl;
       Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss
     }
   }
 }
 
+# Çıktılar
 $csvPath  = Join-Path $ReportDir "crud_summary.csv"
 $jsonPath = Join-Path $ReportDir "crud_summary.json"
 $mdPath   = Join-Path $ReportDir "crud_summary.md"
 
+New-Item -ItemType Directory -Force -Path $ReportDir -ErrorAction SilentlyContinue | Out-Null
 $rows | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
 $rows | ConvertTo-Json -Depth 8 | Out-File $jsonPath -Encoding utf8
 
