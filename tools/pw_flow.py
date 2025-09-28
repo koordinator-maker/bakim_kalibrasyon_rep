@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import os, sys, json, time, re, pathlib, io, math, unicodedata, csv, datetime, hashlib
 from typing import Tuple, Dict
 from contextlib import contextmanager
@@ -48,10 +48,10 @@ def _parse_kv(s: str) -> Dict[str,str]:
 def _nowstamp(): return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 def _norm_text(s: str) -> str:
-    s = s.replace("İ","i").replace("I","ı").lower()
+    s = s.replace("Ä°","i").replace("I","Ä±").lower()
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
-    s = re.sub(r"[^a-z0-9ğüşöçı\-\_/]+", " ", s)
+    s = re.sub(r"[^a-z0-9ÄŸÃ¼ÅŸÃ¶Ã§Ä±\-\_/]+", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
@@ -89,7 +89,7 @@ def _write_alert(key: str, ok: bool, recall: float, misses: list, paths: dict, a
     ts = _nowstamp()
     md_path = adir / f"{key}-{ts}.md"
     with open(md_path, "w", encoding="utf-8") as f:
-        f.write(f"# AUTOVALIDATE: {key}\n\n- Zaman: {ts}\n- Sonuç: {'OK' if ok else 'FAIL'}\n- Recall: {recall:.3f}\n")
+        f.write(f"# AUTOVALIDATE: {key}\n\n- Zaman: {ts}\n- SonuÃ§: {'OK' if ok else 'FAIL'}\n- Recall: {recall:.3f}\n")
         if reasons: f.write(f"- Neden: {', '.join(reasons)}\n")
         f.write("\n## Eksik Kelimeler\n")
         if misses:
@@ -117,7 +117,7 @@ def browser_ctx(headless=True, har_path=None):
         else:
             context = browser.new_context()
         page = context.new_page()
-        page.set_default_timeout(30_000)
+                page.set_default_navigation_timeout(10_000)
         page.on('popup', lambda p: (p.close() if not p.is_closed() else None))
         try:
             yield page, context, browser
@@ -150,7 +150,7 @@ def run_flow(steps: list, headless=True, har_path=None):
                         page.wait_for_selector(sel, state="visible")
                     elif aU.startswith("URL CONTAINS "):
                         needle = a[len("URL CONTAINS "):].strip()
-                        deadline = time.time()+30
+                        deadline = time.time() + 6
                         while time.time() < deadline:
                             if needle in page.url: break
                             time.sleep(0.1)
@@ -166,7 +166,7 @@ def run_flow(steps: list, headless=True, har_path=None):
 
                 elif cmd == "CLICK":
                     page.click(arg.strip())
-                    try: page.wait_for_load_state("domcontentloaded", timeout=10000)
+                    try: page.wait_for_load_state("domcontentloaded", timeout=5_000)
                     except: pass
                     if page.url.startswith("chrome-error://"):
                         raise PWError("navigation-error")
@@ -195,10 +195,10 @@ def run_flow(steps: list, headless=True, har_path=None):
                     if baseline and os.path.exists(baseline) and "ocr" in live_source:
                         baseline_text = _ocr_text(baseline)
                     elif baseline and os.path.exists(baseline):
-                        # baseline varsa ama OCR yoksa, baseline metni boş kalsın; sadece görsel referans gibi davranırız
+                        # baseline varsa ama OCR yoksa, baseline metni boÅŸ kalsÄ±n; sadece gÃ¶rsel referans gibi davranÄ±rÄ±z
                         baseline_text = ""
 
-                    # 2) canlı DOM ve/veya OCR
+                    # 2) canlÄ± DOM ve/veya OCR
                     live_texts=[]
                     if "dom" in live_source:
                         try: live_texts.append(page.locator("body").inner_text())
@@ -210,7 +210,7 @@ def run_flow(steps: list, headless=True, har_path=None):
                     if "ocr" in live_source and pytesseract:
                         live_texts.append(_ocr_text(live_shot_abs))
 
-                    # 3) kelime recall (baseline→live)
+                    # 3) kelime recall (baselineâ†’live)
                     base_tokens = set(_tokenize_for_compare(
                         baseline_text, min_len=min_token_len, ignore_numbers=ignore_numbers, ignore_patterns=ignore_patterns
                     ))
@@ -266,3 +266,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

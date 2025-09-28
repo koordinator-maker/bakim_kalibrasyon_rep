@@ -1,0 +1,10 @@
+COMMENT make baseline (calibration_home)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO /admin/maintenance/calibration/
+WAIT SELECTOR #content-main
+SCREENSHOT targets/reference/calibration_home.png
