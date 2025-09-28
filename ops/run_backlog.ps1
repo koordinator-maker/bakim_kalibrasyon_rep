@@ -80,17 +80,45 @@ foreach ($f in $flows) {
       New-Item -ItemType Directory -Force -Path $smokeOutDir | Out-Null
       $smokeOut = Join-Path $smokeOutDir ($f.BaseName + "_links.json")
 
-      powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ops\_spawn.ps1 -File powershell -Args "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File","ops\smoke_links.ps1"  -OkRedirectTo "$OkRedirectTo" `
-        -Base       $BaseUrl `
-        -Start      $start `
-        -Out        $smokeOut `
-        -Depth      $SmokeDepth `
-        -Limit      $SmokeLimit `
-        -PathPrefix $prefix `
-        -LoginPath  "/admin/login/" `
-        -User       "admin" `
-        -Pass       "Admin!2345" `
-        -Timeout    20000
+powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ops\_spawn.ps1 `
+  -File "powershell" `
+  -Args @(
+    "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
+powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ops\_spawn.ps1 `
+  -File "powershell" `
+  -Args @(
+    "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
+    "-Command",
+    @"
+param(`$b,`$s,`$o,`$d,`$l,`$pp,`$t,`$ok)
+& (Join-Path (Get-Location) 'ops/smoke_links.ps1') `
+  -Base `$b `
+  -Start `$s `
+  -Out `$o `
+  -Depth `$d `
+  -Limit `$l `
+  -PathPrefix `$pp `
+  -Timeout `$t `
+  -OkRedirectTo `$ok
+"@,
+    $BaseUrl,
+    $start,
+    $smokeOut,
+    ($SmokeDepth.ToString()),
+    ($SmokeLimit.ToString()),
+    "/",
+    "20000",
+    $OkRedirectTo
+  )
+    "-Base",        $BaseUrl,
+    "-Start",       $start,
+    "-Out",         $smokeOut,
+    "-Depth",       ($SmokeDepth.ToString()),
+    "-Limit",       ($SmokeLimit.ToString()),
+    "-PathPrefix",  "/",
+    "-Timeout",     "20000",
+    "-OkRedirectTo",$OkRedirectTo
+  )
 
       if ($LASTEXITCODE -ne 0) {
         Write-Host "[run] Link smoke KIRMIZI → kalan akışlar durduruldu: $($f.BaseName)" -ForegroundColor Red
