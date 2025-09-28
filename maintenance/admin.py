@@ -109,3 +109,64 @@ EquipmentAdmin.response_post_save_add    = _equip_response_post_save_add
 EquipmentAdmin.response_post_save_change = _equip_response_post_save_change
 EquipmentAdmin.response_delete           = _equip_response_delete
 # --- END PATCH ---
+
+# ==== BEGIN: EQ-ADMIN HARDENING (redirect to _direct) ====
+from urllib.parse import parse_qsl, urlencode
+from django.http import HttpResponseRedirect
+
+_EQ_DIRECT = "/admin/maintenance/equipment/_direct/"
+
+def _eq_clean_qs(request):
+    qs = ""
+    try:
+        raw = request.META.get("QUERY_STRING", "") or ""
+        pairs = parse_qsl(raw, keep_blank_values=True)
+        pairs = [(k, v) for (k, v) in pairs if k not in ("_changelist_filters", "preserved_filters", "p")]
+        s = urlencode(pairs, doseq=True)
+        qs = ("?" + s) if s else ""
+    except Exception:
+        qs = ""
+    return qs
+
+try:
+    _EqAdmin = EquipmentAdmin
+except NameError:
+    _EqAdmin = None
+
+if _EqAdmin is not None:
+    # 1) Kanonik listeye gelen her istek: tek atımlık _direct'e redirect
+    _orig_changelist = _EqAdmin.changelist_view
+    def _eq_changelist_view(self, request, extra_context=None):
+        try:
+            p = request.path or ""
+        except Exception:
+            p = ""
+        if p.endswith("/_direct/"):
+            return _orig_changelist(self, request, extra_context=extra_context)
+        return HttpResponseRedirect(_EQ_DIRECT + _eq_clean_qs(request))
+    _EqAdmin.changelist_view = _eq_changelist_view
+
+    # 2) _direct pattern'ini gerçekten ekle (admin URL'lerine)
+    def _eq_direct_view(self, request, *args, **kwargs):
+        return _orig_changelist(self, request, extra_context=None)
+    _EqAdmin._eq_direct_view = _eq_direct_view
+
+    _orig_get_urls = _EqAdmin.get_urls
+    def _eq_get_urls(self):
+        from django.urls import path
+        urls = _orig_get_urls(self)
+        my = [ path("_direct/", self.admin_site.admin_view(self._eq_direct_view), name="equipment_list_direct") ]
+        return my + urls
+    _EqAdmin.get_urls = _eq_get_urls
+
+    # 3) Save/Add/Change/Delete sonra daima _direct'e dön
+    def _eq_response_post_save_add(self, request, obj):
+        return HttpResponseRedirect(_EQ_DIRECT + _eq_clean_qs(request))
+    def _eq_response_post_save_change(self, request, obj):
+        return HttpResponseRedirect(_EQ_DIRECT + _eq_clean_qs(request))
+    def _eq_response_delete(self, request, obj_display, obj_id):
+        return HttpResponseRedirect(_EQ_DIRECT + _eq_clean_qs(request))
+    _EqAdmin.response_post_save_add    = _eq_response_post_save_add
+    _EqAdmin.response_post_save_change = _eq_response_post_save_change
+    _EqAdmin.response_delete           = _eq_response_delete
+# ==== END: EQ-ADMIN HARDENING ====

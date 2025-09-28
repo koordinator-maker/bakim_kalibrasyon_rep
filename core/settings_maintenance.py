@@ -33,17 +33,19 @@ ROOT_URLCONF = "core.urls"
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
 
-MIDDLEWARE = ['core.mw_no_append_admin.NoAppendSlashForAdmin']
+MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware','core.mw_no_append_admin.NoAppendSlashForAdmin']
 
 SESSION_COOKIE_SECURE = False
 
 CSRF_COOKIE_SECURE = False
 
 # --- AUTO PATCH (admin redirect loop & required middleware) ---
-APPEND_SLASH = False  # admin altÃƒâ€Ã‚Â±ndaki /equipment/ 302 dÃƒÆ’Ã‚Â¶ngÃƒÆ’Ã‚Â¼lerini kes
+APPEND_SLASH = False
 ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
 
 MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'core.mw_no_append_admin.NoAppendSlashForAdmin',  # CommonMiddleware yerine admin'de append_slash yok
@@ -58,6 +60,7 @@ APPEND_SLASH = False
 ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
 
 MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -72,6 +75,7 @@ APPEND_SLASH = False
 ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
 
 MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -86,6 +90,7 @@ APPEND_SLASH = False
 ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
 
 MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -100,6 +105,7 @@ APPEND_SLASH = False
 ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
 
 MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     # Kanonik admin liste isteklerini erken yakala:
@@ -109,4 +115,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
 

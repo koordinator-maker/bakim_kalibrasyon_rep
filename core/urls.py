@@ -36,14 +36,44 @@ def equipment_list_direct(request, *args, **kwargs):
     request.META["QUERY_STRING"] = q.urlencode()
     return view(request, *args, **kwargs)
 
-urlpatterns = [
-    path("admin/maintenance/equipment/",         equipment_list_direct, name="equipment_list"),
+def equipment_list_canonical_redirect(request, *args, **kwargs):
+    # Gelen query'i temizle, _direct'e tek atımlık 302 ile gönder
+    BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+    try:
+        raw_q = request.META.get("QUERY_STRING","")
+    except Exception:
+        raw_q = ""
+    qs = urlencode([(k, v) for (k, v) in parse_qsl(raw_q, keep_blank_values=True) if k not in BLOCK_KEYS])
+    return HttpResponseRedirect(urlunsplit(("", "", "/admin/maintenance/equipment/_direct/", qs, "")))
+def equipment_canon_redirect(request, *args, **kwargs):
+    qs = request.META.get("QUERY_STRING","")
+    qs = ("?" + qs) if qs else ""
+    return HttpResponseRedirect("/admin/maintenance/equipment/_direct/" + qs)
+urlpatterns = [ path("admin/maintenance/equipment/", equipment_canon_redirect),
+    path("admin/maintenance/equipment/",         equipment_list_canonical_redirect, name="equipment_list"),
     path("admin/maintenance/equipment/_direct/", equipment_list_direct, name="equipment_list_direct"),
     path("admin/", admin_site.urls),
 ]
 
-urlpatterns = [
-    path("admin/maintenance/equipment/",         equipment_list_direct, name="equipment_list"),
+def equipment_list_canonical_redirect(request, *args, **kwargs):
+    # Gelen query'i temizle, _direct'e tek atımlık 302 ile gönder
+    BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+    try:
+        raw_q = request.META.get("QUERY_STRING","")
+    except Exception:
+        raw_q = ""
+    qs = urlencode([(k, v) for (k, v) in parse_qsl(raw_q, keep_blank_values=True) if k not in BLOCK_KEYS])
+    return HttpResponseRedirect(urlunsplit(("", "", "/admin/maintenance/equipment/_direct/", qs, "")))
+def equipment_canon_redirect(request, *args, **kwargs):
+    qs = request.META.get("QUERY_STRING","")
+    qs = ("?" + qs) if qs else ""
+    return HttpResponseRedirect("/admin/maintenance/equipment/_direct/" + qs)
+urlpatterns = [ path("admin/maintenance/equipment/", equipment_canon_redirect),
+    path("admin/maintenance/equipment/",         equipment_list_canonical_redirect, name="equipment_list"),
     path("admin/maintenance/equipment/_direct/", equipment_list_direct, name="equipment_list_direct"),
     path("admin/", admin_site.urls),
 ]
+
+
+
+

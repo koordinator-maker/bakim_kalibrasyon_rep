@@ -3,12 +3,11 @@ WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
 CLICK input[type=submit]
-WAIT URL CONTAINS /admin/
-GOTO /admin/maintenance/equipment/add/
+WAIT URL CONTAINS /admin/GOTO /admin/maintenance/equipment/add/
 WAIT SELECTOR form#equipment_form
 FILL input#id_code EQ-CRUD-UI
 FILL input#id_name UI CRUD Cihazi 1
 CLICK input[name=_save]
 WAIT URL CONTAINS /admin/maintenance/equipment/_direct/
 WAIT SELECTOR .messagelist
-SCREENSHOT _otokodlama/debug/create_after_save.png
+SCREENSHOT _otokodlama/debug/equipment_ui_create.png
