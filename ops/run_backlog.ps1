@@ -9,6 +9,13 @@
   [int]   $SmokeDepth = 1,
   [int]   $SmokeLimit = 150
 )
+# --- Filter normalize (multi-pattern safe) ---
+if ($null -eq $Filter -or $Filter.Count -eq 0) { $Filter = @("*") }
+if ($Filter -is [string]) {
+  if ($Filter -match ",") { $Filter = $Filter -split "," | ForEach-Object { $_.Trim() } }
+  else { $Filter = @($Filter) }
+}
+Write-Host ("[run] Filter(normalized)={0}" -f ($Filter -join ", ")) -ForegroundColor DarkGray
 $patterns = @($Filter)
 Write-Host ("[run] Patterns: {0}" -f ($patterns -join ", ")) -ForegroundColor DarkGray
 $files = @()
