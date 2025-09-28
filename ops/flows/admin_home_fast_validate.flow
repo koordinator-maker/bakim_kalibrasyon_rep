@@ -6,5 +6,5 @@ FILL input#id_password Admin!2345
 CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 GOTO /admin/
-WAIT SELECTOR css=:is(form#changelist-form,table#result_list,#content-main,#content,body)
+WAIT SELECTOR #content-main
 AUTOVALIDATE key=admin_home_fast baseline=targets\reference\admin_home_fast.png words_recall=0.9 live_source=dom alert_dir=_otokodlama\alerts min_token_len=3 ignore_numbers=yes ignore_patterns=csrf,token,\d{2,},page_\d+,id_\d+,ts_\d+

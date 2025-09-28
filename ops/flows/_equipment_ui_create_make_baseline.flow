@@ -1,0 +1,10 @@
+﻿COMMENT make baseline (equipment_ui_create)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO /admin/maintenance/equipment/add/
+WAIT SELECTOR css=:is(form#changelist-form,table#result_list,#content-main,#content,body)
+SCREENSHOT targets\reference\equipment_ui_create.png

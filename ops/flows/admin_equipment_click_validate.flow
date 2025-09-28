@@ -9,3 +9,8 @@ CLICK a[href="/admin/maintenance/equipment/"]
 AUTOVALIDATE key=admin_equipment_click baseline=targets/reference/admin_equipment.png words_recall=0.90 live_source=dom+ocr check_selects=yes vis_thresh=0.90 alert=on alert_dir=_otokodlama/alerts alert_open=no
 
 
+
+
+
+
+

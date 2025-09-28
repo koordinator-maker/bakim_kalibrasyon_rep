@@ -1,0 +1,58 @@
+name: UI Validate (DOM)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  ui-validate:
+    runs-on: windows-latest
+
+    env:
+      BASE_URL: ${{ secrets.UI_BASE_URL }}   # ör: http://127.0.0.1:8010 veya staging URL
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright pillow pytesseract
+          python -m playwright install --with-deps chromium
+
+      # Eğer Tesseract kullanmayacaksınız, bu adımı atlayabilirsiniz.
+      # - name: Install Tesseract (Windows)
+      #   run: choco install tesseract --yes
+
+      - name: Run UI validations (CSV)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          # BASE_URL’i ortamdan al (env.BASE_URL) → bizim script zaten alıyor.
+          # Temizlik
+          Remove-Item _otokodlama\out\*.json -ErrorAction SilentlyContinue -Force
+          # Koş
+          powershell -ExecutionPolicy Bypass -File ops\run_ui_validate_csv.ps1 `
+            -BaseUrl "${env:BASE_URL}" `
+            -BaselineDir "targets\reference" `
+            -AlertsDir "_otokodlama\alerts"
+
+      - name: Upload JSON results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-json
+          path: _otokodlama/out/*.json
+
+      - name: Upload alerts (screenshots & logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-alerts
+          path: _otokodlama/alerts/**

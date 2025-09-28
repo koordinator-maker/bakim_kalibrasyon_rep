@@ -1,0 +1,12 @@
+﻿Key,Url,OCR,Recall,MinTokenLen,WaitSelector
+equipment_ui_list,/admin/maintenance/equipment/_direct/,no,0.90,3,"css=:is(form#changelist-form,table#result_list,#content-main,#content,body)"
+calibration_ui_list,/admin/maintenance/calibration/_direct/,no,0.90,3,"css=:is(form#changelist-form,table#result_list,#content-main,#content,body)"
+admin_home_fast,/admin/,no,0.90,3,"#content-main"
+# örnek: yeni modül eklemek için aşağıdaki satırı düzenleyin (OCR yes/no)
+# bakim_plan_ui_list,/admin/maintenance/plan/_direct/,no,0.90,3,"css=:is(form#changelist-form,table#result_list,#content-main,#content,body)"
+equipment_ui_create,/admin/maintenance/equipment/add/,no,0.90,3,"css=:is(form#changelist-form,table#result_list,#content-main,#content,body)"
+calibration_ui_create,/admin/maintenance/calibration/add/,no,0.90,3,"css=:is(form#changelist-form,table#result_list,#content-main,#content,body)"
+# equipment_ui_update_1,/admin/maintenance/equipment/change/1/,no,0.90,3,"css=:is(form#changelist-form,#content-main,#content,body)"
+# equipment_ui_delete_1,/admin/maintenance/equipment/change/1/delete/,no,0.90,3,"css=:is(form#changelist-form,#content-main,#content,body)"
+# calibration_ui_update_1,/admin/maintenance/calibration/change/1/,no,0.90,3,"css=:is(form#changelist-form,#content-main,#content,body)"
+# calibration_ui_delete_1,/admin/maintenance/calibration/change/1/delete/,no,0.90,3,"css=:is(form#changelist-form,#content-main,#content,body)"
