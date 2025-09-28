@@ -17,7 +17,7 @@ WAIT SELECTOR input#id_username
 FILL input#id_username $($loginMeta.username)
 FILL input#id_password $($loginMeta.password)
 CLICK input[type=submit]
-WAIT URL CONTAINS /admin/
+WAIT SELECTOR #user-tools a[href$="/logout/"]
 "@
 }
 
@@ -98,3 +98,4 @@ SCREENSHOT _otokodlama/debug/${id}_delete.png
 }
 
 Write-Host "[gen] Flow üretimi tamam" -ForegroundColor Green
+
