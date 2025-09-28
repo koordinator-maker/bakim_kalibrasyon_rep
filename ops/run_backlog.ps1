@@ -48,7 +48,7 @@ foreach ($f in $flows) {
   $baseName = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
   $outPath  = Join-Path $repoRoot (Join-Path $outDir  ("{0}.json" -f $baseName))
   $smkOut   = $outPath  # link-smoke çıktısını da aynı dosyaya yazıyoruz (mevcut işleyişle uyumlu)
-  $startTs  = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+  $startPath = "/admin/"
 
   Write-Host ("[run] >>> {0}" -f $baseName) -ForegroundColor Cyan
 
@@ -64,7 +64,7 @@ foreach ($f in $flows) {
     Write-Host "[run] Link smoke kontrolü başlıyor..." -ForegroundColor DarkGray
     & (Join-Path $here "smoke_links.ps1") `
       -Base        $BaseUrl `
-      -Start       $startTs `
+      -Start $startPath `
       -Out         $smkOut `
       -Depth       $SmokeDepth `
       -Limit       $SmokeLimit `
@@ -78,3 +78,5 @@ foreach ($f in $flows) {
 
 # 3) Özet raporu isteğe bağlı (bozuk parametre geliyordu; burada dokunmuyoruz)
 Write-Host "[run] Tamamlandı"
+
+
