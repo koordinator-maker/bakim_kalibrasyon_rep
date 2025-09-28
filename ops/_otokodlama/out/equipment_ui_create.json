@@ -1,17 +1,17 @@
 ﻿{
-    "checked":  1,
-    "bad":  1,
+    "checked":  3,
+    "bad":  0,
     "bad_list":  [
-                     {
-                         "url":  "http://127.0.0.1:8010/2025-09-28T23:09:42",
-                         "status":  404,
-                         "location":  ""
-                     }
+
                  ],
-    "visited":  "/2025-09-28t23:09:42",
+    "visited":  [
+                    "/",
+                    "/admin/",
+                    "/admin/maintenance/dashboard/"
+                ],
     "scope_prefix":  "/",
     "base":  "http://127.0.0.1:8010",
-    "start":  "2025-09-28T23:09:42",
+    "start":  "/admin/",
     "ok_redirect":  "/_direct/.*|/admin/.*",
     "depth":  1,
     "limit":  200
