@@ -1,0 +1,14 @@
+﻿GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO /admin/maintenance/equipment/_direct/?q=EQ-DELETE-001
+WAIT SELECTOR table#result_list tbody tr:first-child th > a
+CLICK table#result_list tbody tr:first-child th > a
+WAIT SELECTOR a.deletelink
+CLICK a.deletelink
+WAIT SELECTOR form[action$="/delete/"] input[type=submit]
+DUMPDOM targets/reference/admin_equipment_delete_confirm.txt
+SCREENSHOT targets/reference/admin_equipment_delete_confirm.png

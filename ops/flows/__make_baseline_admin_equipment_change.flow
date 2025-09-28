@@ -1,0 +1,12 @@
+﻿GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO /admin/maintenance/equipment/_direct/?q=EQ-CHANGE-001
+WAIT SELECTOR table#result_list tbody tr:first-child th > a
+CLICK table#result_list tbody tr:first-child th > a
+WAIT SELECTOR form#equipment_form
+DUMPDOM targets/reference/admin_equipment_change.txt
+SCREENSHOT targets/reference/admin_equipment_change.png

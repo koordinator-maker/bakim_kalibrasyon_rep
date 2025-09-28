@@ -1,0 +1,19 @@
+﻿GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO /admin/maintenance/equipment/_direct/
+WAIT SELECTOR input#searchbar
+FILL input#searchbar EQ-CRUD-UI
+CLICK form#changelist-search input[type=submit]
+WAIT SELECTOR table#result_list tbody tr:first-child th > a
+CLICK table#result_list tbody tr:first-child th > a
+WAIT SELECTOR form#equipment_form
+FILL input#id_name UI CRUD Cihazi 1 guncellendi
+CLICK input[name=_save]
+WAIT SELECTOR .messagelist .success
+SCREENSHOT targets/reference/admin_equipment_update_success.png
+
+

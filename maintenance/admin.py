@@ -71,3 +71,41 @@ try:
     admin_site.register(Equipment, EquipmentAdmin)
 except AlreadyRegistered:
     pass
+# --- SAFE REDIRECTS AFTER SAVE/DELETE (avoid /equipment/ 302 loop) ---
+from urllib.parse import urlsplit
+from django.http import HttpResponseRedirect
+
+def _equip_safe_list_url(request):
+    return "/admin/maintenance/equipment/_direct/"
+
+def _equip_fix_location(request, resp):
+    try:
+        loc = resp["Location"] if getattr(resp, "has_header", None) and resp.has_header("Location") else (resp.headers.get("Location") if hasattr(resp, "headers") else None)
+    except Exception:
+        loc = None
+    if getattr(resp, "status_code", 200) in (301, 302) and loc:
+        if urlsplit(loc).path.endswith("/admin/maintenance/equipment/"):
+            # yalnızca kanonik listeye dönüyorsa güvenli listeye çevir
+            try:
+                resp["Location"] = _equip_safe_list_url(request)
+            except Exception:
+                pass
+    return resp
+
+def _equip_response_post_save_add(self, request, obj):
+    resp = admin.ModelAdmin.response_post_save_add(self, request, obj)
+    return _equip_fix_location(request, resp)
+
+def _equip_response_post_save_change(self, request, obj):
+    resp = admin.ModelAdmin.response_post_save_change(self, request, obj)
+    return _equip_fix_location(request, resp)
+
+def _equip_response_delete(self, request, obj_display, obj_id):
+    resp = admin.ModelAdmin.response_delete(self, request, obj_display, obj_id)
+    return _equip_fix_location(request, resp)
+
+# monkeypatch uygula
+EquipmentAdmin.response_post_save_add    = _equip_response_post_save_add
+EquipmentAdmin.response_post_save_change = _equip_response_post_save_change
+EquipmentAdmin.response_delete           = _equip_response_delete
+# --- END PATCH ---
