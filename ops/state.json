@@ -10,23 +10,87 @@
     "project":  "",
     "repo":  "",
     "pipeline":  {
-                     "stage":  "validate_ui_pages",
+                     "stage":  "open_pr",
                      "history":  [
-
+                                     {
+                                         "from":  "validate_ui_pages",
+                                         "to":  "open_pr",
+                                         "hint":  "Tüm UI doğrulamaları geçti → PR açılabilir.",
+                                         "ts":  "2025-09-29T15:09:53"
+                                     }
                                  ]
                  },
     "tests":  {
                   "summary":  {
-                                  "last_run":  "",
+                                  "last_run":  "2025-09-29T15:09:53",
                                   "failed":  0,
-                                  "passed":  0
+                                  "passed":  5
                               },
                   "results":  {
-
+                                  "equipment_ui_list":  {
+                                                            "status":  "PASSED",
+                                                            "metrics":  {
+                                                                            "missing_count":  0,
+                                                                            "words_recall":  1
+                                                                        },
+                                                            "artifacts":  {
+                                                                              "out_json":  "_otokodlama\\out\\equipment_ui_list_validate.json",
+                                                                              "screenshot":  "targets\\reference\\equipment_ui_list.png"
+                                                                          },
+                                                            "ts":  "2025-09-29T15:09:53"
+                                                        },
+                                  "calibration_ui_list":  {
+                                                              "status":  "PASSED",
+                                                              "metrics":  {
+                                                                              "missing_count":  0,
+                                                                              "words_recall":  1
+                                                                          },
+                                                              "artifacts":  {
+                                                                                "out_json":  "_otokodlama\\out\\calibration_ui_list_validate.json",
+                                                                                "screenshot":  "targets\\reference\\calibration_ui_list.png"
+                                                                            },
+                                                              "ts":  "2025-09-29T15:09:53"
+                                                          },
+                                  "admin_home_fast":  {
+                                                          "status":  "PASSED",
+                                                          "metrics":  {
+                                                                          "missing_count":  0,
+                                                                          "words_recall":  1
+                                                                      },
+                                                          "artifacts":  {
+                                                                            "out_json":  "_otokodlama\\out\\admin_home_fast_validate.json",
+                                                                            "screenshot":  "targets\\reference\\admin_home_fast.png"
+                                                                        },
+                                                          "ts":  "2025-09-29T15:09:53"
+                                                      },
+                                  "equipment_ui_create":  {
+                                                              "status":  "PASSED",
+                                                              "metrics":  {
+                                                                              "missing_count":  0,
+                                                                              "words_recall":  1
+                                                                          },
+                                                              "artifacts":  {
+                                                                                "out_json":  "_otokodlama\\out\\equipment_ui_create_validate.json",
+                                                                                "screenshot":  "targets\\reference\\equipment_ui_create.png"
+                                                                            },
+                                                              "ts":  "2025-09-29T15:09:53"
+                                                          },
+                                  "calibration_ui_create":  {
+                                                                "status":  "PASSED",
+                                                                "metrics":  {
+                                                                                "missing_count":  0,
+                                                                                "words_recall":  1
+                                                                            },
+                                                                "artifacts":  {
+                                                                                  "out_json":  "_otokodlama\\out\\calibration_ui_create_validate.json",
+                                                                                  "screenshot":  "targets\\reference\\calibration_ui_create.png"
+                                                                              },
+                                                                "ts":  "2025-09-29T15:09:53"
+                                                            }
                               }
               },
     "pending_actions":  [
 
                         ],
-    "last_updated":  "2025-09-29T15:03:45"
+    "last_updated":  "2025-09-29T15:09:53"
 }

@@ -34,6 +34,21 @@ function _Set-Prop {
   else { $Obj.$Name = $Value }
 }
 
+# Map benzeri alanlara anahtar/değer yaz (Hashtable veya PSCustomObject fark etmeksizin)
+function _Map-Set {
+  param($Map,[string]$Key,$Value)
+  if (_Is-Hashtable $Map) { $Map[$Key] = $Value; return }
+  if (-not $Map.PSObject.Properties[$Key]) { Add-Member -InputObject $Map -MemberType NoteProperty -Name $Key -Value $Value }
+  else { $Map.$Key = $Value }
+}
+
+# Map benzeri alanın anahtarlarını döndür
+function _Map-Keys {
+  param($Map)
+  if (_Is-Hashtable $Map) { return $Map.Keys }
+  return ($Map.PSObject.Properties | Select-Object -ExpandProperty Name)
+}
+
 function Get-State {
   param([string]$Path = $StatePath)
   try {
@@ -89,13 +104,15 @@ function Update-TestResult {
   if (-not $Metrics)   { $Metrics   = @{} }
   if (-not $Artifacts) { $Artifacts = @{} }
 
-  $st.tests.results[$Key] = @{
+  $entry = @{
     status=$Status; metrics=$Metrics; artifacts=$Artifacts; ts=(Get-Date).ToString("s")
   }
+  _Map-Set $st.tests.results $Key $entry
 
   $passed=0; $failed=0
-  foreach($k in $st.tests.results.Keys){
-    if($st.tests.results[$k].status -eq "PASSED"){$passed++}else{$failed++}
+  foreach($k in (_Map-Keys $st.tests.results)){
+    $it = if (_Is-Hashtable $st.tests.results) { $st.tests.results[$k] } else { $st.tests.results.$k }
+    if($it.status -eq "PASSED"){$passed++}else{$failed++}
   }
   _Set-Prop $st.tests.summary 'passed'   $passed
   _Set-Prop $st.tests.summary 'failed'   $failed
