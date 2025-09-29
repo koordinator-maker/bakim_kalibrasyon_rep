@@ -8,3 +8,4 @@ WAIT URL CONTAINS /admin/
 GOTO /admin/maintenance/equipment/add/
 WAIT SELECTOR css=:is(form#changelist-form,table#result_list,#content-main,#content,body)
 SCREENSHOT targets\reference\equipment_ui_create.png
+

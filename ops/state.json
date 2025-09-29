@@ -1,10 +1,32 @@
-﻿{
-  "id": "admin-calibrations",
-  "name": "Calibrations list",
-  "url": "/admin/maintenance/calibrations/",
-  "visual": {
-    "baseline": "targets/baselines/admin-calibrations.png",
-    "actual":   "targets/screens/admin-calibrations.png",
-    "threshold": 0.90
-  }
+{
+    "id":  "admin-calibrations",
+    "name":  "Calibrations list",
+    "url":  "/admin/maintenance/calibrations/",
+    "visual":  {
+                   "baseline":  "targets/baselines/admin-calibrations.png",
+                   "actual":  "targets/screens/admin-calibrations.png",
+                   "threshold":  0.90
+               },
+    "project":  "",
+    "repo":  "",
+    "pipeline":  {
+                     "stage":  "validate_ui_pages",
+                     "history":  [
+
+                                 ]
+                 },
+    "tests":  {
+                  "summary":  {
+                                  "last_run":  "",
+                                  "failed":  0,
+                                  "passed":  0
+                              },
+                  "results":  {
+
+                              }
+              },
+    "pending_actions":  [
+
+                        ],
+    "last_updated":  "2025-09-29T14:42:55"
 }
