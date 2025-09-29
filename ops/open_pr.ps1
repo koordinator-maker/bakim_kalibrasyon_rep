@@ -1,31 +1,45 @@
 ﻿param(
   [string]$RepoRoot   = ".",
-  [string]$Branch     = "main",        # PR HEAD (çalıştığınız dal)
-  [string]$BaseBranch = "main",        # PR BASE (hedef dal)
+  [string]$Branch     = "main",   # PR HEAD (çalıştığınız dal)
+  [string]$BaseBranch = "main",   # PR BASE (hedef dal)
   [string]$StateTools = "ops/state_tools.ps1"
 )
 
 $ErrorActionPreference = "Stop"
 
-function _Get-RepoSlug {
+function Show-GitHubErrorBody {
+  param([System.Net.WebException]$Ex)
+  try {
+    $resp = $Ex.Response
+    if ($resp -and $resp.GetResponseStream) {
+      $sr = New-Object IO.StreamReader($resp.GetResponseStream())
+      $body = $sr.ReadToEnd()
+      Write-Warning ("GitHub API error body: " + $body)
+      if ($resp.Headers["WWW-Authenticate"]) {
+        Write-Warning ("WWW-Authenticate: " + $resp.Headers["WWW-Authenticate"])
+      }
+    }
+  } catch { Write-Warning "Error body okunamadı: $($_.Exception.Message)" }
+}
+
+function Get-RepoSlug {
   param([string]$RepoRoot)
   Push-Location $RepoRoot
   try {
     $url = (& git remote get-url origin 2>$null)
     if (-not $url) { throw "origin remote bulunamadı." }
-    # https://github.com/owner/name.git  |  git@github.com:owner/name.git
     if ($url -match 'github\.com[:/](.+?)(\.git)?$') { return $Matches[1] }
     throw "GitHub repo slug çözülemedi: $url"
   } finally { Pop-Location }
 }
 
-function _Load-State {
+function Load-State {
   param([string]$StateTools,[string]$RepoRoot)
   . (Join-Path $RepoRoot $StateTools)
   return (Get-State)
 }
 
-function _Build-PR-Body {
+function Build-PR-Body {
   param($state)
   $lines = @()
   $lines += "### UI Test Özeti"
@@ -40,7 +54,7 @@ function _Build-PR-Body {
     $lines += ""
     $lines += "| Key | Status | words_recall | missing_count | out_json | screenshot |"
     $lines += "|-----|--------|--------------|---------------|----------|------------|"
-    # results map'i hem hashtable hem PSCustomObject olabilir
+
     $keys = @()
     if ($state.tests.results -is [hashtable]) { $keys = $state.tests.results.Keys }
     else { $keys = ($state.tests.results.PSObject.Properties | Select-Object -ExpandProperty Name) }
@@ -76,17 +90,17 @@ function _Build-PR-Body {
 }
 
 # ----- MAIN -----
-$repoSlug = _Get-RepoSlug -RepoRoot $RepoRoot
-$state    = _Load-State -StateTools $StateTools -RepoRoot $RepoRoot
+$repoSlug = Get-RepoSlug -RepoRoot $RepoRoot
+$state    = Load-State -StateTools $StateTools -RepoRoot $RepoRoot
 
 $title = "[auto] UI validate passed → open PR"
-$body  = _Build-PR-Body -state $state
+$body  = Build-PR-Body -state $state
 
 # 1) Push edildiğinden emin ol
 Push-Location $RepoRoot
 try { & git push origin $Branch | Out-Null } finally { Pop-Location }
 
-# 2) PR açma: gh varsa onu kullan; yoksa REST; ikisi de yoksa yumuşak uyarı
+# 2) PR açma: gh (CLI) → yoksa REST → ikisi de yoksa uyarı
 $createdUrl = ""
 $used = ""
 
@@ -100,7 +114,7 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
       Write-Warning "gh pr create hata verdi: $out"
     }
   } catch {
-    Write-Warning "gh pr create çalışmadı: $_"
+    Write-Warning "gh pr create çalışmadı: $($_.Exception.Message)"
   }
 }
 
@@ -118,15 +132,16 @@ if (-not $createdUrl) {
 
     $headers = @{
       "Accept"        = "application/vnd.github+json"
-      "Authorization" = "Bearer $token"
+      "Authorization" = "token $token"
       "X-GitHub-Api-Version" = "2022-11-28"
       "User-Agent"    = "ps-open-pr"
     }
     try {
       $resp = Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -Body $json
       if ($resp.html_url) { $createdUrl = $resp.html_url; $used = "rest" }
-    } catch {
-      Write-Warning "REST ile PR açma denemesi hata verdi: $($_.Exception.Message)"
+    } catch [System.Net.WebException] {
+      Show-GitHubErrorBody $_.Exception
+      Write-Warning "REST ile PR açma denemesi hata verdi."
     }
   } else {
     Write-Warning "Ne 'gh' komutu başarılı ne de GITHUB_TOKEN tanımlı. PR otomatik açılamadı (pipeline kesilmedi)."
@@ -140,3 +155,4 @@ if ($createdUrl) {
 } else {
   Write-Host "[pr] PR açılamadı; stage değiştirilmedi." -ForegroundColor Yellow
 }
+
