@@ -8,4 +8,3 @@ WAIT URL CONTAINS /admin/
 GOTO /admin/maintenance/equipment/add/
 WAIT SELECTOR css=:is(form#changelist-form,table#result_list,#content-main,#content,body)
 AUTOVALIDATE key=equipment_ui_create baseline=targets\reference\equipment_ui_create.png words_recall=0.9 live_source=dom alert_dir=_otokodlama\alerts min_token_len=3 ignore_numbers=yes ignore_patterns=csrf,token,\d{2,},page_\d+,id_\d+,ts_\d+
-
