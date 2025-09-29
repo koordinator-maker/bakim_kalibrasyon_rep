@@ -15,14 +15,20 @@
                                      {
                                          "from":  "validate_ui_pages",
                                          "to":  "open_pr",
-                                         "hint":  "Tüm UI doğrulamaları geçti → PR açılabilir.",
+                                         "hint":  "TÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¼m UI doÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸rulamalarÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± geÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ti ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â¢ PR aÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±labilir.",
                                          "ts":  "2025-09-29T15:09:53"
+                                     },
+                                     {
+                                         "from":  "open_pr",
+                                         "to":  "open_pr",
+                                         "hint":  "Tüm UI doğrulamaları geçti → PR açılabilir.",
+                                         "ts":  "2025-09-29T15:21:00"
                                      }
                                  ]
                  },
     "tests":  {
                   "summary":  {
-                                  "last_run":  "2025-09-29T15:09:53",
+                                  "last_run":  "2025-09-29T15:21:00",
                                   "failed":  0,
                                   "passed":  5
                               },
@@ -37,7 +43,7 @@
                                                                               "out_json":  "_otokodlama\\out\\equipment_ui_list_validate.json",
                                                                               "screenshot":  "targets\\reference\\equipment_ui_list.png"
                                                                           },
-                                                            "ts":  "2025-09-29T15:09:53"
+                                                            "ts":  "2025-09-29T15:21:00"
                                                         },
                                   "calibration_ui_list":  {
                                                               "status":  "PASSED",
@@ -49,7 +55,7 @@
                                                                                 "out_json":  "_otokodlama\\out\\calibration_ui_list_validate.json",
                                                                                 "screenshot":  "targets\\reference\\calibration_ui_list.png"
                                                                             },
-                                                              "ts":  "2025-09-29T15:09:53"
+                                                              "ts":  "2025-09-29T15:21:00"
                                                           },
                                   "admin_home_fast":  {
                                                           "status":  "PASSED",
@@ -61,7 +67,7 @@
                                                                             "out_json":  "_otokodlama\\out\\admin_home_fast_validate.json",
                                                                             "screenshot":  "targets\\reference\\admin_home_fast.png"
                                                                         },
-                                                          "ts":  "2025-09-29T15:09:53"
+                                                          "ts":  "2025-09-29T15:21:00"
                                                       },
                                   "equipment_ui_create":  {
                                                               "status":  "PASSED",
@@ -73,7 +79,7 @@
                                                                                 "out_json":  "_otokodlama\\out\\equipment_ui_create_validate.json",
                                                                                 "screenshot":  "targets\\reference\\equipment_ui_create.png"
                                                                             },
-                                                              "ts":  "2025-09-29T15:09:53"
+                                                              "ts":  "2025-09-29T15:21:00"
                                                           },
                                   "calibration_ui_create":  {
                                                                 "status":  "PASSED",
@@ -85,12 +91,12 @@
                                                                                   "out_json":  "_otokodlama\\out\\calibration_ui_create_validate.json",
                                                                                   "screenshot":  "targets\\reference\\calibration_ui_create.png"
                                                                               },
-                                                                "ts":  "2025-09-29T15:09:53"
+                                                                "ts":  "2025-09-29T15:21:00"
                                                             }
                               }
               },
     "pending_actions":  [
 
                         ],
-    "last_updated":  "2025-09-29T15:09:53"
+    "last_updated":  "2025-09-29T15:21:00"
 }
