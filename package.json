@@ -1,33 +1,10 @@
 {
   "name": "bakim_kalibrasyon",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
-  "scripts": 
-  {
-  "name": "bakim_kalibrasyon",
   "private": true,
+  "version": "0.0.1",
   "scripts": {
     "ci:pr": "powershell -ExecutionPolicy Bypass -File ops/auto_pr.ps1 -WaitForMerge",
     "ci:pr:nowait": "powershell -ExecutionPolicy Bypass -File ops/auto_pr.ps1",
-    "ci:pr:approve": "powershell -ExecutionPolicy Bypass -Command \"$env:GH_TOKEN=$env:OZKAN_PAT; & ./ops/auto_pr.ps1 -WaitForMerge; Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue\""
+    "ci:pr:approve": "powershell -ExecutionPolicy Bypass -File ops/run_ci_pr_approve.ps1"
   }
-}
-{
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/koordinator-maker/bakim_kalibrasyon_rep.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/koordinator-maker/bakim_kalibrasyon_rep/issues"
-  },
-  "homepage": "https://github.com/koordinator-maker/bakim_kalibrasyon_rep#readme"
 }
