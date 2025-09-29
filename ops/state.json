@@ -2,13 +2,19 @@
     "project":  "",
     "repo":  "",
     "pipeline":  {
-                     "stage":  "open_pr",
+                     "stage":  "await_review",
                      "history":  [
                                      {
                                          "from":  "validate_ui_pages",
                                          "to":  "open_pr",
-                                         "hint":  "Tüm UI doğrulamaları geçti → PR açılabilir.",
+                                         "hint":  "TÃ¼m UI doÄŸrulamalarÄ± geÃ§ti â†’ PR aÃ§Ä±labilir.",
                                          "ts":  "2025-09-29T21:07:52"
+                                     },
+                                     {
+                                         "from":  "open_pr",
+                                         "to":  "await_review",
+                                         "hint":  "PR açıldı: https://github.com/koordinator-maker/bakim_kalibrasyon_rep/pull/3",
+                                         "ts":  "2025-09-29T21:08:14"
                                      }
                                  ]
                  },
@@ -60,5 +66,5 @@
     "pending_actions":  [
 
                         ],
-    "last_updated":  "2025-09-29T21:07:52"
+    "last_updated":  "2025-09-29T21:08:14"
 }
