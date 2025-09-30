@@ -197,3 +197,4 @@ if ($bad.Count -gt 0) {
   Write-Host "[link-smoke] YEŞİL" -ForegroundColor Green
   exit 0
 }
+

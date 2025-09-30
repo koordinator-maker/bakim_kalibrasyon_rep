@@ -34,3 +34,4 @@ foreach($pat in $Filter){
 
   powershell @argList
 }
+

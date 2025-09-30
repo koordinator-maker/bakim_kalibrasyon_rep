@@ -31,3 +31,4 @@ $exitCode = $LASTEXITCODE
 if (Test-Path $outPath) { Write-Host "[guard] wrote: $outPath" }
 
 exit $exitCode
+

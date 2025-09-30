@@ -1,10 +1,10 @@
-param([string]$State="ops\state.json")
+﻿param([string]$State="ops\state.json")
 $ErrorActionPreference="Stop"
 
-# Repo kökü: tools klasörünün bir üstü
+# Repo kÃ¶kÃ¼: tools klasÃ¶rÃ¼nÃ¼n bir Ã¼stÃ¼
 $repoRoot = Split-Path $PSScriptRoot -Parent
 
-# state.json mutlak değilse repo köküne göre çöz
+# state.json mutlak deÄŸilse repo kÃ¶kÃ¼ne gÃ¶re Ã§Ã¶z
 if ([IO.Path]::IsPathRooted($State)) { $statePath = $State } else { $statePath = Join-Path $repoRoot $State }
 
 $outD  = Join-Path $repoRoot "_otokodlama\out"
@@ -80,3 +80,4 @@ foreach ($s in $steps) {
 $report.ok = $allOk
 $report | ConvertTo-Json -Depth 5 | Set-Content "$outD\visual_report.json"
 if ($allOk) { Write-Host "[VISUAL] ALL PASSED"; exit 0 } else { Write-Warning "[VISUAL] SOME FAILED"; exit 1 }
+

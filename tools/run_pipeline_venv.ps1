@@ -18,3 +18,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "==> pipeline.ps1 çalışıyor..."
 . (Join-Path $RepoRoot "pipeline.ps1")
+

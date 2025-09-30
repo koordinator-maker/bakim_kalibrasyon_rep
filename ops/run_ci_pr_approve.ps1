@@ -8,3 +8,4 @@ try {
 } finally {
   Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
 }
+

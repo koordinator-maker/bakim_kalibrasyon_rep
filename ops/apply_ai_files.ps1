@@ -74,3 +74,4 @@ Write-Host "`n=== APPLY SUMMARY ===" -ForegroundColor Green
 if ($changed) { "`n-- Changed files --"; $changed | ForEach-Object { "  - $_" } }
 if ($deleted) { "`n-- Deleted files --"; $deleted | ForEach-Object { "  - $_" } }
 if ($skipped) { "`n-- Skipped --"; $skipped | ForEach-Object { "  - $_" } }
+

@@ -23,3 +23,4 @@ if ($NoGitPush) {
 }
 
 Write-Host "`n[pipeline] DONE." -ForegroundColor Green
+

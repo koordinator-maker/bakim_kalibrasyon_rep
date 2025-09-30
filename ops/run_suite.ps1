@@ -61,3 +61,4 @@ if ($allOk) {
   Advance-Pipeline -ToStage "validate_ui_pages" -Hint "FAILED olan test(ler) var → düzeltmeler uygulayın."
   Write-Host "[pipeline] staying at validate_ui_pages (failures present)" -ForegroundColor Yellow
 }
+

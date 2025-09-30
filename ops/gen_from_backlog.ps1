@@ -95,3 +95,4 @@ SCREENSHOT _otokodlama/debug/${id}_delete.png
 }
 
 Write-Host "[gen] Flow üretimi tamam" -ForegroundColor Green
+

@@ -85,3 +85,4 @@ if ($WaitForMerge) {
 } else {
   Write-Host "[note] Auto-merge açık. Koşullar sağlanınca PR kendiliğinden birleşecek." -ForegroundColor Yellow
 }
+

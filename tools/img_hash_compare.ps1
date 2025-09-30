@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory=$true)][string]$A,
   [Parameter(Mandatory=$true)][string]$B
 )

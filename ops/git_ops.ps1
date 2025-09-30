@@ -21,3 +21,4 @@ if (-not $NoPush) {
 } else {
   Write-Host "[git] --NoPush seçildi, push atlandı." -ForegroundColor Yellow
 }
+

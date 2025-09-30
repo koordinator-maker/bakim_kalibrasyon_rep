@@ -99,3 +99,4 @@ if (Test-Path (Join-Path $AlertsDir 'alerts_log.csv')) {
     Select-Object ts,key,ok,recall,misses,alert_md |
     Select-Object -Last 10 | Format-Table -AutoSize
 }
+

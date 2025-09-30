@@ -83,3 +83,4 @@ if ($PrNumber -gt 0) { gh pr merge $PrNumber --squash --auto }
 
 Write-Host "[done] $Branch güncellendi ve push edildi." -ForegroundColor Green
 if ($PrNumber -gt 0) { Write-Host "[note] PR #$PrNumber auto-merge açık; koşullar tamamlanınca birleşir." -ForegroundColor Yellow }
+

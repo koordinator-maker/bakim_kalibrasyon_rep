@@ -1,4 +1,4 @@
-param(
+﻿param(
   [switch],
   [switch]
 )
@@ -13,7 +13,7 @@ if (-not \http://127.0.0.1:8010 -or [string]::IsNullOrWhiteSpace(\http://127.0.0
   \http://127.0.0.1:8010 = "http://127.0.0.1:8010"
 }
 
-# Koşturulacak flow listesi (klasörde varsa)
+# KoÅŸturulacak flow listesi (klasÃ¶rde varsa)
 \ = @(
   "ops\flows\admin_home.flow",
   "ops\flows\admin_plan.flow",
@@ -102,7 +102,7 @@ SCREENSHOT targets/screens/admin-equipment.png --out \
     }
   } else {
     \ = \False
-    \ = @{ cmd="NO_JSON"; arg=\; url=""; error="json üretilmedi (rc=\)" }
+    \ = @{ cmd="NO_JSON"; arg=\; url=""; error="json Ã¼retilmedi (rc=\)" }
   }
 
   if (\) {

@@ -1,4 +1,4 @@
-# Rev: 2025-09-30 22:09 r6
+﻿# Rev: 2025-09-30 22:09 r6
 
 param(
   [string]$BindHost = "127.0.0.1",
@@ -30,7 +30,7 @@ Write-Host ("Repo root: " + $root) -ForegroundColor DarkCyan
 Get-ChildItem tools\*.ps1,ops\*.ps1 -ErrorAction SilentlyContinue | Unblock-File
 
 # default BaseUrl
-if (-not $BaseUrl) { $BaseUrl = "http://$BindHost:$Port" }
+if (-not $BaseUrl) { $BaseUrl = "http://${BindHost}:${Port}" }
 Write-Host ("BaseUrl: " + $BaseUrl) -ForegroundColor DarkCyan
 
 # Sanity checks
@@ -49,3 +49,4 @@ Write-Host ("BaseUrl: " + $BaseUrl) -ForegroundColor DarkCyan
   -TimeoutMs $TimeoutMs -BaseUrl $BaseUrl -SoundProfile $SoundProfile -SoundFile $SoundFile
 
 Write-Host "=== DEBUG RUNNER END ===" -ForegroundColor Cyan
+

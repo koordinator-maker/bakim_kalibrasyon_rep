@@ -1,5 +1,5 @@
-# tools/accept_visual.ps1
-# Görsel kabul (baseline güncelleme) otomasyonu
+﻿# tools/accept_visual.ps1
+# GÃ¶rsel kabul (baseline gÃ¼ncelleme) otomasyonu
 param()
 
 $ErrorActionPreference = "Stop"
@@ -11,7 +11,7 @@ $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
 $mode = $cfg.acceptance.mode
 $auto = $cfg.acceptance.auto_accept_if
 
-# 2) layout_report.json nerede? (root veya _otokodlama/out altında)
+# 2) layout_report.json nerede? (root veya _otokodlama/out altÄ±nda)
 $report = $null
 $try1 = Join-Path $RepoRoot "layout_report.json"
 if (Test-Path $try1) { $report = $try1 } else {
@@ -24,7 +24,7 @@ if (Test-Path $try1) { $report = $try1 } else {
     }
   }
 }
-if (-not $report) { Write-Host "[ACCEPT] layout_report.json bulunamadı." ; exit 0 }
+if (-not $report) { Write-Host "[ACCEPT] layout_report.json bulunamadÄ±." ; exit 0 }
 
 $j = Get-Content $report -Raw | ConvertFrom-Json
 $sim = [double]$j.similarity
@@ -35,15 +35,16 @@ Write-Host "[ACCEPT] mode=$mode similarity=$sim target=$(Split-Path $target -Lea
 
 function Accept-Baseline {
   Copy-Item $latest $target -Force
-  Write-Host "[ACCEPT] Baseline güncellendi -> $($target)"
+  Write-Host "[ACCEPT] Baseline gÃ¼ncellendi -> $($target)"
 }
 
 switch ($mode) {
-  "locked"  { Write-Host "[ACCEPT] locked modunda otomatik kabul yapılmaz." ; exit 0 }
+  "locked"  { Write-Host "[ACCEPT] locked modunda otomatik kabul yapÄ±lmaz." ; exit 0 }
   "rolling" { Accept-Baseline ; exit 0 }
   "guided"  {
     if ($sim -ge $auto) { Accept-Baseline ; exit 0 }
-    else { Write-Host "[ACCEPT] guided: otomatik kabul eşiği tutmadı (>= $auto gerekli)." ; exit 0 }
+    else { Write-Host "[ACCEPT] guided: otomatik kabul eÅŸiÄŸi tutmadÄ± (>= $auto gerekli)." ; exit 0 }
   }
   default   { Write-Host "[ACCEPT] Bilinmeyen mode: $mode" ; exit 0 }
 }
+
