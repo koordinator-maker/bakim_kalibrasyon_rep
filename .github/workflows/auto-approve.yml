@@ -1,11 +1,15 @@
 ﻿name: Auto Approve UI PR
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
+
 jobs:
   approve:
-    # PR'da 'ui-tests' etiketi varsa çalışsın
-    if: contains(join(fromJson(toJson(github.event.pull_request.labels)).*.name, ','), 'ui-tests')
+    if: contains(toJson(github.event.pull_request.labels), '"ui-tests"')
     runs-on: ubuntu-latest
     steps:
       - name: Auto approve when label present
