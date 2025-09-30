@@ -1,22 +1,17 @@
 {
   "name": "bakim_kalibrasyon",
   "version": "1.0.0",
+  "private": true,
   "description": "",
   "main": "index.js",
   "directories": {
     "test": "tests"
   },
-  "scripts": 
-  {
-  "name": "bakim_kalibrasyon",
-  "private": true,
   "scripts": {
     "ci:pr": "powershell -ExecutionPolicy Bypass -File ops/auto_pr.ps1 -WaitForMerge",
     "ci:pr:nowait": "powershell -ExecutionPolicy Bypass -File ops/auto_pr.ps1",
-    "ci:pr:approve": "powershell -ExecutionPolicy Bypass -Command \"$env:GH_TOKEN=$env:OZKAN_PAT; & ./ops/auto_pr.ps1 -WaitForMerge; Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue\""
-  }
-}
-{
+    "ci:pr:approve": "powershell -ExecutionPolicy Bypass -Command \"$env:GH_TOKEN=$env:OZKAN_PAT; & ./ops/auto_pr.ps1 -WaitForMerge; Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue\"",
+    "clean:branches": "powershell -ExecutionPolicy Bypass -File ops/cleanup_merged_branches.ps1",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
