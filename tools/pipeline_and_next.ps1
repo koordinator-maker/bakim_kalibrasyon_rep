@@ -1,126 +1,100 @@
-﻿param(
+# Rev: 2025-09-30 21:30 r3
+
+param(
   [string]$BindHost = "127.0.0.1",
   [int]$Port = 8010,
-  [switch]$SkipFlows,
-  [switch]$NonBlocking,
-  [switch]$DryRun
+  [switch]$StartServer,
+  [string]$DjangoSettings = "",
+  [string]$FlowsFilter = "*",
+  [switch]$LinkSmoke,
+  [int]$SmokeDepth = 1,
+  [int]$SmokeLimit = 200,
+  [int]$TimeoutMs = 20000,
+  [string]$BaseUrl = "",
+  [string]$SoundProfile = "notify",
+  [string]$SoundFile = ""
 )
 
 $ErrorActionPreference = "Stop"
 
-# --- Yol / klasörler ---
-$repoRoot = Split-Path $PSCommandPath -Parent | Split-Path -Parent
-$outDir   = Join-Path $repoRoot "_otokodlama\out"
-$logFile  = Join-Path $repoRoot "_otokodlama\pipeline_last.log"
-New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+function Write-Info($msg) { Write-Host "[info] $msg" -ForegroundColor Cyan }
+function Write-Ok($msg)   { Write-Host "[ok]   $msg" -ForegroundColor Green }
+function Write-Warn($msg) { Write-Warning $msg }
+function Write-Err($msg)  { Write-Host "[err]  $msg" -ForegroundColor Red }
 
-# --- Yardımcılar ---
-function Start-DjangoServer {
-  param([string]$BindAddr, [int]$BindPort)   # $Host çakışması yok
-  $args = @("manage.py","runserver","$BindAddr`:$BindPort","--settings=core.settings_maintenance","--noreload")
-  $p = Start-Process -FilePath "python" -ArgumentList $args -PassThru -WorkingDirectory $repoRoot -WindowStyle Hidden
-  return $p
-}
+# repo root
+$root = & git rev-parse --show-toplevel 2>$null
+if (-not $root) { throw "Git deposu bulunamadı. 'git init' veya depo kökünden çalıştırın." }
+Set-Location $root
 
-function Wait-ServerUp {
-  param([string]$Url, [int]$TimeoutSec = 90)
-  $deadline = (Get-Date).AddSeconds($TimeoutSec)
-  while((Get-Date) -lt $deadline){
+# default BaseUrl
+if (-not $BaseUrl) { $BaseUrl = "http://$BindHost:$Port" }
+
+# helper: wait for URL up
+function Wait-UrlUp($url, $retries = 60) {
+  for ($i=1; $i -le $retries; $i++) {
     try {
-      $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
-      if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500){ return $true }
-    } catch { Start-Sleep -Milliseconds 500 }
+      $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -MaximumRedirection 0 -TimeoutSec 2
+      if ($resp.StatusCode -in 200,301,302,401) { return $true }
+    } catch {
+      Start-Sleep -Milliseconds 500
+    }
   }
   return $false
 }
 
-function Stop-ProcessSafe {
-  param([int]$ProcId)   # $PID çakışması yok
-  try { if ($ProcId) { Stop-Process -Id $ProcId -Force -ErrorAction Stop } } catch {}
-}
+$serverProc = $null
+$serverStartedHere = $false
 
-# --- Sunucu başlat ---
-$server = Start-DjangoServer -BindAddr $BindHost -BindPort $Port
-"[$(Get-Date -Format HH:mm:ss)] DEV server PID=$($server.Id)" | Tee-Object -FilePath $logFile -Append | Out-Null
-Start-Sleep -Seconds 2
-
-$baseUrl = "http://$BindHost`:$Port"
-
-# *** KRİTİK: Playwright için BASE_URL ve Django settings ***
-$env:BASE_URL = $baseUrl
-$env:DJANGO_SETTINGS_MODULE = "core.settings_maintenance"
-$env:PYTHONUNBUFFERED = "1"
-
-if (-not (Wait-ServerUp -Url "$baseUrl/admin/login/" -TimeoutSec 90)) {
-  Write-Warning "[SERVER] Ayağa kalkmadı ama NonBlocking mod akışı deneyecek."
-}
-
-# --- Flows çalıştır ---
-$runFlows = Join-Path $repoRoot "tools\run_flows.ps1"
-$flows_ok = $true
-$flows_rc = $null
-if (-not $SkipFlows -and (Test-Path $runFlows)) {
-  if ($NonBlocking) {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $runFlows -Soft
-  } else {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $runFlows -FailFast
+if ($StartServer) {
+  # Check if port already in use
+  $inUse = (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) -ne $null
+  if ($inUse) {
+    Write-Warn "Port $Port zaten dinlemede. Sunucu başlatılmayacak (mevcut süreci kullanıyoruz)."
   }
-  $flows_rc = $LASTEXITCODE
-  $flows_ok = ($NonBlocking) -or ($flows_rc -eq 0)
-}
-
-# --- Görsel gate (varsa) ---
-$visual_ok = $true
-$vg = Join-Path $repoRoot "tools\visual_gate.ps1"
-if (Test-Path $vg) {
-  & powershell -NoProfile -ExecutionPolicy Bypass -File $vg
-  $visual_ok = ($LASTEXITCODE -eq 0)
-}
-
-# --- Layout acceptance (THROW YOK; asla patlatma) ---
-$layout_json = Join-Path $outDir "layout_report.json"
-$sim = 1.0
-$layout_ok = $true
-if (Test-Path $layout_json) {
-  try {
-    $lj = Get-Content $layout_json -Raw | ConvertFrom-Json
-    if ($lj.similarity -ne $null) { $sim = [double]$lj.similarity }
-    $layout_ok = $true
-  } catch {
-    Write-Warning "[NEXT] layout_report.json okunamadı; layout gate devre dışı."
-    $sim = 1.0; $layout_ok = $true
+  else {
+    Write-Info "Django server başlatılıyor: manage.py runserver $BindHost:$Port (noreload)"
+    if ($DjangoSettings) { $env:DJANGO_SETTINGS_MODULE = $DjangoSettings }
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName  = "powershell"
+    $psi.Arguments = "-NoLogo -NoProfile -Command `"Set-Location `"$root`"; python manage.py runserver {0}:{1} --noreload`"" -f $BindHost, $Port
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError  = $true
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $serverProc = [System.Diagnostics.Process]::Start($psi)
+    if (-not $serverProc) { throw "Django server başlatılamadı." }
+    $serverStartedHere = $true
+    Write-Info "Server PID: $($serverProc.Id)"
   }
-} else {
-  Write-Warning "[NEXT] layout_report.json yok; layout gate devre dışı."
-  $sim = 1.0; $layout_ok = $true
 }
 
-# --- NEXT kararı ---
-if ($layout_ok -and $flows_ok -and $visual_ok) {
-  Write-Host "[ACCEPT] mode=guided similarity=$sim target=target.png"
-  Write-Host "[NEXT] OK (layout AND flows)."
-  # ops/next_ok_runcard.txt çalıştır
-  $card = Join-Path $repoRoot "ops\next_ok_runcard.txt"
-  if (Test-Path $card) {
-    if ($DryRun) {
-      Write-Host "[DRY] tools\apply_runcard.ps1 -Card $card -NoConfirm"
-    } else {
-      $apply = Join-Path $repoRoot "tools\apply_runcard.ps1"
-      if (Test-Path $apply) {
-        & powershell -NoProfile -ExecutionPolicy Bypass -File $apply -Card $card -NoConfirm
-      }
-    }
-  }
-} else {
-  Write-Warning "[NEXT] NOT satisfied. layout_ok=$layout_ok flows_ok=$flows_ok visual_ok=$visual_ok (sim=$sim)"
+# wait for health
+Write-Info "Health check bekleniyor: $BaseUrl/admin/login/"
+if (-not (Wait-UrlUp "$BaseUrl/admin/login/")) {
+  if ($serverStartedHere -and $serverProc) { try { Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue } catch {} }
+  throw "Server ayakta görünmüyor: $BaseUrl"
+}
+Write-Ok "Server hazır: $BaseUrl"
+
+# 1) Flow üret
+Write-Info "Flow üretimi: ops/gen_from_backlog.ps1"
+powershell -ExecutionPolicy Bypass -File "ops/gen_from_backlog.ps1"
+
+# 2) Flow koşum (per-flow sound)
+$lmArg = if ($LinkSmoke) { "-LinkSmoke -SmokeDepth $SmokeDepth -SmokeLimit $SmokeLimit" } else { "" }
+$cmd = "powershell -ExecutionPolicy Bypass -File ops\run_backlog_sound.ps1 -Filter `"$FlowsFilter`" -BaseUrl `"$BaseUrl`" -TimeoutMs $TimeoutMs $lmArg -SoundProfile `"$SoundProfile`" -SoundFile `"$SoundFile`""
+
+Write-Info "Koşu: $cmd"
+cmd /c $cmd
+if ($LASTEXITCODE -ne 0) { Write-Err "Koşu HATALI döndü (exit: $LASTEXITCODE)"; if ($serverStartedHere -and $serverProc) { try { Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue } catch {} }; exit $LASTEXITCODE }
+
+Write-Ok "Akışlar başarıyla tamamlandı."
+
+# 3) Server'ı kapat
+if ($serverStartedHere -and $serverProc) {
+  Write-Info "Server kapatılıyor (PID=$($serverProc.Id))"
+  try { Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue } catch { Write-Warn "Server kapatılamadı; manuel kapatın." }
 }
 
-# --- Sunucuyu kapat ---
-if ($server -and $server.Id) { Stop-ProcessSafe -ProcId $server.Id }
-
-# Ortamı kirletmeyelim (isteğe bağlı)
-Remove-Item Env:BASE_URL -ErrorAction SilentlyContinue
-Remove-Item Env:DJANGO_SETTINGS_MODULE -ErrorAction SilentlyContinue
-Remove-Item Env:PYTHONUNBUFFERED -ErrorAction SilentlyContinue
-
-exit 0
+Write-Ok "Bitti."
