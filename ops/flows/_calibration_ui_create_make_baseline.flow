@@ -1,4 +1,4 @@
-﻿COMMENT make baseline (calibration_ui_create)
+COMMENT make baseline (calibration_ui_create)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -8,3 +8,4 @@ WAIT URL CONTAINS /admin/
 GOTO /admin/maintenance/calibration/add/
 WAIT SELECTOR css=:is(form#changelist-form,table#result_list,#content-main,#content,body)
 SCREENSHOT targets\reference\calibration_ui_create.png
+

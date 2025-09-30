@@ -1,4 +1,4 @@
-﻿COMMENT make baseline (equipment_ui_list)
+COMMENT make baseline (equipment_ui_list)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -8,3 +8,4 @@ WAIT URL CONTAINS /admin/
 GOTO /admin/maintenance/equipment/_direct/
 WAIT SELECTOR css=:is(form#changelist-form,table#result_list,#content-main,#content,body)
 SCREENSHOT targets\reference\equipment_ui_list.png
+

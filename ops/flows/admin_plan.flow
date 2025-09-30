@@ -1,4 +1,4 @@
-﻿# Admin -> Plan sayfası (doğrudan URL)
+# Admin -> Plan sayfas? (do?rudan URL)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -7,8 +7,9 @@ CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 
-# Burayı bulduğun gerçek URL ile değiştir
+# Buray? buldu?un ger?ek URL ile de?i?tir
 GOTO /admin/maintenance/plan/
 WAIT SELECTOR h1
 SCREENSHOT targets/screens/admin-plan.png
 EXPECT URL CONTAINS /admin/maintenance/plan/
+

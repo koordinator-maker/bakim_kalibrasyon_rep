@@ -1,6 +1,7 @@
-﻿COMMENT calibration list (robust)
+COMMENT calibration list (robust)
 GOTO /admin/maintenance/calibration/_direct/
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR-OR table#result_list || form#changelist-form || #changelist || #content-main
 DUMPDOM _otokodlama/debug/calibration_list_dom.html
 SCREENSHOT _otokodlama/debug/calibration_list.png
+

@@ -1,4 +1,4 @@
-# Admin -> Checklists (doğrudan URL)
+# Admin -> Checklists (do??rudan URL)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -12,3 +12,4 @@ GOTO /admin/maintenance/checklists/
 WAIT SELECTOR h1
 SCREENSHOT targets/screens/admin-checklists.png
 EXPECT URL CONTAINS /admin/maintenance/checklists/
+

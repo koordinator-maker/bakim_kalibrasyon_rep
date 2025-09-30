@@ -1,4 +1,4 @@
-﻿# Admin ana sayfa smoke
+# Admin ana sayfa smoke
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -7,3 +7,4 @@ CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 SCREENSHOT targets/screens/admin-home.png
+

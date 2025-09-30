@@ -1,4 +1,4 @@
-﻿COMMENT login smoke (robust)
+COMMENT login smoke (robust)
 GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
@@ -8,5 +8,6 @@ WAIT URL CONTAINS /admin/
 WAIT SELECTOR #content-main
 DUMPDOM _otokodlama/debug/login_after_submit_dom.html
 SCREENSHOT _otokodlama/debug/login_after_submit.png
-COMMENT Üst bar temaya göre değişebilir; logout tespitini genişlet:
+COMMENT ?st bar temaya g?re de?i?ebilir; logout tespitini geni?let:
 WAIT SELECTOR-OR a[href*="/logout/"] || a:has-text("LOG OUT") || #user-tools a
+

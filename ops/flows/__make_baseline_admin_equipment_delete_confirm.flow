@@ -1,4 +1,4 @@
-﻿GOTO /admin/login/
+GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
@@ -12,6 +12,7 @@ CLICK a.deletelink
 WAIT SELECTOR form[action$="/delete/"] input[type=submit]
 DUMPDOM targets/reference/admin_equipment_delete_confirm.txt
 SCREENSHOT targets/reference/admin_equipment_delete_confirm.png
+
 
 
 

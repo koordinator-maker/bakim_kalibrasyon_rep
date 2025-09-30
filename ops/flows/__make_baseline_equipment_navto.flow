@@ -1,4 +1,4 @@
-﻿GOTO /admin/login/
+GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
@@ -8,6 +8,7 @@ WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
 NAVTO a[href="/admin/maintenance/equipment/"]
 WAIT SELECTOR #content-main
 SCREENSHOT targets/reference/admin_equipment.png
+
 
 
 

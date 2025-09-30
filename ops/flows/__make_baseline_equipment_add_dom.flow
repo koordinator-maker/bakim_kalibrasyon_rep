@@ -1,4 +1,4 @@
-﻿GOTO /admin/login/
+GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
@@ -8,6 +8,7 @@ GOTO /admin/maintenance/equipment/add/
 WAIT SELECTOR body
 DUMPDOM targets/reference/admin_equipment_add.txt
 SCREENSHOT targets/reference/admin_equipment_add.png
+
 
 
 
