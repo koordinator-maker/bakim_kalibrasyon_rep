@@ -1,4 +1,4 @@
-# Rev: 2025-09-30 rS
+# Rev: 2025-09-30 rD (no --timeout hotfix)
 param(
   [string]$FlowsDir   = "ops\flows",
   [string]$OutDir     = "_otokodlama\out",
@@ -12,6 +12,7 @@ param(
   [string]$SoundProfile = "notify",
   [string]$SoundFile = ""
 )
+
 $ErrorActionPreference = "Stop"
 
 # repo root
@@ -31,20 +32,17 @@ if (-not (Test-Path $FlowsDir)) { throw ("Flows directory not found: {0}. Run op
 $flows = Get-ChildItem -Path $FlowsDir -Filter "$Filter.flow" -File -ErrorAction Stop | Sort-Object Name
 if (-not $flows) { Write-Host ("[warn] No matching flows for filter: {0}" -f $Filter) -ForegroundColor Yellow; exit 0 }
 
-# common args
-$extra = "--timeout $TimeoutMs"
 $fail = 0
-
 foreach ($f in $flows) {
   Write-Host ("==> Running: {0}" -f $f.Name) -ForegroundColor Cyan
 
-  # 1) run the flow with required OutPath
+  # 1) run the flow (no --timeout hotfix)
   $jsonOut = Join-Path $OutDir ($f.BaseName + ".json")
-  $cmd = "powershell -ExecutionPolicy Bypass -File ops\run_and_guard.ps1 -Flow `"{0}`" -BaseUrl `"{1}`" -OutPath `"{2}`" -ExtraArgs `"{3}`"" -f $f.FullName, $BaseUrl, $jsonOut, $extra
+  $cmd = "powershell -ExecutionPolicy Bypass -File ops\run_and_guard.ps1 -Flow `"{0}`" -BaseUrl `"{1}`" -OutPath `"{2}`"" -f $f.FullName, $BaseUrl, $jsonOut
   cmd /c $cmd
   if ($LASTEXITCODE -ne 0) { Write-Host ("[err] {0} exit={1}" -f $f.Name, $LASTEXITCODE) -ForegroundColor Red; $fail++; break }
 
-  # 2) optional link smoke gating (per-flow)
+  # 2) optional link smoke gating
   if ($LinkSmoke) {
     $okRedirect = "/_direct/.*"
     $smokeCmd = "powershell -ExecutionPolicy Bypass -File ops\smoke_links.ps1 -BaseUrl `"{0}`" -Start `"/admin/`" -Depth {1} -Limit {2} -OkRedirectTo `"{3}`"" -f $BaseUrl, $SmokeDepth, $SmokeLimit, $okRedirect
