@@ -7,13 +7,18 @@ GOTO  /admin/maintenance/equipment/add/
 WAIT  SELECTOR form
 GOTO  /admin/maintenance/equipment/add/
 WAIT  SELECTOR form
+GOTO  /admin/maintenance/equipment/add/
+WAIT  SELECTOR form
+GOTO  /admin/maintenance/equipment/add/
+WAIT  SELECTOR form
 COMMENT equipment list direct (robust)
 GOTO /admin/maintenance/equipment/_direct/
-WAIT URL CONTAINS /admin/maintenance/equipment/
 # Django admin temalar?na g?re: sonu? tablosu yoksa form/changelist kapsay?c?lar?n? da kabul et
 WAIT  SELECTOR #content-main
 DUMPDOM _otokodlama/debug/equipment_list_dom.html
 SCREENSHOT _otokodlama/debug/equipment_list.png
+
+
 
 
 

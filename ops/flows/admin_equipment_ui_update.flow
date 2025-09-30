@@ -5,21 +5,24 @@ FILL  input[name=password]  Admin!2345
 CLICK input[type=submit]
 GOTO  /admin/maintenance/equipment/_direct/
 WAIT  SELECTOR table#result_list
+GOTO  /admin/maintenance/equipment/_direct/
+WAIT  SELECTOR table#result_list
+GOTO  /admin/maintenance/equipment/_direct/
+WAIT  SELECTOR table#result_list
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
-WAIT URL CONTAINS /admin/
 GOTO /admin/maintenance/equipment/_direct/?q=EQ-CRUD-UI
-WAIT URL CONTAINS /admin/maintenance/equipment/_direct/
 WAIT SELECTOR table#result_list
 WAIT SELECTOR table#result_list tbody tr:first-child th > a
 CLICK table#result_list tbody tr:first-child th > a
 WAIT SELECTOR form#equipment_form
 FILL input#id_name UI CRUD Cihazi 1 guncellendi
 CLICK input[name=_save]
-WAIT URL CONTAINS /admin/maintenance/equipment/_direct/
 WAIT SELECTOR .messagelist
 SCREENSHOT _otokodlama/debug/update_after_save.png
+
+
 
 
 

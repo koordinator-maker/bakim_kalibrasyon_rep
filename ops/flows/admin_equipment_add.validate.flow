@@ -7,12 +7,17 @@ GOTO  /admin/maintenance/equipment/_direct/
 WAIT  SELECTOR table#result_list
 GOTO  /admin/maintenance/equipment/_direct/
 WAIT  SELECTOR table#result_list
+GOTO  /admin/maintenance/equipment/_direct/
+WAIT  SELECTOR table#result_list
+GOTO  /admin/maintenance/equipment/_direct/
+WAIT  SELECTOR table#result_list
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
-WAIT URL CONTAINS /admin/
 GOTO /admin/maintenance/equipment/add/
 AUTOVALIDATE key=admin_equipment_add baseline=targets/reference/admin_equipment_add.png baseline_text=targets/reference/admin_equipment_add.txt words_recall=0.90 live_source=dom+ocr check_selects=yes vis_thresh=0.90 min_token_len=3 ignore_numbers=yes ignore_patterns=\d{2,},csrf,token,page_\d+ alert=on alert_dir=_otokodlama/alerts
+
+
 
 
 

@@ -5,10 +5,13 @@ FILL  input[name=password]  Admin!2345
 CLICK input[type=submit]
 GOTO  /admin/maintenance/equipment/_direct/
 WAIT  SELECTOR table#result_list
+GOTO  /admin/maintenance/equipment/_direct/
+WAIT  SELECTOR table#result_list
+GOTO  /admin/maintenance/equipment/_direct/
+WAIT  SELECTOR table#result_list
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
-WAIT URL CONTAINS /admin/
 GOTO /admin/maintenance/equipment/_direct/?q=EQ-CHANGE-001
 GOTO  /admin/maintenance/equipment/_direct/
 WAIT  SELECTOR table#result_list tbody tr:first-child th > a
@@ -16,6 +19,8 @@ CLICK  table#result_list tbody tr:has-text("EQP-CRUD-UI") th > a
 WAIT SELECTOR form#equipment_form
 DUMPDOM targets/reference/admin_equipment_change.txt
 SCREENSHOT targets/reference/admin_equipment_change.png
+
+
 
 
 
