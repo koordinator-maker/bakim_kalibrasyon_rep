@@ -1,0 +1,40 @@
+﻿name: CI Auto PR
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *" # saat başı
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  auto-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Set git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Install GitHub CLI
+        uses: cli/cli@v2
+        with:
+          version: latest
+      - name: Run auto PR script (PowerShell Core)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./ops/auto_pr.ps1
+      - name: Label & auto-merge all open PRs from this repo
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "ui-tests" --color "5319e7" --description "UI pipeline checks" --force 2>$null | Out-Null
+          $open = gh pr list --state open --json number --jq '.[].number'
+          foreach ($n in $open) {
+            gh pr edit $n --add-label ui-tests
+            gh pr merge $n --squash --auto
+          }

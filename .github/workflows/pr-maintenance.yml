@@ -1,0 +1,53 @@
+﻿name: PR Maintenance
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  schedule:
+    - cron: "*/15 * * * *" # 15 dakikada bir
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  update-or-rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Set git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Install GitHub CLI
+        uses: cli/cli@v2
+        with:
+          version: latest
+      - name: Try update-branch API
+        id: upd
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $slug = ("${{ github.repository }}")
+          $sha  = (gh pr view ${{ github.event.pull_request.number }} --json headRefOid --jq .headRefOid)
+          gh api -X PUT "repos/$slug/pulls/${{ github.event.pull_request.number }}/update-branch" `
+            -F expected_head_sha=$sha `
+            -H "Accept: application/vnd.github+json" 2>$null | Out-Null || exit 0
+      - name: Rebase/Merge fallback (ops/rebase_auto.ps1)
+        if: ${{ always() }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./ops/rebase_auto.ps1 -PrNumber ${{ github.event.pull_request.number }}
+      - name: Approve & auto-merge (idempotent)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr review ${{ github.event.pull_request.number }} --approve 2>$null
+          gh pr merge  ${{ github.event.pull_request.number }} --squash --auto
+      - name: Cache cleanup
+        run: |
+          rm -rf ~/.cache/pre-commit || true
+          rm -rf ~/.cache/ms-playwright || true
