@@ -1,8 +1,8 @@
 ﻿name: Cleanup Merged Branches
 on:
+  workflow_dispatch: {}
   schedule:
-    - cron: "30 3 * * *" # her gün 03:30
-  workflow_dispatch:
+    - cron: "30 3 * * *"
 permissions:
   contents: write
   pull-requests: read
@@ -18,5 +18,4 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          ./ops/cleanup_merged_branches.ps1
+        run: ./ops/cleanup_merged_branches.ps1
