@@ -1,14 +1,24 @@
+GOTO  /admin/login/
+WAIT  SELECTOR input[name=username]
+FILL  input[name=username]  admin
+FILL  input[name=password]  Admin!2345
+CLICK input[type=submit]
+GOTO  /admin/maintenance/equipment/_direct/
+WAIT  SELECTOR table#result_list
+GOTO  /admin/maintenance/equipment/_direct/
+WAIT  SELECTOR table#result_list
 # Admin > Equipment (click path; tolerate error pages)
-GOTO /admin/login/
 WAIT SELECTOR input#id_username
 FILL input#id_username admin
 FILL input#id_password Admin!2345
-CLICK input[type=submit]
 WAIT URL CONTAINS /admin/
 WAIT SELECTOR a[href="/admin/maintenance/equipment/"]
 CLICK a[href="/admin/maintenance/equipment/"]
 WAIT SELECTOR body
 SCREENSHOT targets/screens/admin-equipment.png
+
+
+
 
 
 
