@@ -1,8 +1,8 @@
 ﻿name: CI Auto PR
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   schedule:
-    - cron: "0 * * * *" # saat başı
+    - cron: "0 * * * *"
 permissions:
   contents: write
   pull-requests: write
@@ -25,8 +25,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          ./ops/auto_pr.ps1
+        run: ./ops/auto_pr.ps1
       - name: Label & auto-merge all open PRs from this repo
         shell: pwsh
         env:
