@@ -1,0 +1,10 @@
+{
+  "name": "bakim_kalibrasyon",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "ci:pr": "powershell -ExecutionPolicy Bypass -File ops/auto_pr.ps1 -WaitForMerge",
+    "ci:pr:nowait": "powershell -ExecutionPolicy Bypass -File ops/auto_pr.ps1",
+    "ci:pr:approve": "powershell -ExecutionPolicy Bypass -File ops/run_ci_pr_approve.ps1"
+  }
+}
