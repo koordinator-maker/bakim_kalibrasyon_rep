@@ -14,5 +14,5 @@
     "start":  "/admin/",
     "ok_redirect":  "/_direct/.*|/admin/.*",
     "depth":  1,
-    "limit":  150
+    "limit":  200
 }

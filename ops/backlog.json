@@ -1,41 +1,59 @@
-﻿[
-  {
-    "id": "login_smoke",
-    "type": "screen",
-    "title": "Admin login duman testi",
-    "url": "/admin/login/",
-    "login": { "username": "admin", "password": "Admin!2345" },
-    "checks": {
-      "must_have_selectors": ["input#id_username", "input#id_password"]
+﻿{
+  "__rev__": "Rev: 2025-09-30 18:00 r1",
+  "items": [
+    {
+      "id": "login_smoke",
+      "type": "screen",
+      "title": "Admin login duman testi",
+      "url": "/admin/login/",
+      "login": {
+        "username": "hp",
+        "password": "Admin!2345"
+      },
+      "checks": {
+        "must_have_selectors": [
+          "input[name=username]",
+          "input[name=password]"
+        ],
+        "required_text": ["Username", "Password", "Log in"],
+        "allow_extra_text": true,
+        "min_text_hit_rate": 1.0
+      },
+      "design_ref": "targets/reference/login.png",
+      "visual_threshold": 0.90
+    },
+    {
+      "id": "equipment_ui",
+      "type": "crud_admin",
+      "title": "Equipment admin CRUD UI",
+      "app": "maintenance",
+      "model": "equipment",
+      "urls": {
+        "add": "/admin/maintenance/equipment/add/",
+        "list_direct": "/admin/maintenance/equipment/_direct/"
+      },
+      "selectors": {
+        "form": "form",
+        "list_table": "table#result_list",
+        "row_link": "table#result_list tbody tr:first-child th > a",
+        "delete_btn": "a.deletelink",
+        "delete_confirm": "form[action$=\"/delete/\"] input[type=submit]",
+        "msg": ".messagelist"
+      },
+      "data": {
+        "code": "EQP-CRUD-UI",
+        "name": "UI CRUD Equipment 1",
+        "name_updated": "UI CRUD Equipment 1 guncellendi",
+        "search_q": "EQP-CRUD-UI"
+      },
+      "checks": {
+        "required_text": ["Equipment", "Add equipment", "Filter"],
+        "allow_extra_text": true,
+        "min_text_hit_rate": 1.0
+      },
+      "ensure_cmd": "",
+      "design_ref": "targets/reference/equipment_list.png",
+      "visual_threshold": 0.90
     }
-  },
-  {
-    "id": "equipment_ui",
-    "type": "crud_admin",
-    "title": "Equipment admin CRUD UI",
-    "app": "maintenance",
-    "model": "equipment",
-    "urls": {
-      "add": "/admin/maintenance/equipment/add/",
-      "list_direct": "/admin/maintenance/equipment/_direct/"
-    },
-    "selectors": {
-      "form": "form#equipment_form",
-      "code_input": "input#id_code",
-      "name_input": "input#id_name",
-      "list_table": "table#result_list",
-      "row_link": "table#result_list tbody tr:first-child th > a",
-      "delete_btn": "a.deletelink",
-      "delete_confirm": "form[action$=\"/delete/\"] input[type=submit]",
-      "msg": ".messagelist"
-    },
-    "data": {
-      "code": "EQ-CRUD-UI",
-      "name": "UI CRUD Cihazi 1",
-      "name_updated": "UI CRUD Cihazi 1 guncellendi",
-      "search_q": "EQ-CRUD-UI"
-    },
-    "ensure_cmd": "python manage.py ops_admin_crud --settings=core.settings_maintenance --action ensure --code EQ-CRUD-UI --name \"UI CRUD Cihazi 1\"",
-    "design_ref": ""
-  }
-]
+  ]
+}
