@@ -1,0 +1,22 @@
+﻿name: Cleanup Merged Branches
+on:
+  schedule:
+    - cron: "30 3 * * *" # her gün 03:30
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cli/cli@v2
+        with:
+          version: latest
+      - name: Run cleanup script
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./ops/cleanup_merged_branches.ps1
