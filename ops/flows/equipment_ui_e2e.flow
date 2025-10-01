@@ -17,7 +17,7 @@ GOTO /admin/maintenance/equipment/_direct/
 WAIT  SELECTOR #content-main
 DUMPDOM _otokodlama/debug/equipment_list_dom.html
 SCREENSHOT _otokodlama/debug/equipment_list.png
-GOTO  /admin/maintenance/equipment/_direct/
-WAIT  SELECTOR table#result_list
-WAIT  SELECTOR table#result_list tbody tr
+WAIT  SELECTOR #content-main
+WAIT  SELECTOR .messagelist
+WAIT  SELECTOR form
 

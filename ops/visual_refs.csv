@@ -1,0 +1,3 @@
+id,design_ref,visual_threshold
+equipment_ui,targets/reference/equipment_list.png,90%
+login_smoke,targets/reference/admin_login.png,0.85
