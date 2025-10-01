@@ -6,4 +6,5 @@ CLICK input[type=submit]
 WAIT  SELECTOR #content-main
 GOTO  http://127.0.0.1:8010/admin/maintenance/equipment/_direct/
 WAIT  SELECTOR #content-main
-WAIT  SELECTOR table#result_listWAIT  SELECTOR table#result_list tbody tr, p.no-results, .paginator
+WAIT  SELECTOR table#result_listWAIT  SELECTOR table#result_list
+WAIT  SELECTOR table#result_list tbody tr, p.no-results, .paginator
