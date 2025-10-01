@@ -3,44 +3,6 @@ WAIT  SELECTOR input[name=username]
 FILL  input[name=username]  admin
 FILL  input[name=password]  Admin!2345
 CLICK input[type=submit]
-GOTO  /admin/maintenance/equipment/_direct/
-WAIT  SELECTOR table#result_list
-GOTO  /admin/maintenance/equipment/_direct/
-WAIT  SELECTOR table#result_list
-GOTO  /admin/maintenance/equipment/_direct/
-WAIT  SELECTOR table#result_list
-GOTO  /admin/maintenance/equipment/_direct/
-WAIT  SELECTOR table#result_list
-WAIT SELECTOR input#id_username
-FILL input#id_username admin
-FILL input#id_password Admin!2345
-GOTO /admin/maintenance/equipment/add/
-WAIT SELECTOR body
-DUMPDOM targets/reference/admin_equipment_add.txt
-SCREENSHOT targets/reference/admin_equipment_add.png
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+WAIT  SELECTOR #content-main
+GOTO  /admin/maintenance/equipment/add/
+WAIT  SELECTOR form
