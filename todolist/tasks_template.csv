@@ -1,0 +1,3 @@
+﻿id,type,title,design_ref,visual_threshold
+login_smoke,screen,Admin login duman testi,targets/reference/admin_login.png,0.85
+equipment_ui,crud_admin,Equipment admin CRUD UI,targets/reference/equipment_list.png,90%
