@@ -16,22 +16,18 @@ if (-not (Test-Path "plan")) {
     New-Item -ItemType Directory -Path "plan" | Out-Null
 }
 
-Write-Host "--- TASK DÖNÜŞTÜRÜCÜ BAŞLADI (V3 - ALAN TEMİZLİĞİ) ---" -ForegroundColor Yellow
+Write-Host "--- TASK DÖNÜŞTÜRÜCÜ BAŞLADI (V4 - ONARIM) ---" -ForegroundColor Yellow
 
 try {
-    # 1. CSV'yi oku
-    # Raw oku ve sadece ilk satırdan başlıkları al, boşlukları temizle
+    # 1. CSV'yi oku ve başlıkları temizle (V3'teki gibi)
     $rawContent = Get-Content $CsvPath -Encoding UTF8
     $headerLine = $rawContent[0].Trim()
-
-    # Başlıkları boşluklarından temizle, sonra Import-Csv kullan
     $cleanHeaderLine = ($headerLine -split ',') | ForEach-Object { $_.Trim() } -join ','
     $cleanContent = @($cleanHeaderLine) + $rawContent[1..($rawContent.Count - 1)]
 
     $tasks = $cleanContent | ConvertFrom-Csv -Delimiter ','
     $requiredHeaders = "id", "title", "type", "design_ref", "visual_threshold"
     
-    # Artık başlıklar temizlendiği için doğrudan kontrol edebiliriz
     $actualHeaders = $tasks[0].psobject.properties.Name
     $missingHeaders = $requiredHeaders | Where-Object { $actualHeaders -notcontains $_.ToLower() }
 
@@ -43,7 +39,6 @@ try {
     # 2. JSON formatına dönüştür
     $output = @()
     foreach ($task in $tasks) {
-        # Import-Csv alanları dinamik olarak okur, biz sadece TRIM ile boşlukları silelim
         $id = $task.id.Trim()
         $title = $task.title.Trim()
         $type = $task.type.Trim()
@@ -55,7 +50,9 @@ try {
             continue
         }
         
-        $visual_threshold = [double]::Parse($visual_threshold_str, [cultureinfo]::InvariantCulture)
+        # Olası kültür sorununu gidermek için: Virgülleri noktaya çevir, sonra dönüştür.
+        $clean_threshold_str = $visual_threshold_str.Replace(',', '.')
+        $visual_threshold = [double]::Parse($clean_threshold_str, [cultureinfo]::InvariantCulture)
 
         $taskObject = [PSCustomObject]@{
             id = $id
@@ -74,6 +71,7 @@ try {
     Write-Host "--- TASK DÖNÜŞTÜRÜCÜ BİTTİ ---" -ForegroundColor Yellow
 }
 catch {
-    Write-Error "Dönüştürme sırasında hata oluştu: "
+    # Hatanın kendisini açıkça yazdır (Dönüşüm hatasını yakalamak için)
+    Write-Error "Dönüştürme sırasında KRİTİK HATA oluştu: "
     exit 1
 }
