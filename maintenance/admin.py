@@ -1,7 +1,7 @@
 ﻿# -*- coding: utf-8 -*-
 from django.contrib import admin
 from maintenance.models import Equipment
-from core.admin_utils import make_active, make_inactive # Yeni oluşturulan utils
+from core.admin_utils import make_active, make_inactive
 
 # core/urls.py tarafından beklenen özel admin sitesi tanımlanıyor
 class MaintenanceAdminSite(admin.AdminSite):
@@ -14,11 +14,22 @@ admin_site = MaintenanceAdminSite(name='maintenance_admin')
 
 @admin.register(Equipment, site=admin_site)
 class EquipmentAdmin(admin.ModelAdmin):
-    # EQP-002 görevi için 'manufacturer' kolonu eklendi.
+    # EQP-002: list_display'e manufacturer eklendi
     list_display = ('code', 'name', 'manufacturer', 'discipline', 'criticality', 'is_active')
     list_filter = ('discipline', 'criticality', 'is_active')
     search_fields = ('code', 'name', 'area', 'manufacturer')
     list_editable = ('criticality', 'is_active')
     actions = [make_active, make_inactive]
+    
+    # EQP-003: manufacturer alanını form'a ekler
+    fields = (
+        'code',
+        'name',
+        'area',
+        'manufacturer', # <--- Form alanına eklenmiştir
+        'discipline',
+        'criticality',
+        'is_active',
+    )
 
 # Diğer modeller buraya kaydedilebilir.
