@@ -1,33 +1,18 @@
-{
-  "name": "bakim_kalibrasyon",
+﻿{
+  "name": "bakim_kalibrasyon_tests",
   "version": "1.0.0",
-  "description": "",
+  "description": "Playwright tests for maintenance and calibration project.",
   "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
-  "scripts": 
-  {
-  "name": "bakim_kalibrasyon",
-  "private": true,
   "scripts": {
-    "ci:pr": "powershell -ExecutionPolicy Bypass -File ops/auto_pr.ps1 -WaitForMerge",
-    "ci:pr:nowait": "powershell -ExecutionPolicy Bypass -File ops/auto_pr.ps1",
-    "ci:pr:approve": "powershell -ExecutionPolicy Bypass -Command \"$env:GH_TOKEN=$env:OZKAN_PAT; & ./ops/auto_pr.ps1 -WaitForMerge; Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue\""
-  }
-}
-{
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx playwright test"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/koordinator-maker/bakim_kalibrasyon_rep.git"
-  },
-  "keywords": [],
+  "keywords": [
+    "playwright",
+    "automation"
+  ],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/koordinator-maker/bakim_kalibrasyon_rep/issues"
-  },
-  "homepage": "https://github.com/koordinator-maker/bakim_kalibrasyon_rep#readme"
+  "devDependencies": {
+    "@playwright/test": "^1.44.1"
+  }
 }
