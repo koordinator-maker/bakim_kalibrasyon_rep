@@ -1,86 +1,74 @@
 ﻿param(
-   [string]$Branch,
-   [int]$PrNumber = 0
+  [string]$Branch,
+  [int]$PrNumber = 0
 )
 
 $ErrorActionPreference = 'Stop'
 
-function Abort-StaleOps {
-   git rebase --abort 2>$null | Out-Null
-   git merge  --abort 2>$null | Out-Null
+function Abort-StaleRebase {
+  if (Test-Path ".git\rebase-apply" -or (Test-Path ".git\rebase-merge")) {
+    git rebase --abort | Out-Null
+  }
 }
 
 function Solve-Bumper {
-   New-Item -ItemType Directory -Force ".github" | Out-Null
-   "trigger $(Get-Date -Format s)" | Set-Content ".github\pr-bumper.md"
-   git add ".github\pr-bumper.md" | Out-Null
+  New-Item -ItemType Directory -Force ".github" | Out-Null
+  "trigger $(Get-Date -Format s)" | Set-Content ".github\pr-bumper.md"
+  git add ".github\pr-bumper.md" | Out-Null
 }
 
-function Get-Conflicts {
-   # Çatışan dosyaları tekil listele
-   (git ls-files -u) -split "`n" |
-     Where-Object { $_ -ne "" } |
-     ForEach-Object { ($_ -split "\s+")[3] } |
-     Sort-Object -Unique
-}
-
-# --- Branch'ı akıllı şekilde çöz ---
+# Branch boşsa PR'dan çöz, o da yoksa aktif dal
 if (-not $Branch) {
-   if ($PrNumber -gt 0) {
-     $Branch = gh pr view $PrNumber --json headRefName --jq .headRefName
-     if (-not $Branch) { throw "PR #$PrNumber bulunamadı/kapalı. -Branch vererek deneyin." }
-   } else {
-     $Branch = gh pr list --state open --limit 1 --json headRefName --jq '.[0].headRefName' 2>$null
-     if (-not $Branch) {
-       $Branch = (git rev-parse --abbrev-ref HEAD)
-       if (-not $Branch -or $Branch -eq 'HEAD') { throw "Açık PR yok ve aktif dal çözülemedi. -Branch ya da -PrNumber verin." }
-     }
-   }
+  if ($PrNumber -gt 0) {
+    $Branch = gh pr view $PrNumber --json headRefName --jq .headRefName
+  }
+  if (-not $Branch) {
+    $Branch = (git rev-parse --abbrev-ref HEAD)
+    if (-not $Branch -or $Branch -eq 'HEAD') {
+      throw "Branch bulunamadı: -Branch ver ya da -PrNumber ile PR'dan çözelim."
+    }
+  }
 }
 
 function Rebase-Or-Merge([string]$branch) {
-   git fetch origin | Out-Null
-   git checkout $branch | Out-Null
+  git fetch origin    | Out-Null
+  git checkout $branch| Out-Null
 
-   # 1) REBASE (editörsüz olsun diye boş mesajla commit atmaya zorlamayacağız; direkt deneyip düşersek merge)
-   git -c core.editor=true -c sequence.editor=true rebase origin/main
-   if ($LASTEXITCODE -eq 0 -and -not (Test-Path ".git\rebase-apply") -and -not (Test-Path ".git\rebase-merge")) {
-     return  # başarılı rebase
-   }
+  # 1) REBASE dene (editor'suz)
+  git -c core.editor=true -c sequence.editor=true rebase origin/main
+  if ($LASTEXITCODE -eq 0) { return }
 
-   Write-Warning "Rebase tamamlanamadı → MERGE fallback'a geçiyorum."
-   git rebase --abort 2>$null | Out-Null
+  Write-Warning "Rebase başarısız → rebase abort + MERGE fallback'a geçiyorum."
+  git rebase --abort 2>$null | Out-Null
 
-   # 2) MERGE (editor açmadan, no-edit ile)
-   git merge --no-edit origin/main
-   if ($LASTEXITCODE -ne 0) {
-     # Bumper'ı tazele
-     Solve-Bumper
+  # 2) MERGE (editor'suz, auto-msg)
+  git merge --no-edit origin/main
+  if ($LASTEXITCODE -ne 0) {
+    # en sık çatışma: pr-bumper.md → üzerine yazıp ekle
+    if (Test-Path ".github\pr-bumper.md") {
+      Write-Host "[merge] bumper conflict → auto-fix" -ForegroundColor Yellow
+      Solve-Bumper
+      # başka dosya çatışması var mı?
+      $confLeft = git ls-files -u
+      if ($confLeft) {
+        throw "Bumper dışı merge çatışmaları var; manuel müdahale gerekir."
+      }
+      git commit --no-edit
+      if ($LASTEXITCODE -ne 0) { throw "Merge commit atılamadı." }
+    } else {
+      throw "Merge başarısız ve bumper bulunamadı; manuel çözüm gerek."
+    }
+  }
 
-     # Kalan bütün çatışmalar --> OURS (mevcut dal)
-     $conf = Get-Conflicts
-     if ($conf) {
-       foreach ($p in $conf) {
-         if ($p -ne ".github/pr-bumper.md") {
-           git checkout --ours -- "$p"
-           git add -- "$p"
-         }
-       }
-     }
-
-     # Her şey eklendiyse commitle
-     git commit --no-edit
-     if ($LASTEXITCODE -ne 0) { throw "Merge commit atılamadı. Kalan çatışmalar olabilir." }
-   }
+  return
 }
 
-# --- Çalıştır ---
-Abort-StaleOps
+function Auto-Merge-Pr([int]$pr) { if ($pr -gt 0) { gh pr merge $pr --squash --auto } }
+
+Abort-StaleRebase
 Rebase-Or-Merge $Branch
 git push --force-with-lease origin $Branch
-
-if ($PrNumber -gt 0) { gh pr merge $PrNumber --squash --auto }
+Auto-Merge-Pr $PrNumber
 
 Write-Host "[done] $Branch güncellendi ve push edildi." -ForegroundColor Green
 if ($PrNumber -gt 0) { Write-Host "[note] PR #$PrNumber auto-merge açık; koşullar tamamlanınca birleşir." -ForegroundColor Yellow }
-
