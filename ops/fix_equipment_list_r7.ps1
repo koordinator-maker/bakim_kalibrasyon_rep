@@ -1,4 +1,4 @@
-# === fix_equipment_list_r7.ps1: FINAL ROBUST SELECTOR FIX (PS 5.1, ASCII) ===
+# === fix_equipment_list_r7.ps1: FINAL STANDARD URL FIX (PS 5.1, ASCII) ===
 $ErrorActionPreference="Stop"
 
 function W([string]$p,[string]$t){ Set-Content -LiteralPath $p -Value $t -Encoding ASCII }
@@ -19,9 +19,9 @@ CLICK input[type=submit]
 WAIT  SELECTOR #content-main
 "@
 
-# KR?T?K KISIM: table#result_list yerine #changelist-form bekle
+# Standart /equipment/ URL'si ve g?venilir #changelist-form se?icisi
 $TO_LIST_PAGE = @"
-GOTO  $base/admin/maintenance/equipment/_direct/
+GOTO  $base/admin/maintenance/equipment/
 
 WAIT  SELECTOR #content-main
 
@@ -31,19 +31,18 @@ WAIT  SELECTOR #changelist-form
 $VALIDATE_TAIL = @"
 
 WAIT  SELECTOR #changelist-form
-# Son bekleme tablonun kendisi yerine liste i?eri?ini kontrol eder
+# Liste i?eri?ini bekleme
 WAIT  SELECTOR table#result_list tbody tr, p.no-results, .paginator
 "@
 
-# Basit birle?tirmeyi kullan
 $head = $LOGIN_AND_ADMIN_HOME.Trim() + "`r`n" + $TO_LIST_PAGE.Trim()
 
 if (Test-Path $chg) {
   W $chg $head
-  Write-Host "[ok] rewrote: $(Split-Path $chg -Leaf) (ROBUST SELECTOR FIX)" -ForegroundColor Yellow
+  Write-Host "[ok] rewrote: $(Split-Path $chg -Leaf) (FINAL STANDARD URL FIX)" -ForegroundColor Magenta
 }
 
 if (Test-Path $val) {
   W $val ($head + $VALIDATE_TAIL)
-  Write-Host "[ok] rewrote: $(Split-Path $val -Leaf) (ROBUST SELECTOR FIX)" -ForegroundColor Yellow
+  Write-Host "[ok] rewrote: $(Split-Path $val -Leaf) (FINAL STANDARD URL FIX)" -ForegroundColor Magenta
 }

@@ -4,7 +4,7 @@ FILL  input[name=username]  admin
 FILL  input[name=password]  Admin!2345
 CLICK input[type=submit]
 WAIT  SELECTOR #content-main
-GOTO  http://127.0.0.1:8010/admin/maintenance/equipment/_direct/
+GOTO  http://127.0.0.1:8010/admin/maintenance/equipment/
 
 WAIT  SELECTOR #content-main
 
