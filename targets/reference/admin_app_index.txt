@@ -54,7 +54,7 @@
                 <a href="/admin/password_change/">Change password</a> /
                 
                 <form id="logout-form" method="post" action="/admin/logout/">
-                    <input type="hidden" name="csrfmiddlewaretoken" value="8lfgFyK45OMPPbo2Fmiy4frt0k1tYIDooWHbXffrXKxPWUtSlafzDtVNHMZwHfPH">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="9wsljT5mlT4CkWnqWFXg9aSRgUphCw66uFQKy9pJ77d34bEh2JVqKBfL5tNIMDH3">
                     <button type="submit">Log out</button>
                 </form>
                 
