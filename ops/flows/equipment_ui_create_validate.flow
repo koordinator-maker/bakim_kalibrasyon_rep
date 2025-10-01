@@ -5,6 +5,10 @@ FILL  input[name=password]  Admin!2345
 CLICK input[type=submit]
 WAIT  SELECTOR #content-main
 GOTO  http://127.0.0.1:8010/admin/maintenance/equipment/_direct/
+
 WAIT  SELECTOR #content-main
-WAIT  SELECTOR table#result_listWAIT  SELECTOR table#result_list
+
+WAIT  SELECTOR #changelist-form
+WAIT  SELECTOR #changelist-form
+# Son bekleme tablonun kendisi yerine liste i?eri?ini kontrol eder
 WAIT  SELECTOR table#result_list tbody tr, p.no-results, .paginator
