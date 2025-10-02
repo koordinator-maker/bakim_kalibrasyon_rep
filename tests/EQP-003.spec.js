@@ -1,60 +1,24 @@
-﻿(venv) PS C:\dev\bakim_kalibrasyon> import { test as setup, expect } from "@playwright/test";
->>
->> // Oturum durumunun kaydedileceği dosya yolu
->> const authFile = "playwright/.auth/user.json";
->>
->> // Bu kurulum testi sadece bir kere çalışır ve oturum açma durumunu kaydeder.
->> setup("Oturum Açma Durumunu Kaydet", async ({ page }) => {
->>     console.log("-> Oturum açma işlemi başlatılıyor...");
->>
->>     // 1. Django Admin Login sayfasına git
->>     await page.goto("http://127.0.0.1:8010/admin/login/");
->>
->>     // 2. Oturum açma kimlik bilgilerini doldur
->>     await page.fill("#id_username", "admin");
->>     await page.fill("#id_password", "admin");
->>
->>     // 3. Login butonuna tıkla
->>     await page.click("input[type=submit]");
->>
->>     // Yönlendirmenin http://127.0.0.1:8010/admin/ adresine tamamlanmasını bekle
->>     // Oturum açma sorununuzu çözmek için bekleme süresini 30 saniyeye çıkardık.
->>     await page.waitForURL("http://127.0.0.1:8010/admin/", { timeout: 30000 });
->>
->>     // Başarılı giriş kontrolü (bu kez zaman aşımı hatası almamalıyız)
->>     await expect(page).toHaveURL("http://127.0.0.1:8010/admin/");
->>
->>     // 4. Oturum durumunu dosyaya kaydet
->>     await page.context().storageState({ path: authFile });
->>
->>     console.log(`-> Oturum durumu başarıyla kaydedildi: ${authFile}`);
->> });
->>
-At line:7 char:37
-+ setup("Oturum Açma Durumunu Kaydet", async ({ page }) => {
-+                                     ~
-Missing expression after ','.
-At line:7 char:38
-+ setup("Oturum Açma Durumunu Kaydet", async ({ page }) => {
-+                                      ~~~~~
-Unexpected token 'async' in expression or statement.
-At line:7 char:37
-+ setup("Oturum Açma Durumunu Kaydet", async ({ page }) => {
-+                                     ~
-Missing closing ')' in expression.
-At line:28 char:24
-+     await page.context().storageState({ path: authFile });
-+                        ~
-An expression was expected after '('.
-At line:30 char:70
-+ ...    console.log(`-> Oturum durumu başarıyla kaydedildi: ${authFile}`);
-+                                                                         ~
-Missing closing ')' in expression.
-At line:31 char:2
-+ });
-+  ~
-Unexpected token ')' in expression or statement.
-    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
-    + FullyQualifiedErrorId : MissingExpressionAfterToken
+﻿import { test, expect } from '@playwright/test';
 
-(venv) PS C:\dev\bakim_kalibrasyon>
+// Tüm testler, playwright.config.js dosyasındaki "setup" projesi sayesinde
+// oturum açmış kullanıcı (authenticated user) olarak çalışacaktır.
+
+test('EQP-003: Ekipman Ekleme formunda Üretici Firma alanının varlığı', async ({ page }) => {
+
+    // 1. Ekipman Ekleme sayfasına git (Oturum açılmış varsayılır)
+    await page.goto("http://127.0.0.1:8010/admin/maintenance/equipment/add/");
+
+    // KONTROL: Doğru sayfada olduğumuzu kontrol et
+    // Düzeltme: IP adresi 127.0.0.1 olarak düzeltildi.
+    await expect(page).toHaveURL("http://127.0.0.1:8010/admin/maintenance/equipment/add/");
+
+    // 2. Input alanını bul ve varlığını doğrula
+    // Üretici Firma alanının (id="id_manufacturer") varlığını kontrol et
+    const manufacturerInput = page.locator('#id_manufacturer');
+    await expect(manufacturerInput).toBeVisible();
+
+    // Opsiyonel: Alanın doğru bir <select> etiketi olduğunu kontrol et
+    await expect(manufacturerInput).toHaveAttribute('name', 'manufacturer');
+
+    console.log("TEST BAŞARILI: Üretici Firma alanı başarıyla bulundu.");
+});
