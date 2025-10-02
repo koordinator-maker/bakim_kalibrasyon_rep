@@ -4,10 +4,11 @@ import path from 'path';
 import fs from 'fs';
 
 const authFile = path.join(process.cwd(), 'storage', 'user.json');
+const MAX_LOGIN_TIMEOUT = 30000; // Total maximum time to wait for login actions
 
-// Login attempt function (Uses Promise.race for immediate success/failure detection)
+// Login attempt function (Uses URL redirection check)
 async function attemptLogin(page, username, password) {
-    console.log(`[LOGIN] Attempting to log in with: ${username} / ${password.slice(0, 1)}****`);
+    console.log(`[LOGIN] Attempting to log in with: ${username} / ${password.slice(0, 4)}****`);
     
     // 1. Go to the login page
     await page.goto("/admin/login/", { waitUntil: "domcontentloaded" }); 
@@ -16,70 +17,53 @@ async function attemptLogin(page, username, password) {
     await page.locator('input[name="username"]').fill(username);
     await page.locator('input[name="password"]').fill(password); 
 
-    // 3. Click the login button
+    // 3. Click the login button and wait for the successful URL (/admin/) or stay on the login page.
     await page.locator('input[type="submit"]').click();
-
-    // Locators for success (Logout link) and failure (Error note)
-    const logoutLink = page.locator('#user-tools a:has-text("Çıkış")');
-    const errorNote = page.locator('.errornote');
-
-    // 4. Race: Wait for success or failure to appear first (10 seconds timeout for race).
-    const raceTimeout = 10000; 
-
-    const successPromise = logoutLink.waitFor({ state: 'visible', timeout: raceTimeout }).then(() => 'success');
-    const failurePromise = errorNote.waitFor({ state: 'visible', timeout: raceTimeout }).then(() => 'failure');
-
-    const result = await Promise.race([successPromise, failurePromise]);
     
-    if (result === 'failure') {
-        const errorMessage = await errorNote.innerText();
-        throw new Error(errorMessage); // Throw the Django Error Message
-    }
-    
-    if (result === 'success') {
-        console.log('[LOGIN SUCCESS] Login attempt succeeded.');
-        return true; // Successful login
-    }
+    try {
+        // Wait for the URL to change to the successful admin page (e.g., /admin/)
+        await page.waitForURL(url => url.pathname.startsWith('/admin/') && !url.pathname.includes('/admin/login/'), { 
+            timeout: MAX_LOGIN_TIMEOUT 
+        });
 
-    // Fallback error for unexpected case
-    throw new Error('Login process timed out or an unexpected state occurred after clicking submit.');
+        // SUCCESS: Final quick check for the standard logout link once the URL changes
+        const logoutLink = page.locator('#user-tools a:has-text("Çıkış")');
+        await expect(logoutLink).toBeVisible({ timeout: 5000 }); 
+        
+        console.log('[LOGIN SUCCESS] Login attempt succeeded and URL redirected.');
+        return true;
+
+    } catch (e) {
+        // If the URL didn't change (still on login page or timed out), check for the explicit error note
+        const currentUrl = page.url();
+
+        if (currentUrl.includes('/admin/login/')) {
+            const errorNote = page.locator('.errornote');
+            if (await errorNote.isVisible({ timeout: 5000 })) {
+                 const errorMessage = await errorNote.innerText();
+                 // If the error note confirms incorrect credentials, re-throw with a clean message
+                 if (errorMessage.includes('username and password')) {
+                      throw new Error(`[CRITICAL CREDENTIAL ERROR] Login Failed. Django Hata Mesaji: "${errorMessage}". Lutfen 'hp1' / 'Asla1234' kombinasyonunu kontrol edin.`);
+                 }
+                 throw new Error(errorMessage); // Throw any other Django error
+            }
+        }
+        
+        // If not successful, not a login page error, throw the original error (e.g., timeout)
+        throw e;
+    }
 }
 
 setup('login state create and save to storage/user.json', async ({ page }) => {
     
-    try {
-        // 1. Primary attempt: admin / A1234
-        await attemptLogin(page, 'admin', 'A1234');
-        
-    } catch (e) {
-        // Check for common English/Turkish Django login failure messages
-        const isLoginError = e.message.includes('correct username and password') || 
-                             e.message.includes('Lütfen doğru kullanıcı adı');
-        
-        if (isLoginError) {
-            console.warn(`[WARNING] First attempt (admin/A1234) failed. Error: "${e.message.split('\n')[0]}".`);
-            
-            // 2. Secondary attempt: hp / A1234
-            try {
-                 await attemptLogin(page, 'hp', 'A1234');
-            } catch (e2) {
-                // Check if the second attempt also failed due to incorrect credentials
-                const isSecondLoginError = e2.message.includes('correct username and password') || 
-                                           e2.message.includes('Lütfen doğru kullanıcı adı');
-                
-                if (isSecondLoginError) {
-                    throw new Error(`CRITICAL ERROR: Both login attempts (admin/A1234 and hp/A1234) failed. Please CHECK your Django admin user passwords.`);
-                }
-                throw e2; // Throw unexpected second attempt error
-            }
-
-        } else {
-            // Throw the original non-login error (like a network timeout, not a credential failure)
-            throw e; 
-        }
-    }
+    // DOGRU KIMLIK BILGILERI KULLANILIYOR: hp1 / Asla1234
+    const USERNAME = 'hp1';
+    const PASSWORD = 'Asla1234';
     
-    // 5. Save the session state (Only if login was successful in step 1 or 2)
+    await attemptLogin(page, USERNAME, PASSWORD);
+
+    // 5. Save the session state (Only if login was successful)
+    const authFile = path.join(process.cwd(), 'storage', 'user.json');
     await page.context().storageState({ path: authFile });
     
     if (fs.existsSync(authFile)) {
