@@ -7,7 +7,7 @@ class EquipmentAdmin(admin.ModelAdmin):
     list_filter = ('location', 'is_active')
     search_fields = ('name', 'serial_number')
     
-    # "manufacturer" alanını form alanlarına açıkça ekleyin
+    # "manufacturer" alanının form alanlarına açıkça eklenmiş hali
     fieldsets = (
         (None, {
             'fields': ('name', 'serial_number', 'manufacturer', 'purchase_date', 'last_maintenance_date', 'next_maintenance_date', 'location', 'is_active')
