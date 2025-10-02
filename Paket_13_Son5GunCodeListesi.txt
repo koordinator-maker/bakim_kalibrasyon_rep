@@ -1,1 +1,0 @@
-﻿C:\dev\bakim_kalibrasyon\core\mw_no_append_admin.py
