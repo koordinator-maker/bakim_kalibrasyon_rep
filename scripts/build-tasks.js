@@ -8,14 +8,14 @@ const headers = lines[0].split(',');
 const tasks = [];
 
 for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',');
-    if (values.length === headers.length) {
-        let task = {};
-        for (let j = 0; j < headers.length; j++) {
-            task[headers[j].trim()] = values[j].trim().replace(/^"|"$/g, '');
-        }
-        tasks.push(task);
-    }
+     const values = lines[i].split(',');
+     if (values.length === headers.length) {
+          let task = {};
+          for (let j = 0; j < headers.length; j++) {
+               task[headers[j].trim()] = values[j].trim().replace(/^"|"$/g, '');
+          }
+          tasks.push(task);
+     }
 }
 
 if (!fs.existsSync('build')) { fs.mkdirSync('build'); }

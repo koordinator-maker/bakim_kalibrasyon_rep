@@ -2,28 +2,18 @@
   "cookies": [
     {
       "name": "csrftoken",
-      "value": "74EZjn215bfMLn3kIqAAEReDKOYO47pQ",
-      "domain": "127.0.0.1",
+      "value": "czbN4vlZ24foik3phnH623eaed6cGy4s",
+      "domain": "localhost",
       "path": "/",
-      "expires": 1790859561.638677,
+      "expires": 1790874499.920469,
       "httpOnly": false,
-      "secure": false,
-      "sameSite": "Lax"
-    },
-    {
-      "name": "sessionid",
-      "value": "nmcva1nworunu0o2iol9bqah3k6z2wr7",
-      "domain": "127.0.0.1",
-      "path": "/",
-      "expires": 1760619561.638789,
-      "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
     }
   ],
   "origins": [
     {
-      "origin": "http://127.0.0.1:8010",
+      "origin": "http://localhost:8000",
       "localStorage": [
         {
           "name": "theme",
