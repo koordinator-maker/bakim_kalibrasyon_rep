@@ -9,32 +9,46 @@ const authFile = path.join(process.cwd(), 'storage', 'user.json');
 async function attemptLogin(page, username, password) {
     console.log(`[LOGIN] Attempting to log in with: ${username} / ${password.slice(0, 4)}****`);
     
-    // 1. Go to the login page
-    await page.goto("/admin/login/", { waitUntil: "domcontentloaded" }); 
+    // 1. Go to the login page - KRİTİK: localhost kullanarak tam URL ile deniyoruz
+    try {
+        await page.goto("http://localhost:8000/admin/login/", {
+            waitUntil: "networkidle",
+            timeout: 30000 
+        });
+        
+        // **YENİ KRİTİK ADIM:** Sayfanın başlığının "Log in" veya benzeri bir metin içerdiğini kontrol et.
+        // Bu, sayfanın HTML'inin gerçekten yüklendiğini garanti eder.
+        await expect(page).toHaveTitle(/Log in|Site administration/i, { timeout: 10000 });
+        console.log('[LOGIN] Sayfa basligi basarili sekilde dogrulandi.');
 
-    // 2. Fill username and password
-    await page.locator('input[name="username"]').fill(username);
+    } catch (e) {
+        throw new Error(`[CRITICAL CONNECTION ERROR] Login sayfasina ulasilamadi veya dogru yuklenmedi (http://localhost:8000/admin/login/). Sunucunuzun calistigini ve adresin dogru oldugunu kontrol edin. Hata: ${e.message}`);
+    }
+
+    const usernameInput = page.locator('input[name="username"]');
+
+    // 2. Fill username and password.
+    // Sayfa baslik kontrolunden gectigi icin, bu adim artik basarili olmali.
+    await usernameInput.fill(username);
     await page.locator('input[name="password"]').fill(password); 
 
-    // 3. Click the login button and wait for the successful URL (/admin/) or stay on the login page.
+    // 3. Click the login button and wait for the successful URL
     await page.locator('input[type="submit"]').click();
     
+    // ... (Kalan basarili dogrulama adimlari ayni kaliyor)
     try {
-        // Wait for the URL to change AND network activity to cease (networkidle)
         await page.waitForURL(url => url.pathname.startsWith('/admin/') && !url.pathname.includes('/admin/login/'), { 
-            waitUntil: 'networkidle', // Sayfanın tamamen yüklendiğinden emin olmak için en güçlü bekleme
-            timeout: 45000 // Toplam bekleme süresi 45 saniyeye çıkarıldı.
+            waitUntil: 'networkidle', 
+            timeout: 30000 
         });
 
-        // NIHAI VE KESIN DOGRULAMA: Login formunun (kullanıcı adı giriş kutusunun) artık sayfada görünür OLMADIĞINI kontrol et.
         const loginFormUsernameInput = page.locator('input[name="username"]');
-        await expect(loginFormUsernameInput).not.toBeVisible({ timeout: 10000 }); 
+        await expect(loginFormUsernameInput).not.toBeVisible({ timeout: 5000 }); 
         
         console.log('[LOGIN SUCCESS] Login attempt succeeded and login form is gone.');
         return true;
 
     } catch (e) {
-        // ... (Error handling remains the same)
         const currentUrl = page.url();
 
         if (currentUrl.includes('/admin/login/')) {
@@ -54,13 +68,11 @@ async function attemptLogin(page, username, password) {
 
 setup('login state create and save to storage/user.json', async ({ page }) => {
     
-    // KULLANILAN KIMLIK BILGILERI: hp2 / Asla1234
     const USERNAME = 'hp2';
     const PASSWORD = 'Asla1234';
     
     await attemptLogin(page, USERNAME, PASSWORD);
 
-    // 5. Save the session state (Only if login was successful)
     const authFile = path.join(process.cwd(), 'storage', 'user.json');
     await page.context().storageState({ path: authFile });
     
