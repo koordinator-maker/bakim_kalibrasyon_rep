@@ -1,4 +1,4 @@
-﻿// Rev: 2025-10-02 15:20 r1
+﻿// Rev: 2025-10-02 13:05 r1
 // playwright.config.js
 const { defineConfig } = require("@playwright/test");
 
@@ -19,12 +19,14 @@ module.exports = defineConfig({
     {
       name: "e2e",
       testMatch: /.*\.spec\.js$/,
-      // 🔴 _setup.spec.js e2e'de koşulmasın:
-      testIgnore: /_setup\.spec\.js$/,
+      // setup projesi bitmeden koşma
       dependencies: ["setup"],
       use: {
+        // setup'ın ürettiği oturum durumu
         storageState: "storage/user.json",
       },
     },
   ],
+  // setup projesinin _setup.spec.js dışındaki testleri almasını engelle
+  // e2e projesi ise tüm .spec.js dosyalarını alır ama _setup.spec.js zaten setup projesine ait.
 });

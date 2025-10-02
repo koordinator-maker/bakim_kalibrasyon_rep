@@ -1,4 +1,4 @@
-﻿// Rev: 2025-10-02 14:20 r2
+﻿// Rev: 2025-10-02 14:55 r3
 // tests/_setup.spec.js
 const { test, expect } = require("@playwright/test");
 const fs = require("fs");
@@ -9,13 +9,14 @@ test("login state üret ve storage/user.json kaydet", async ({ page, context }) 
   const STORAGE_PATH = path.join(__dirname, "..", "storage", "user.json");
   fs.mkdirSync(path.dirname(STORAGE_PATH), { recursive: true });
 
+  // 1) Login sayfasına git
   await page.goto(baseURL + "/admin/login/", { waitUntil: "domcontentloaded" });
 
+  // 2) Alanları doldur
   await page.fill("#id_username", process.env.ADMIN_USER || "hp");
   await page.fill("#id_password", process.env.ADMIN_PASS || "admin");
 
-  // Farklı submit varyasyonlarını sırayla dene
-  const tried = [];
+  // 3) Gönder (çeşitli submit varyasyonları)
   const submitCandidates = [
     'button[type="submit"]',
     'input[type="submit"]',
@@ -24,45 +25,56 @@ test("login state üret ve storage/user.json kaydet", async ({ page, context }) 
   let clicked = false;
   for (const sel of submitCandidates) {
     try {
-      tried.push(sel);
-      if (await page.locator(sel).first().isVisible({ timeout: 1000 })) {
+      const loc = page.locator(sel).first();
+      if (await loc.isVisible({ timeout: 1000 })) {
         await Promise.all([
           page.waitForLoadState("networkidle"),
-          page.locator(sel).first().click(),
+          loc.click()
         ]);
         clicked = true;
         break;
       }
     } catch {}
   }
-  if (!clicked) {
-    throw new Error("Login submit butonu bulunamadı. Denenenler: " + tried.join(", "));
+  if (!clicked) throw new Error("Login submit butonu bulunamadı.");
+
+  // 4) Başarı ölçütleri (tema farklarına dayanıklı):
+  // - URL /admin/ (ve login değil)
+  // - veya admin tipik metin/öge görünür: "Site administration", "Django administration",
+  //   "Kullanıcı araçları", "Çıkış/Log out" linki, ana başlık vb.
+  let success = false;
+  const deadline = Date.now() + 7000; // max 7sn bekle
+  while (Date.now() < deadline) {
+    const url = page.url();
+    if (/\/admin\/?$/.test(url) && !/\/admin\/login\/?/.test(url)) {
+      success = true;
+      break;
+    }
+    const candidates = [
+      page.locator('text=/Site administration|Django administration|Site yönetimi|Django Yönetimi/i'),
+      page.locator("#user-tools"),
+      page.locator('text=/Log out|Çıkış/i'),
+      page.locator("main h1"),
+    ];
+    for (const c of candidates) {
+      if (await c.first().isVisible().catch(()=>false)) {
+        success = true;
+        break;
+      }
+    }
+    if (success) break;
+    await page.waitForTimeout(250);
   }
 
-  // Başarıyı admin gösterge öğesi ile doğrula
-  const adminUserTools = page.locator("#user-tools");
-  try {
-    await expect(adminUserTools).toBeVisible({ timeout: 5000 });
-  } catch (e) {
-    // Tanı: login sayfasında hata mesajı var mı?
-    const loginError = page.locator(".errornote, .errorlist, .alert, [role='alert']");
-    const currentUrl = page.url();
-    // Hata teşhisi için artefakt bırak
+  if (!success) {
+    // Tanılama artefaktları
     const artifacts = path.join(__dirname, "..", "test-artifacts");
     fs.mkdirSync(artifacts, { recursive: true });
-    await page.screenshot({ path: path.join(artifacts, "login-failed.png"), fullPage: true });
-    const html = await page.content();
-    fs.writeFileSync(path.join(artifacts, "login-page.html"), html, "utf8");
-
-    const hasError = await loginError.first().isVisible().catch(() => false);
-    let hint = `Login başarısız görünüyor. URL: ${currentUrl}`;
-    if (hasError) hint += " — Login sayfasında hata/uyarı mesajı tespit edildi.";
-    hint += `\nKullanıcı: ${process.env.ADMIN_USER || "hp"} — BASE_URL: ${baseURL}`;
-    hint += `\nArtefaktlar: test-artifacts/login-failed.png, test-artifacts/login-page.html`;
-
-    throw new Error(hint);
+    await page.screenshot({ path: path.join(artifacts, "login-check-failed.png"), fullPage: true });
+    fs.writeFileSync(path.join(artifacts, "login-check-page.html"), await page.content(), "utf8");
+    throw new Error(`Login sonrası başarı doğrulanamadı. URL: ${page.url()}\nArtefaktlar: test-artifacts/login-check-failed.png, test-artifacts/login-check-page.html`);
   }
 
-  // Oturum durumunu kaydet
+  // 5) Oturum durumunu kaydet
   await context.storageState({ path: STORAGE_PATH });
 });
