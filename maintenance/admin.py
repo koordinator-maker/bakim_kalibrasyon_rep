@@ -7,7 +7,7 @@ class EquipmentAdmin(admin.ModelAdmin):
     list_filter = ('location', 'is_active')
     search_fields = ('name', 'serial_number')
     
-    # "manufacturer" alanının form alanlarına açıkça eklenmiş hali
+    # EQP-003 testi için 'manufacturer' alanının formda görünür olduğundan emin olunur.
     fieldsets = (
         (None, {
             'fields': ('name', 'serial_number', 'manufacturer', 'purchase_date', 'last_maintenance_date', 'next_maintenance_date', 'location', 'is_active')
