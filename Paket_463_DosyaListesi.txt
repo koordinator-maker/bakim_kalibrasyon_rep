@@ -1,0 +1,40 @@
+﻿C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\first_party_sets.db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\first_party_sets.db-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Last Browser
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Last Version
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Local State
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Variations
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\BrowserMetrics\BrowserMetrics-68D7E9A3-6154.pma
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\component_crx_cache\metadata.json
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Crashpad\attachments
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Crashpad\reports
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Crashpad\settings.dat
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\AutofillStrikeDatabase
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\blob_storage
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\BudgetDatabase
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Cache
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\chrome_cart_db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\ClientCertificates
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Code Cache
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\commerce_subscription_db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\DawnGraphiteCache
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\DawnWebGPUCache
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\discounts_db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\discount_infos_db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Download Service
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Extension Rules
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Extension Scripts
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Extension State
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Feature Engagement Tracker
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\GCM Store
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\GPUCache
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Local Storage
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Network
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\optimization_guide_hint_cache_store
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\parcel_tracking_db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\PersistentOriginTrials
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Safe Browsing Network
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Segmentation Platform
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Session Storage
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sessions
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Shared Dictionary

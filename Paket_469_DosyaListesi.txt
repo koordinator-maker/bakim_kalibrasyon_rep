@@ -1,0 +1,40 @@
+﻿C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\shared_proto_db\metadata\LOCK
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\shared_proto_db\metadata\LOG
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\shared_proto_db\metadata\LOG.old
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\shared_proto_db\metadata\MANIFEST-000001
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Site Characteristics Database\000003.log
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Site Characteristics Database\CURRENT
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Site Characteristics Database\LOCK
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Site Characteristics Database\LOG
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Site Characteristics Database\LOG.old
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Site Characteristics Database\MANIFEST-000001
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sync Data\LevelDB
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sync Data\LevelDB\000003.log
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sync Data\LevelDB\CURRENT
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sync Data\LevelDB\LOCK
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sync Data\LevelDB\LOG
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sync Data\LevelDB\LOG.old
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sync Data\LevelDB\MANIFEST-000001
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\WebStorage\QuotaManager
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\WebStorage\QuotaManager-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\extensions_crx_cache\metadata.json
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GraphiteDawnCache\data_0
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GraphiteDawnCache\data_1
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GraphiteDawnCache\data_2
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GraphiteDawnCache\data_3
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GraphiteDawnCache\index
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GrShaderCache\data_0
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GrShaderCache\data_1
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GrShaderCache\data_2
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GrShaderCache\data_3
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\GrShaderCache\index
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\segmentation_platform\ukm_db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\segmentation_platform\ukm_db-wal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\ShaderCache\data_0
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\ShaderCache\data_1
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\ShaderCache\data_2
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\ShaderCache\data_3
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\ShaderCache\index
+C:\dev\bakim_kalibrasyon\_otokodlama\reports\crud_summary.csv
+C:\dev\bakim_kalibrasyon\_otokodlama\reports\crud_summary.json
+C:\dev\bakim_kalibrasyon\_otokodlama\reports\crud_summary.md

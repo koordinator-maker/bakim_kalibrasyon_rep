@@ -1,0 +1,40 @@
+﻿C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\shared_proto_db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Site Characteristics Database
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Sync Data
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\WebStorage
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Account Web Data
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Account Web Data-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Affiliation Database
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Affiliation Database-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\BookmarkMergedSurfaceOrdering
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\BrowsingTopicsSiteData
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\BrowsingTopicsSiteData-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\BrowsingTopicsState
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\DIPS
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\DIPS-wal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Favicons
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Favicons-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\heavy_ad_intervention_opt_out.db
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\heavy_ad_intervention_opt_out.db-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\History
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\History-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\LOCK
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\LOG
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\LOG.old
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Login Data
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Login Data For Account
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Login Data For Account-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Login Data-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Network Action Predictor
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Network Action Predictor-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Preferences
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\PreferredApps
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\README
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Secure Preferences
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\ServerCertificate
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\ServerCertificate-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\SharedStorage
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Shortcuts
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Shortcuts-journal
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Top Sites
+C:\dev\bakim_kalibrasyon\_otokodlama\pw_profile\Default\Top Sites-journal
