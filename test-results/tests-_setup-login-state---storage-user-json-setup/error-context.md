@@ -10,9 +10,9 @@
         - 'row "Request Method: GET" [ref=e7]':
           - rowheader "Request Method:" [ref=e8]
           - cell "GET" [ref=e9]
-        - 'row "Request URL: http://localhost:8000/admin/" [ref=e10]':
+        - 'row "Request URL: http://127.0.0.1:8010/admin/" [ref=e10]':
           - rowheader "Request URL:" [ref=e11]
-          - cell "http://localhost:8000/admin/" [ref=e12]
+          - cell "http://127.0.0.1:8010/admin/" [ref=e12]
         - 'row "Django Version: 5.2.6" [ref=e13]':
           - rowheader "Django Version:" [ref=e14]
           - cell "5.2.6" [ref=e15]
@@ -41,9 +41,9 @@
           - rowheader "Python Path:" [ref=e37]
           - cell "['C:\\\\dev\\\\bakim_kalibrasyon', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages']" [ref=e38]:
             - code [ref=e40]: "['C:\\\\dev\\\\bakim_kalibrasyon', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages']"
-        - 'row "Server time: Thu, 02 Oct 2025 19:12:02 +0000" [ref=e41]':
+        - 'row "Server time: Thu, 02 Oct 2025 19:36:41 +0000" [ref=e41]':
           - rowheader "Server time:" [ref=e42]
-          - cell "Thu, 02 Oct 2025 19:12:02 +0000" [ref=e43]
+          - cell "Thu, 02 Oct 2025 19:36:41 +0000" [ref=e43]
   - main [ref=e44]:
     - generic [ref=e45]:
       - heading "Traceback Switch to copy-and-paste view" [level=2] [ref=e46]:
@@ -149,7 +149,7 @@
     - generic [ref=e159]:
       - heading "Request information" [level=2] [ref=e160]
       - heading "USER" [level=3] [ref=e161]
-      - paragraph [ref=e162]: hp2
+      - paragraph [ref=e162]: hp
       - heading "GET" [level=3] [ref=e163]
       - paragraph [ref=e164]: No GET data
       - heading "POST" [level=3] [ref=e165]
@@ -230,10 +230,10 @@
             - cell "CONTENT_TYPE" [ref=e240]
             - cell "'text/plain'" [ref=e241]:
               - generic [ref=e242]: "'text/plain'"
-          - row "CSRF_COOKIE 'I8TGu00SxX5z5UPmCJeSmJoHOnncg11h'" [ref=e243]:
+          - row "CSRF_COOKIE '7WI3snHbaxltW1FCUa5uvJnbKRlJU6xZ'" [ref=e243]:
             - cell "CSRF_COOKIE" [ref=e244]
-            - cell "'I8TGu00SxX5z5UPmCJeSmJoHOnncg11h'" [ref=e245]:
-              - generic [ref=e246]: "'I8TGu00SxX5z5UPmCJeSmJoHOnncg11h'"
+            - cell "'7WI3snHbaxltW1FCUa5uvJnbKRlJU6xZ'" [ref=e245]:
+              - generic [ref=e246]: "'7WI3snHbaxltW1FCUa5uvJnbKRlJU6xZ'"
           - row "DEFAULT_FROM_EMAIL 'Bakım Kalibrasyon <kullanici@domain.com>'" [ref=e247]:
             - cell "DEFAULT_FROM_EMAIL" [ref=e248]
             - cell "'Bakım Kalibrasyon <kullanici@domain.com>'" [ref=e249]:
@@ -310,10 +310,10 @@
             - cell "HTTP_COOKIE" [ref=e320]
             - cell "'********************'" [ref=e321]:
               - generic [ref=e322]: "'********************'"
-          - row "HTTP_HOST 'localhost:8000'" [ref=e323]:
+          - row "HTTP_HOST '127.0.0.1:8010'" [ref=e323]:
             - cell "HTTP_HOST" [ref=e324]
-            - cell "'localhost:8000'" [ref=e325]:
-              - generic [ref=e326]: "'localhost:8000'"
+            - cell "'127.0.0.1:8010'" [ref=e325]:
+              - generic [ref=e326]: "'127.0.0.1:8010'"
           - row "HTTP_SEC_CH_UA '\"Chromium\";v=\"140\", \"Not=A?Brand\";v=\"24\", \"HeadlessChrome\";v=\"140\"'" [ref=e327]:
             - cell "HTTP_SEC_CH_UA" [ref=e328]
             - cell "'\"Chromium\";v=\"140\", \"Not=A?Brand\";v=\"24\", \"HeadlessChrome\";v=\"140\"'" [ref=e329]:
@@ -486,10 +486,10 @@
             - cell "SERVER_NAME" [ref=e496]
             - cell "'LAPTOP-BJ5VB4RI'" [ref=e497]:
               - generic [ref=e498]: "'LAPTOP-BJ5VB4RI'"
-          - row "SERVER_PORT '8000'" [ref=e499]:
+          - row "SERVER_PORT '8010'" [ref=e499]:
             - cell "SERVER_PORT" [ref=e500]
-            - cell "'8000'" [ref=e501]:
-              - generic [ref=e502]: "'8000'"
+            - cell "'8010'" [ref=e501]:
+              - generic [ref=e502]: "'8010'"
           - row "SERVER_PROTOCOL 'HTTP/1.1'" [ref=e503]:
             - cell "SERVER_PROTOCOL" [ref=e504]
             - cell "'HTTP/1.1'" [ref=e505]:
@@ -650,10 +650,10 @@
             - cell "wsgi.file_wrapper" [ref=e660]
             - cell "<class 'wsgiref.util.FileWrapper'>" [ref=e661]:
               - generic [ref=e662]: <class 'wsgiref.util.FileWrapper'>
-          - row "wsgi.input <django.core.handlers.wsgi.LimitedStream object at 0x0000019607DE3B80>" [ref=e663]:
+          - row "wsgi.input <django.core.handlers.wsgi.LimitedStream object at 0x0000020605D5AE90>" [ref=e663]:
             - cell "wsgi.input" [ref=e664]
-            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x0000019607DE3B80>" [ref=e665]:
-              - generic [ref=e666]: <django.core.handlers.wsgi.LimitedStream object at 0x0000019607DE3B80>
+            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x0000020605D5AE90>" [ref=e665]:
+              - generic [ref=e666]: <django.core.handlers.wsgi.LimitedStream object at 0x0000020605D5AE90>
           - row "wsgi.multiprocess False" [ref=e667]:
             - cell "wsgi.multiprocess" [ref=e668]
             - cell "False" [ref=e669]:
