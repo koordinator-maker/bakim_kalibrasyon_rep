@@ -1,35 +1,18 @@
-﻿// Rev: 2025-10-02 17:55 r1
-const { defineConfig } = require("@playwright/test");
+﻿// Playwright yapılandırma (PowerShell tarafından oluşturulmuştur)
+import { defineConfig } from '@playwright/test';
 
-module.exports = defineConfig({
-  timeout: 30000,
-  reporter: [["list"]],
-  use: {
-    baseURL: process.env.BASE_URL || "http://127.0.0.1:8010",
-    headless: true,
-    actionTimeout: 15000,
-    navigationTimeout: 30000,
-    storageState: undefined, // proje bazında set edilecek
-  },
-  projects: [
-    {
-      name: "setup",
-      testMatch: /_setup\.spec\.js$/,
-      use: { storageState: undefined }
+export default defineConfig({
+    timeout: 15 * 1000, // 15 Saniye toplam test süresi
+    retries: 2, // 3. kez başarısız olan görev karantinaya alınır (2 tekrar izni)
+
+    use: {
+        actionTimeout: 5000, // 5 Saniye: Tekil faaliyetler için Fail-Fast
+        navigationTimeout: 10000, // 10 Saniye: Sayfa yükleme için Fail-Fast
     },
-    {
-      name: "e2e",
-      testMatch: /.*\.spec\.js$/,
-      testIgnore: /_setup\.spec\.js$/,
-      dependencies: ["setup"],
-      use: { storageState: "storage/user.json" },
-    },
-    // 🔹 bağımlılıksız debug projesi
-    {
-      name: "e2e_dbg",
-      testMatch: /.*\.spec\.js$/,
-      testIgnore: /_setup\.spec\.js$/,
-      use: { storageState: "storage/user.json" },
-    },
-  ],
+    
+    reporter: [
+        ['list'],
+        ['./reporters/quarantine-reporter.js'], 
+    ],
+    projects: [ { name: 'chromium', use: { browserName: 'chromium' } } ],
 });
