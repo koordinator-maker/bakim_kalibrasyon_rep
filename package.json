@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "bakim_kalibrasyon_tests",
   "version": "1.0.0",
   "description": "Playwright tests for maintenance and calibration project.",
@@ -13,6 +13,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@playwright/test": "^1.44.1"
+    "@playwright/test": "^1.44.1",
+    "pixelmatch": "^7.1.0",
+    "pngjs": "^7.0.0"
   }
 }
