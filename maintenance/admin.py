@@ -1,35 +1,15 @@
-﻿# -*- coding: utf-8 -*-
-from django.contrib import admin
-from maintenance.models import Equipment
-from core.admin_utils import make_active, make_inactive
+﻿from django.contrib import admin
+from .models import Equipment
 
-# core/urls.py tarafından beklenen özel admin sitesi tanımlanıyor
-class MaintenanceAdminSite(admin.AdminSite):
-    site_header = 'Bakım ve Kalibrasyon Yönetimi'
-    site_title = 'Bakım Yönetimi'
-
-admin_site = MaintenanceAdminSite(name='maintenance_admin')
-
-# ----------------------------------------------------------------------
-
-@admin.register(Equipment, site=admin_site)
+@admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
-    # EQP-002: list_display'e manufacturer eklendi
-    list_display = ('code', 'name', 'manufacturer', 'discipline', 'criticality', 'is_active')
-    list_filter = ('discipline', 'criticality', 'is_active')
-    search_fields = ('code', 'name', 'area', 'manufacturer')
-    list_editable = ('criticality', 'is_active')
-    actions = [make_active, make_inactive]
+    list_display = ('name', 'serial_number', 'location', 'manufacturer', 'is_active')
+    list_filter = ('location', 'is_active')
+    search_fields = ('name', 'serial_number')
     
-    # EQP-003: manufacturer alanını form'a ekler
-    fields = (
-        'code',
-        'name',
-        'area',
-        'manufacturer', # <--- Form alanına eklenmiştir
-        'discipline',
-        'criticality',
-        'is_active',
+    # "manufacturer" alanını form alanlarına açıkça ekleyin
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'serial_number', 'manufacturer', 'purchase_date', 'last_maintenance_date', 'next_maintenance_date', 'location', 'is_active')
+        }),
     )
-
-# Diğer modeller buraya kaydedilebilir.

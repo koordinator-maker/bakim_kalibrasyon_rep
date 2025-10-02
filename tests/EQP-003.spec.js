@@ -12,7 +12,7 @@ test("EQP-003: Ekipman Ekleme formunda Üretici Firma alanının varlığı", as
     // 3. Yeni Ekipman Ekleme sayfasına git
     await page.goto("http://127.0.0.1:8010/admin/maintenance/equipment/add/");
     
-    // 4. Input alanını, Django'nun kesinlikle kullandığı ID ile bul.
+    // 4. Input alanını ID ile bul. admin.py değişikliği sonrası bu artık orada olmalı.
     const manufacturerInput = page.locator('#id_manufacturer');
     
     // İlgili input alanının göründüğünü doğrula
