@@ -17,3 +17,7 @@ var/bootreport.*
 targets/screens/*.png
 _otokodlama/**
 *.bak
+# Playwright test sonuçları ve cache
+test-results/
+.playwright/
+storage/user.json
