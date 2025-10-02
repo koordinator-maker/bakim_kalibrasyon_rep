@@ -1,4 +1,5 @@
-﻿// Rev: 2025-10-02 17:55 r1
+﻿// Rev: 2025-10-02 15:20 r1
+// playwright.config.js
 const { defineConfig } = require("@playwright/test");
 
 module.exports = defineConfig({
@@ -9,27 +10,21 @@ module.exports = defineConfig({
     headless: true,
     actionTimeout: 15000,
     navigationTimeout: 30000,
-    storageState: undefined, // proje bazında set edilecek
   },
   projects: [
     {
       name: "setup",
       testMatch: /_setup\.spec\.js$/,
-      use: { storageState: undefined }
     },
     {
       name: "e2e",
       testMatch: /.*\.spec\.js$/,
+      // 🔴 _setup.spec.js e2e'de koşulmasın:
       testIgnore: /_setup\.spec\.js$/,
       dependencies: ["setup"],
-      use: { storageState: "storage/user.json" },
-    },
-    // 🔹 bağımlılıksız debug projesi
-    {
-      name: "e2e_dbg",
-      testMatch: /.*\.spec\.js$/,
-      testIgnore: /_setup\.spec\.js$/,
-      use: { storageState: "storage/user.json" },
+      use: {
+        storageState: "storage/user.json",
+      },
     },
   ],
 });

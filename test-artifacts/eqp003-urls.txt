@@ -1,3 +1,12 @@
 http://127.0.0.1:8010/admin/
 http://127.0.0.1:8010/admin/maintenance/equipment/_direct/
 http://127.0.0.1:8010/admin/maintenance/equipment/_direct/add/
+http://127.0.0.1:8010/admin/
+http://127.0.0.1:8010/admin/maintenance/equipment/_direct/
+http://127.0.0.1:8010/admin/maintenance/equipment/_direct/add/
+http://127.0.0.1:8010/admin/
+http://127.0.0.1:8010/admin/maintenance/equipment/_direct/
+http://127.0.0.1:8010/admin/maintenance/equipment/_direct/add/
+http://127.0.0.1:8010/admin/
+http://127.0.0.1:8010/admin/maintenance/equipment/_direct/
+http://127.0.0.1:8010/admin/maintenance/equipment/_direct/add/
