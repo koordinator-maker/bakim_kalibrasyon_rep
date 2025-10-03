@@ -1,0 +1,64 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - heading "Page not found (404)" [level=1] [ref=e3]:
+      - text: Page not found
+      - generic [ref=e4]: (404)
+    - table [ref=e5]:
+      - rowgroup [ref=e6]:
+        - 'row "Request Method: GET" [ref=e7]':
+          - rowheader "Request Method:" [ref=e8]
+          - cell "GET" [ref=e9]
+        - 'row "Request URL: http://127.0.0.1:8010/admin/accounts/customuser/" [ref=e10]':
+          - rowheader "Request URL:" [ref=e11]
+          - cell "http://127.0.0.1:8010/admin/accounts/customuser/" [ref=e12]
+        - 'row "Raised by: django.contrib.admin.sites.catch_all_view" [ref=e13]':
+          - rowheader "Raised by:" [ref=e14]
+          - cell "django.contrib.admin.sites.catch_all_view" [ref=e15]
+  - main [ref=e16]:
+    - paragraph [ref=e17]:
+      - text: Using the URLconf defined in
+      - code [ref=e18]: core.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=e19]:
+      - listitem [ref=e20]:
+        - code [ref=e21]: admin/
+        - code [ref=e22]: "[name='index']"
+      - listitem [ref=e23]:
+        - code [ref=e24]: admin/
+        - code [ref=e25]: login/ [name='login']
+      - listitem [ref=e26]:
+        - code [ref=e27]: admin/
+        - code [ref=e28]: logout/ [name='logout']
+      - listitem [ref=e29]:
+        - code [ref=e30]: admin/
+        - code [ref=e31]: password_change/ [name='password_change']
+      - listitem [ref=e32]:
+        - code [ref=e33]: admin/
+        - code [ref=e34]: password_change/done/ [name='password_change_done']
+      - listitem [ref=e35]:
+        - code [ref=e36]: admin/
+        - code [ref=e37]: autocomplete/ [name='autocomplete']
+      - listitem [ref=e38]:
+        - code [ref=e39]: admin/
+        - code [ref=e40]: jsi18n/ [name='jsi18n']
+      - listitem [ref=e41]:
+        - code [ref=e42]: admin/
+        - code [ref=e43]: r/<path:content_type_id>/<path:object_id>/ [name='view_on_site']
+      - listitem [ref=e44]:
+        - code [ref=e45]: admin/
+        - code [ref=e46]: (?P<url>.*)$
+    - paragraph [ref=e47]:
+      - text: The current path,
+      - code [ref=e48]: admin/accounts/customuser/
+      - text: ", matched the last one."
+  - contentinfo [ref=e49]:
+    - paragraph [ref=e50]:
+      - text: You’re seeing this error because you have
+      - code [ref=e51]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=e52]: "False"
+      - text: ", and Django will display a standard 404 page."
+```

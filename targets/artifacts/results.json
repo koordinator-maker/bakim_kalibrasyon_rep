@@ -1,0 +1,252 @@
+{
+  "stats": {
+    "total": 17,
+    "passed": 5,
+    "failed": 12,
+    "skipped": 0,
+    "startTime": "2025-10-03T18:25:14.655Z",
+    "endTime": "2025-10-03T18:25:56.473Z"
+  },
+  "tests": [
+    {
+      "title": "login state -> storage/user.json",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\_setup.spec.js",
+        "line": 8,
+        "column": 6
+      },
+      "project": "setup",
+      "status": "passed",
+      "duration_ms": 511,
+      "error": null
+    },
+    {
+      "title": "test",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\EQP-002.spec.js",
+        "line": 3,
+        "column": 5
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 474,
+      "error": null
+    },
+    {
+      "title": "admin anasayfa erişim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\quick-check.spec.js",
+        "line": 4,
+        "column": 1
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 545,
+      "error": null
+    },
+    {
+      "title": "E101 - Equipment Listesi Sayfasını Görüntüleme",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js",
+        "line": 298,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 422,
+      "error": null
+    },
+    {
+      "title": "example basic test",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\example.spec.js",
+        "line": 6,
+        "column": 1
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 1761,
+      "error": null
+    },
+    {
+      "title": "Ekipman Ekleme formunda Üretici Firma alanının varlığı",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js",
+        "line": 9,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 3936,
+      "error": {
+        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\", waiting until \"networkidle\"\u001b[22m\n",
+        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\", waiting until \"networkidle\"\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js:11:20"
+      }
+    },
+    {
+      "title": "should access admin panel",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js",
+        "line": 5,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 5880,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('text=Site administration, text=Django administration')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('text=Site administration, text=Django administration')\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('text=Site administration, text=Django administration')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('text=Site administration, text=Django administration')\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js:14:92"
+      }
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna Erişim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js",
+        "line": 298,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 4439,
+      "error": {
+        "message": "Error: Hiçbir aday görünür değil: input[name='name'], #id_serial_number",
+        "stack": "Error: Hiçbir aday görünür değil: input[name='name'], #id_serial_number\n    at waitVisibleAny (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:224:9)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:320:9"
+      }
+    },
+    {
+      "title": "Ekipman Ekleme formunda Üretici Firma alanının varlığı",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js",
+        "line": 9,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 3719,
+      "error": {
+        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\", waiting until \"networkidle\"\u001b[22m\n",
+        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\", waiting until \"networkidle\"\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js:11:20"
+      }
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna Erişim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js",
+        "line": 298,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 4554,
+      "error": {
+        "message": "Error: Hiçbir aday görünür değil: input[name='name'], #id_serial_number",
+        "stack": "Error: Hiçbir aday görünür değil: input[name='name'], #id_serial_number\n    at waitVisibleAny (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:224:9)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:320:9"
+      }
+    },
+    {
+      "title": "should access admin panel",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js",
+        "line": 5,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 5637,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('text=Site administration, text=Django administration')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('text=Site administration, text=Django administration')\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('text=Site administration, text=Django administration')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('text=Site administration, text=Django administration')\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js:14:92"
+      }
+    },
+    {
+      "title": "Ekipman Ekleme formunda Üretici Firma alanının varlığı",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js",
+        "line": 9,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 3663,
+      "error": {
+        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\", waiting until \"networkidle\"\u001b[22m\n",
+        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8000/admin/bakim_kalibrasyon/equipment/add/\", waiting until \"networkidle\"\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js:11:20"
+      }
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna Erişim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js",
+        "line": 298,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 4571,
+      "error": {
+        "message": "Error: Hiçbir aday görünür değil: input[name='name'], #id_serial_number",
+        "stack": "Error: Hiçbir aday görünür değil: input[name='name'], #id_serial_number\n    at waitVisibleAny (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:224:9)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:320:9"
+      }
+    },
+    {
+      "title": "should access admin panel",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js",
+        "line": 5,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 5533,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('text=Site administration, text=Django administration')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('text=Site administration, text=Django administration')\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('text=Site administration, text=Django administration')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('text=Site administration, text=Django administration')\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js:14:92"
+      }
+    },
+    {
+      "title": "should list users in admin",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js",
+        "line": 19,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 5337,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#result_list, .results')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#result_list, .results')\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#result_list, .results')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#result_list, .results')\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js:25:62"
+      }
+    },
+    {
+      "title": "should list users in admin",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js",
+        "line": 19,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 5347,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#result_list, .results')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#result_list, .results')\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#result_list, .results')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#result_list, .results')\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js:25:62"
+      }
+    },
+    {
+      "title": "should list users in admin",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js",
+        "line": 19,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 5344,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#result_list, .results')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#result_list, .results')\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('#result_list, .results')\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('#result_list, .results')\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js:25:62"
+      }
+    }
+  ]
+}
