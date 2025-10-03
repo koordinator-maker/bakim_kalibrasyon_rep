@@ -14,8 +14,10 @@ const colors = {
   magenta: '\x1b[35m',
 };
 
-function beep() { 
-  try { process.stdout.write("\x07"); } catch {} 
+function beep() { 
+  // SES DEVRE DIŞI - setup_tasks.ps1 tarafından kapatıldı
+  return;
+} catch {} 
 }
 
 function printBox(title, content, color = colors.cyan) {
