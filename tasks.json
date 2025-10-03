@@ -1,0 +1,18 @@
+[
+  {
+    "id": "E101",
+    "title": "Equipment Listesi",
+    "description": "Equipment listesi testi",
+    "job_definition": "open:/admin/maintenance/equipment/;expect:body;text:equipment",
+    "design_ref": "N/A",
+    "visual_threshold": 0.85
+  },
+  {
+    "id": "E102",
+    "title": "Equipment Ekleme",
+    "description": "Equipment ekleme formu testi",
+    "job_definition": "open:/admin/maintenance/equipment/add/;expect:#id_name;text:Kaydet",
+    "design_ref": "N/A",
+    "visual_threshold": 0.85
+  }
+]
