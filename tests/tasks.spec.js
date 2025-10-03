@@ -22,74 +22,58 @@ function beep() {
 
 function printBox(title, content, color = colors.cyan) {
   const width = 80;
-  const border = '•'.repeat(width);
-  console.log(`\n${color}•”${border}•—${colors.reset}`);
-  console.log(`${color}•‘${title.padEnd(width)}•‘${colors.reset}`);
-  console.log(`${color}• ${border}•£${colors.reset}`);
+  const border = '═'.repeat(width);
+  console.log(`\n${color}╔${border}╗${colors.reset}`);
+  console.log(`${color}║${title.padEnd(width)}║${colors.reset}`);
+  console.log(`${color}╠${border}╣${colors.reset}`);
   content.forEach(line => {
-    console.log(`${color}•‘${colors.reset} ${line.padEnd(width-2)} ${color}•‘${colors.reset}`);
+    console.log(`${color}║${colors.reset} ${line.padEnd(width-2)} ${color}║${colors.reset}`);
   });
-  console.log(`${color}•š${border}•${colors.reset}\n`);
+  console.log(`${color}╚${border}╝${colors.reset}\n`);
 }
 
 function printTestHeader(testId, title) {
-  console.log(`\n${colors.bright}${colors.blue}${'–¶'.repeat(40)}${colors.reset}`);
-  console.log(`${colors.bright}${colors.blue}–¶–¶–¶ TEST: ${testId} - ${title}${colors.reset}`);
-  console.log(`${colors.bright}${colors.blue}${'–¶'.repeat(40)}${colors.reset}\n`);
+  console.log(`\n${colors.bright}${colors.blue}${'▶'.repeat(40)}${colors.reset}`);
+  console.log(`${colors.bright}${colors.blue}▶▶▶ TEST: ${testId} - ${title}${colors.reset}`);
+  console.log(`${colors.bright}${colors.blue}${'▶'.repeat(40)}${colors.reset}\n`);
 }
 
-function printSuccess(message) {
-  console.log(`${colors.green}œ… ${message}${colors.reset}`);
-}
-
-function printWarning(message) {
-  console.log(`${colors.yellow}š ï¸  ${message}${colors.reset}`);
-}
-
-function printError(message) {
-  console.log(`${colors.red}Œ ${message}${colors.reset}`);
-}
-
-function printInfo(message) {
-  console.log(`${colors.cyan}„¹ï¸  ${message}${colors.reset}`);
-}
+function printSuccess(m) { console.log(`${colors.green}✅ ${m}${colors.reset}`); }
+function printWarning(m) { console.log(`${colors.yellow}⚠️  ${m}${colors.reset}`); }
+function printError(m) { console.log(`${colors.red}❌ ${m}${colors.reset}`); }
+function printInfo(m) { console.log(`${colors.cyan}ℹ️  ${m}${colors.reset}`); }
 
 function printTaskRequirements(steps, designRef, threshold) {
   const width = 80;
-  const border = '•'.repeat(width);
-  console.log(`${colors.cyan}•”${border}•—${colors.reset}`);
-  console.log(`${colors.cyan}•‘ ${colors.bright}Ä°STENENLER (GÃ–REV TANIMI)${colors.reset}${' '.repeat(width - 29)}${colors.cyan}•‘${colors.reset}`);
-  console.log(`${colors.cyan}• ${border}•£${colors.reset}`);
+  const border = '═'.repeat(width);
+  console.log(`${colors.cyan}╔${border}╗${colors.reset}`);
+  console.log(`${colors.cyan}║ ${colors.bright}İSTENENLER${colors.reset}${' '.repeat(width - 13)}${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}╠${border}╣${colors.reset}`);
   
   steps.forEach(step => {
-    const cmdText = step.cmd.toUpperCase().padEnd(6);
-    const line = `${colors.bright}${cmdText}${colors.reset}: ${step.val}`;
-    const plainLine = `${cmdText}: ${step.val}`;
-    const padding = width - plainLine.length - 1;
-    console.log(`${colors.cyan}•‘ ${colors.reset}${line}${' '.repeat(Math.max(0, padding))}${colors.cyan}•‘${colors.reset}`);
+    const cmd = step.cmd.toUpperCase().padEnd(6);
+    const line = `${colors.bright}${cmd}${colors.reset}: ${step.val}`;
+    const plain = `${cmd}: ${step.val}`;
+    console.log(`${colors.cyan}║ ${colors.reset}${line}${' '.repeat(Math.max(0, width - plain.length - 1))}${colors.cyan}║${colors.reset}`);
   });
 
-  const isVisualSkip = !designRef || designRef.toUpperCase() === "N/A";
-  const visualStatus = isVisualSkip 
-    ? `VISUAL: AtlandÄ± (N/A)`
-    : `VISUAL: ${designRef} (EÅŸik: ${(threshold * 100).toFixed(0)}%)`;
-  
-  const padding = width - visualStatus.length - 1;
-  console.log(`${colors.cyan}•‘ ${colors.reset}${visualStatus}${' '.repeat(Math.max(0, padding))}${colors.cyan}•‘${colors.reset}`);
-  console.log(`${colors.cyan}•š${border}•${colors.reset}\n`);
+  const vis = !designRef || designRef.toUpperCase() === "N/A" 
+    ? `VISUAL: Atlandı` 
+    : `VISUAL: ${designRef}`;
+  console.log(`${colors.cyan}║ ${colors.reset}${vis}${' '.repeat(Math.max(0, width - vis.length - 1))}${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}╚${border}╝${colors.reset}\n`);
 }
 
 const stats = {
   total: 0,
   passed: 0,
   failed: 0,
-  skipped: 0,
   startTime: Date.now(),
   testResults: [],
 };
 
 const cycleNumber = parseInt(process.env.TEST_CYCLE || '1', 10);
-printInfo(`Ã‡alÄ±ÅŸtÄ±rÄ±lan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`);
+printInfo(`Test Döngüsü: ${cycleNumber}`);
 
 test.use({ storageState: "storage/user.json" });
 
@@ -100,17 +84,15 @@ function loadTasks() {
   const rootJson = path.resolve("tasks.json");
   const buildJson = path.resolve("build", "tasks.json");
   
-  function readJsonNoBOM(filePath) {
-    let content = fs.readFileSync(filePath, "utf8");
-    if (content.charCodeAt(0) === 0xFEFF) {
-      content = content.slice(1);
-    }
-    return JSON.parse(content);
+  function readJsonNoBOM(fp) {
+    let c = fs.readFileSync(fp, "utf8");
+    if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
+    return JSON.parse(c);
   }
   
   if (fs.existsSync(rootJson)) return readJsonNoBOM(rootJson);
   if (fs.existsSync(buildJson)) return readJsonNoBOM(buildJson);
-  throw new Error("tasks.json bulunamadÄ±");
+  throw new Error("tasks.json bulunamadı");
 }
 
 function parseSteps(jobDef) {
@@ -137,252 +119,200 @@ function normalizeWords(s) {
     .filter(Boolean);
 }
 
-function coverage90(actualText, expectedText) {
-  const A = new Set(normalizeWords(actualText));
-  const E = normalizeWords(expectedText);
+function coverage90(actual, expected) {
+  const A = new Set(normalizeWords(actual));
+  const E = normalizeWords(expected);
   if (!E.length) return true;
   let hit = 0;
   for (const w of E) if (A.has(w)) hit++;
   return hit / E.length >= 0.9;
 }
 
-// === AKILLI SELECTOR SÄ°STEMÄ° ===
 function expandSmartCandidates(expr) {
-  const trimmed = String(expr || '').trim();
+  const t = String(expr || '').trim();
   const out = new Set();
-  out.add(trimmed);
+  out.add(t);
 
-  // input[name='xxx']
-  let m = trimmed.match(/^input\s*\[\s*name\s*=\s*['"]([^'"]+)['"]\s*\]$/i);
+  let m = t.match(/^input\s*\[\s*name\s*=\s*['"]([^'"]+)['"]\s*\]$/i);
   if (m) {
-    const key = m[1].toLowerCase();
-    const base = key.replace(/[\s\-]+/g,"_");
-    out.add(`#id_${base}`);
-    out.add(`input[name="${base}"]`);
-    out.add(`[name*="${base}"]`);
-    
-    if (base === "name") {
+    const k = m[1].toLowerCase().replace(/[\s\-]+/g,"_");
+    out.add(`#id_${k}`);
+    out.add(`[name="${k}"]`);
+    if (k === "name") {
       out.add(`#id_title`);
       out.add(`#id_equipment_name`);
-      out.add(`input[name="title"]`);
     }
-    if (base.includes("serial")) {
+    if (k.includes("serial")) {
       out.add(`#id_serial_number`);
-      out.add(`[id*="serial"]`);
     }
     return Array.from(out);
   }
 
-  // #id_xxx
-  m = trimmed.match(/^#id_([\w\-:]+)$/i);
+  m = t.match(/^#id_([\w\-:]+)$/i);
   if (m) {
-    const key = m[1].toLowerCase();
-    out.add(`input[name="${key}"]`);
-    out.add(`[name*="${key}"]`);
-    
-    if (key === "name") {
-      out.add(`#id_title`);
-      out.add(`#id_equipment_name`);
-    }
-    if (key.includes("serial")) {
-      out.add(`#id_serial_number`);
-    }
+    const k = m[1].toLowerCase();
+    out.add(`[name="${k}"]`);
+    if (k === "name") out.add(`#id_title`);
+    if (k.includes("serial")) out.add(`#id_serial_number`);
     return Array.from(out);
   }
 
   return Array.from(out);
 }
 
-async function saveArtifacts(id, page, tag = "error") {
-  try {
-    const outDir = path.resolve("targets","actual");
-    fs.mkdirSync(outDir, { recursive:true });
-    const pngPath = path.join(outDir, `${id}-${tag}.png`);
-    const htmlPath = path.join(outDir, `${id}-${tag}.html`);
-    await page.screenshot({ path: pngPath, fullPage:true });
-    fs.writeFileSync(htmlPath, await page.content(), "utf8");
-    printWarning(`[ARTIFACT] ${path.relative(process.cwd(), pngPath)}`);
-  } catch {}
+function saveArtifacts(id, page, tag) {
+  return page.screenshot({ 
+    path: path.join("targets","actual",`${id}-${tag}.png`), 
+    fullPage: true 
+  }).then(() => {
+    return page.content();
+  }).then(html => {
+    fs.mkdirSync(path.join("targets","actual"), { recursive: true });
+    fs.writeFileSync(path.join("targets","actual",`${id}-${tag}.html`), html);
+    printWarning(`[ARTIFACT] ${id}-${tag}.png/html`);
+  }).catch(() => {});
 }
 
-async function waitVisibleAny(/* (id, page, ...cands) or (page, ...cands) */) {
-  const isPageLike = (p) => p && typeof p.locator === "function";
-
-  let id = "N/A";
-  let page;
-  let candidates = [];
-
-  const args = Array.from(arguments);
-  if (args.length && isPageLike(args[0])) {
-    page = args[0];
-    candidates = args.slice(1).flat();
-  } else if (args.length >= 2 && isPageLike(args[1])) {
-    id = String(args[0]);
-    page = args[1];
-    candidates = args.slice(2).flat();
-  } else {
-    throw new Error("waitVisibleAny: Geçersiz argüman dizilimi");
-  }
-
-  candidates = (Array.isArray(candidates) ? candidates : [candidates])
-    .filter(Boolean)
-    .map(String);
-
-  const extra = [
-    "form[action$='/add/']",
-    "input[name='csrfmiddlewaretoken']",
-    "div.submit-row",
-    "button[name='_save']",
-    "#content form",
-    "#content-main form",
-    "main form",
-    "#id_name",
-    "#id_serial_number",
-    "input[name='name']",
-    "input[name='serial_number']",
-    "form input[type='text']",
-    "form select"
-  ];
-
-  const merged = Array.from(new Set([
-    ...candidates,
-    ...extra,
-    ...((globalThis && globalThis.__EXTRA_CANDIDATES__) || [])
-  ]));
-
-  // Bazı ortamlarda tek CSS dizesi sorun çıkarırsa tek tek dene
-  for (const sel of merged) {
-    const loc = page.locator(sel);
+function waitVisibleAny(page, id, expr, timeout) {
+  const candidates = expandSmartCandidates(expr);
+  const start = Date.now();
+  
+  return (async function tryNext(index) {
+    if (index >= candidates.length) {
+      await saveArtifacts(id, page, "notfound");
+      throw new Error(`Hiçbir aday görünür değil: ${candidates.join(", ")}`);
+    }
+    
+    const sel = candidates[index];
+    const remaining = Math.max(500, timeout - (Date.now() - start));
+    
     try {
-      await expect(loc.first()).toBeVisible({ timeout: 500 });
-      return loc.first();
-    } catch {}
-  }
+      await expect(page.locator(sel).first()).toBeVisible({ timeout: remaining });
+      printSuccess(`Element bulundu: ${sel}`);
+      return;
+    } catch (e) {
+      return tryNext(index + 1);
+    }
+  })(0);
+}
 
-  await saveArtifacts(id, page, "notfound");
-  throw new Error(`Hiçbir aday görünür değil: ${merged.join(", ")}`);
-}async function ensurePixelLibs() {
+function ensurePixelLibs() {
   if (!PNG || !pixelmatch) {
     try {
       PNG = require("pngjs").PNG;
       pixelmatch = require("pixelmatch");
     } catch (e) {
-      printWarning("PNG/Pixelmatch kÃ¼tÃ¼phaneleri eksik");
+      printWarning("PNG/Pixelmatch eksik");
     }
   }
 }
 
-async function visualCompare(page, designRefPath, threshold = 0.85, id = "task") {
-  await ensurePixelLibs();
+function visualCompare(page, designRefPath, threshold, id) {
+  ensurePixelLibs();
   
   if (!PNG || !pixelmatch) {
-    printWarning(`[VISUAL] ${id}: KÃ¼tÃ¼phaneler eksik †’ skip`);
-    return;
+    printWarning(`[VISUAL] ${id}: kütüphaneler eksik`);
+    return Promise.resolve();
   }
   
-  const rawRef = (designRefPath ?? "").toString().trim();
-  if (!rawRef || rawRef.toUpperCase() === "N/A") {
-    printWarning(`[VISUAL] ${id}: design_ref N/A †’ skip`);
-    return;
+  const raw = (designRefPath ?? "").toString().trim();
+  if (!raw || raw.toUpperCase() === "N/A") {
+    printWarning(`[VISUAL] ${id}: N/A`);
+    return Promise.resolve();
   }
   
-  const refPath = path.resolve(rawRef);
+  const refPath = path.resolve(raw);
   if (!fs.existsSync(refPath)) {
-    printWarning(`[VISUAL] ${id}: reference not found †’ skip`);
-    return;
+    printWarning(`[VISUAL] ${id}: reference not found`);
+    return Promise.resolve();
   }
   
   const outDir = path.resolve("targets", "actual");
   fs.mkdirSync(outDir, { recursive: true });
   const actPath = path.join(outDir, `${id}.png`);
-  await page.screenshot({ path: actPath, fullPage: true });
   
-  const ref = PNG.sync.read(fs.readFileSync(refPath));
-  const act = PNG.sync.read(fs.readFileSync(actPath));
-  const w = Math.min(ref.width, act.width);
-  const h = Math.min(ref.height, act.height);
-  const refCrop = new PNG({ width: w, height: h });
-  const actCrop = new PNG({ width: w, height: h });
-  PNG.bitblt(ref, refCrop, 0, 0, 0, 0, w, h);
-  PNG.bitblt(act, actCrop, 0, 0, 0, 0, w, h);
-  
-  const diff = new PNG({ width: w, height: h });
-  const mismatch = pixelmatch(refCrop.data, actCrop.data, diff.data, w, h, { threshold: 0.1 });
-  const similarity = 1 - mismatch / (w * h);
-  
-  printInfo(`[VISUAL] ${id}: Benzerlik ${(similarity * 100).toFixed(2)}%`);
-  expect(similarity).toBeGreaterThanOrEqual(threshold);
+  return page.screenshot({ path: actPath, fullPage: true }).then(() => {
+    const ref = PNG.sync.read(fs.readFileSync(refPath));
+    const act = PNG.sync.read(fs.readFileSync(actPath));
+    const w = Math.min(ref.width, act.width);
+    const h = Math.min(ref.height, act.height);
+    const refCrop = new PNG({ width: w, height: h });
+    const actCrop = new PNG({ width: w, height: h });
+    PNG.bitblt(ref, refCrop, 0, 0, 0, 0, w, h);
+    PNG.bitblt(act, actCrop, 0, 0, 0, 0, w, h);
+    
+    const diff = new PNG({ width: w, height: h });
+    const mismatch = pixelmatch(refCrop.data, actCrop.data, diff.data, w, h, { threshold: 0.1 });
+    const similarity = 1 - mismatch / (w * h);
+    
+    printInfo(`[VISUAL] ${id}: ${(similarity * 100).toFixed(2)}%`);
+    expect(similarity).toBeGreaterThanOrEqual(threshold || 0.85);
+  });
 }
 
 const tasks = loadTasks();
 if (!Array.isArray(tasks) || tasks.length === 0) {
-  throw new Error("tasks.json boÅŸ");
+  throw new Error("tasks.json boş");
 }
 
 stats.total = tasks.length;
 
 test.beforeAll(() => {
-  printBox('ğŸš€ TEST SUITE BAÅLANGICI', [
-    `Toplam YÃ¼klenen GÃ¶rev: ${stats.total}`,
-    `Ã‡alÄ±ÅŸan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`,
-    `Base URL: ${BASE}`,
-    `Ses: ${BEEP_ENABLED ? 'AÃ‡IK' : 'KAPALI'}`,
-    `BaÅŸlangÄ±Ã§: ${new Date().toLocaleString('tr-TR')}`,
+  printBox('🚀 TEST BAŞLANGICI', [
+    `Görev: ${stats.total}`,
+    `Döngü: ${cycleNumber}`,
+    `Base: ${BASE}`,
+    `Ses: ${BEEP_ENABLED ? 'AÇIK' : 'KAPALI'}`,
+    `Zaman: ${new Date().toLocaleString('tr-TR')}`,
   ], colors.magenta);
 });
 
 for (const t of tasks) {
   test(`${t.id} - ${t.title}`, async ({ page }) => {
-    const testStartTime = Date.now();
+    const start = Date.now();
     printTestHeader(t.id, t.title);
     beep();
     
     const steps = parseSteps(t.job_definition);
     printTaskRequirements(steps, t.design_ref, t.visual_threshold);
-    printInfo(`AdÄ±m SayÄ±sÄ±: ${steps.length}`);
+    printInfo(`Adım: ${steps.length}`);
     
     try {
-      // open
       const open = steps.find(s => s.cmd === "open");
       if (open) {
         const url = open.val.startsWith("http") ? open.val : BASE + open.val;
-        printInfo(`AÃ§Ä±lÄ±yor: ${url}`);
+        printInfo(`Açılıyor: ${url}`);
         await page.goto(url, { waitUntil: "domcontentloaded" });
-        printSuccess(`Sayfa yÃ¼klendi: ${page.url()}`);
+        printSuccess(`Yüklendi: ${page.url()}`);
       }
       
-      // expect (akÄ±llÄ±)
       for (const s of steps.filter(s => s.cmd === "expect")) {
         printInfo(`Bekleniyor: ${s.val}`);
         await waitVisibleAny(page, t.id, s.val, 4000);
       }
       
-      // text
       const txt = steps.find(s => s.cmd === "text");
       if (txt) {
-        printInfo(`Metin kontrolÃ¼: "${txt.val}"`);
+        printInfo(`Metin: "${txt.val}"`);
         const body = await page.locator("body").innerText();
         const ok = coverage90(body, txt.val);
-        expect(ok, "Metin kapsama < %90").toBeTruthy();
-        printSuccess(`Metin kapsama: ‰¥90%`);
+        expect(ok, "Metin < %90").toBeTruthy();
+        printSuccess(`Metin: ≥90%`);
       }
       
-      // visual
       if (t.design_ref) {
-        const thr = t.visual_threshold ?? 0.85;
-        await visualCompare(page, t.design_ref, thr, t.id);
+        await visualCompare(page, t.design_ref, t.visual_threshold, t.id);
       }
       
       stats.passed++;
       stats.testResults.push({ 
         id: t.id, 
         status: 'PASSED', 
-        error: null, 
         title: t.title, 
-        duration: (Date.now() - testStartTime), 
+        duration: Date.now() - start, 
         cycle: cycleNumber 
       });
-      printSuccess(`œ… TEST BAÅARILI: ${t.id}`);
+      printSuccess(`BAŞARILI: ${t.id}`);
       
     } catch (error) {
       await saveArtifacts(t.id, page, 'failed');
@@ -392,10 +322,10 @@ for (const t of tasks) {
         status: 'FAILED', 
         error: error.message, 
         title: t.title, 
-        duration: (Date.now() - testStartTime), 
+        duration: Date.now() - start, 
         cycle: cycleNumber 
       });
-      printError(`Œ TEST BAÅARISIZ: ${t.id}`);
+      printError(`BAŞARISIZ: ${t.id}`);
       printError(`Hata: ${error.message}`);
       throw error;
     }
@@ -404,45 +334,28 @@ for (const t of tasks) {
 
 test.afterAll(() => {
   const duration = ((Date.now() - stats.startTime) / 1000).toFixed(2);
-  const passRate = ((stats.passed / stats.total) * 100).toFixed(2);
+  const rate = ((stats.passed / stats.total) * 100).toFixed(2);
   
-  const quarantineReport = ['ID | BaÅŸlÄ±k | Durum | Ã‡Ã¶zÃ¼ldÃ¼/DÃ¶ngÃ¼'];
+  const qr = ['ID | Başlık | Durum'];
   stats.testResults.forEach(r => {
-    const statusColor = r.status === 'PASSED' ? colors.green : colors.red;
-    const cycleInfo = r.status === 'PASSED' 
-      ? `Ã‡Ã–ZÃœLDÃœ (${r.cycle}. DÃ¶ngÃ¼)` 
-      : `BEKLEMEDE`;
-    quarantineReport.push(`${r.id} | ${r.title} | ${statusColor}${r.status}${colors.reset} | ${cycleInfo}`);
+    const c = r.status === 'PASSED' ? colors.green : colors.red;
+    qr.push(`${r.id} | ${r.title} | ${c}${r.status}${colors.reset}`);
   });
   
-  printBox('ğŸ“„ KARANTÄ°NA RAPORU (GÃ–REV DURUM TAKÄ°BÄ°)', quarantineReport, colors.yellow);
+  printBox('📄 SONUÇLAR', qr, colors.yellow);
   
   const summary = [
-    `Toplam YÃ¼klenen GÃ¶rev: ${stats.total}`, 
-    `Ã‡alÄ±ÅŸan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`,
-    `BaÅŸarÄ±lÄ± GÃ¶rev: ${colors.green}${stats.passed}${colors.reset}`,
-    `BaÅŸarÄ±sÄ±z GÃ¶rev: ${colors.red}${stats.failed}${colors.reset}`,
-    `BaÅŸarÄ± OranÄ±: ${passRate}%`,
-    `Toplam SÃ¼re: ${duration}s`,
-    `BitiÅŸ: ${new Date().toLocaleString('tr-TR')}`,
+    `Toplam: ${stats.total}`, 
+    `Döngü: ${cycleNumber}`,
+    `Başarılı: ${colors.green}${stats.passed}${colors.reset}`,
+    `Başarısız: ${colors.red}${stats.failed}${colors.reset}`,
+    `Oran: ${rate}%`,
+    `Süre: ${duration}s`,
   ];
   
   if (stats.failed === 0) {
-    printBox('œ… TÃœM GÃ–REVLER BAÅARILI!', summary, colors.green);
+    printBox('✅ TÜM TESTLER BAŞARILI!', summary, colors.green);
   } else {
-    printBox('š ï¸  BAZI GÃ–REVLER BAÅARISIZ', summary, colors.yellow);
+    printBox('⚠️  BAZI TESTLER BAŞARISIZ', summary, colors.yellow);
   }
-  
-  console.log(`${colors.cyan}--- TEST ORTAMI BÄ°LGÄ°SÄ° ---${colors.reset}`);
-  console.log(`Bu rapor SADECE tasks.json'dan yÃ¼klenen ${stats.total} gÃ¶revin durumunu gÃ¶sterir.\n`);
 });
-
-
-
-
-
-
-
-
-
-
