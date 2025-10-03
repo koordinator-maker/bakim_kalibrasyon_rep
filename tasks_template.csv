@@ -1,3 +1,4 @@
 ﻿id,type,title,design_ref,visual_threshold,job_definition
-MAINT-001,ui,Maintenance Anasayfa Kontrolü,N/A,0.90,"open:/maintenance/;expect:body"
-EQP-001,ui,Cihaz Listeleme Sayfası Kontrolü,N/A,0.90,"open:/admin/maintenance/equipment/;expect:.addlink"
+TEST-001,ui,Maintenance Anasayfa,N/A,0.90,"open:/maintenance/;expect:body"
+TEST-002,ui,Admin Giriş,N/A,0.90,"open:/admin/;expect:body;text:Django"
+TEST-003,ui,Equipment Listesi,N/A,0.90,"open:/admin/maintenance/equipment/;expect:.model-equipment"
