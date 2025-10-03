@@ -11,7 +11,7 @@ test.describe("Admin Dashboard Tests", () => {
         await expect(page).not.toHaveURL(/\/admin\/login/);
 
         // Admin panel içeriği görmeli
-        await expect(page.locator("main, #content, #content-main, [role="main"], .content, .container")).toBeVisible({ timeout: 5000 });
+        await expect(page.locator("main, #content, #content-main, [role='main'], .content, .container")).toBeVisible({ timeout: 5000 });
 
         console.log("[TEST PASSED] Authenticated admin access verified");
     });
@@ -27,6 +27,7 @@ test.describe("Admin Dashboard Tests", () => {
         console.log("[TEST PASSED] User list accessible");
     });
 });
+
 
 
 

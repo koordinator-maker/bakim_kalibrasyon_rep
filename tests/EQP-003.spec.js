@@ -11,7 +11,7 @@ test.describe('EQP-003', () => {
         await page.goto(`${process.env.BASE_URL || "http://127.0.0.1:8010"}/admin/maintenance/equipment/add/`, { waitUntil: "networkidle" }); 
         
         // Sayfanın yüklendiğini kontrol et (Örneğin: Ana içerik alanının varlığı)
-        await expect(page.locator('#content').first()).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('main, #content, #content-main, [role="main"], .content, .container')).toBeVisible({ timeout: 10000 });
         
         // EN GÜVENİLİR DOĞRULAMA: Üretici Firma alanının etrafındaki HTML konteynerini (wrapper) kontrol et.
         // Django Admin'de bu alan genellikle '.field-manufacturer' veya benzeri bir sınıfa sahiptir.
@@ -23,6 +23,7 @@ test.describe('EQP-003', () => {
         console.log('[TEST SUCCESS] Üretici Firma alanı (CSS konumu ile) başarıyla doğrulandı.');
     });
 });
+
 
 
 

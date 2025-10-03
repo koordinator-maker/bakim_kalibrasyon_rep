@@ -231,7 +231,7 @@ globalThis.__EXTRA_CANDIDATES__ = [
   }
   
   await saveArtifacts(id, page, "notfound");
-  throw new Error(`HiÃ§bir aday gÃ¶rÃ¼nÃ¼r deÄŸil: ${candidates.join(", ")}`);
+  throw new Error(`HiÃ§bir aday gÃ¶rÃ¼nÃ¼r deÄŸil: ${__merged.join(", ")}`);
 }
 
 async function ensurePixelLibs() {
@@ -409,6 +409,7 @@ test.afterAll(() => {
   console.log(`${colors.cyan}--- TEST ORTAMI BÄ°LGÄ°SÄ° ---${colors.reset}`);
   console.log(`Bu rapor SADECE tasks.json'dan yÃ¼klenen ${stats.total} gÃ¶revin durumunu gÃ¶sterir.\n`);
 });
+
 
 
 

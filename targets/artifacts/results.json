@@ -1,11 +1,186 @@
 {
   "stats": {
-    "total": 0,
-    "passed": 0,
-    "failed": 0,
+    "total": 13,
+    "passed": 7,
+    "failed": 6,
     "skipped": 0,
-    "startTime": "2025-10-03T19:42:19.523Z",
-    "endTime": "2025-10-03T19:42:19.525Z"
+    "startTime": "2025-10-03T20:05:40.772Z",
+    "endTime": "2025-10-03T20:06:19.543Z"
   },
-  "tests": []
+  "tests": [
+    {
+      "title": "login state -> storage/user.json",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\_setup.spec.js",
+        "line": 8,
+        "column": 6
+      },
+      "project": "setup",
+      "status": "passed",
+      "duration_ms": 584,
+      "error": null
+    },
+    {
+      "title": "test",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\EQP-002.spec.js",
+        "line": 3,
+        "column": 5
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 602,
+      "error": null
+    },
+    {
+      "title": "should access admin panel",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js",
+        "line": 5,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 933,
+      "error": null
+    },
+    {
+      "title": "admin anasayfa erişim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\quick-check.spec.js",
+        "line": 4,
+        "column": 1
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 656,
+      "error": null
+    },
+    {
+      "title": "should list users in admin",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\admin-dashboard.spec.js",
+        "line": 19,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 386,
+      "error": null
+    },
+    {
+      "title": "E101 - Equipment Listesi Sayfasını Görüntüleme",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js",
+        "line": 308,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 489,
+      "error": null
+    },
+    {
+      "title": "example basic test",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\example.spec.js",
+        "line": 6,
+        "column": 1
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 4665,
+      "error": null
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna Erişim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js",
+        "line": 308,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 4424,
+      "error": {
+        "message": "ReferenceError: __merged is not defined",
+        "stack": "ReferenceError: __merged is not defined\n    at waitVisibleAny (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:234:54)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:330:9"
+      }
+    },
+    {
+      "title": "Ekipman Ekleme formunda Üretici Firma alanının varlığı",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js",
+        "line": 9,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 11343,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js:21:44"
+      }
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna Erişim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js",
+        "line": 308,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 4538,
+      "error": {
+        "message": "ReferenceError: __merged is not defined",
+        "stack": "ReferenceError: __merged is not defined\n    at waitVisibleAny (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:234:54)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:330:9"
+      }
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna Erişim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js",
+        "line": 308,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 4499,
+      "error": {
+        "message": "ReferenceError: __merged is not defined",
+        "stack": "ReferenceError: __merged is not defined\n    at waitVisibleAny (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:234:54)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.js:330:9"
+      }
+    },
+    {
+      "title": "Ekipman Ekleme formunda Üretici Firma alanının varlığı",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js",
+        "line": 9,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 10915,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js:21:44"
+      }
+    },
+    {
+      "title": "Ekipman Ekleme formunda Üretici Firma alanının varlığı",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js",
+        "line": 9,
+        "column": 9
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 10891,
+      "error": {
+        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\u001b[22m\n",
+        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\nExpected: visible\nReceived: <element(s) not found>\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.form-row.field-manufacturer, .field-manufacturer, [data-field-name=\\'manufacturer\\'], .related-widget-wrapper').first()\u001b[22m\n\n    at C:\\dev\\bakim_kalibrasyon\\tests\\EQP-003.spec.js:21:44"
+      }
+    }
+  ]
 }
