@@ -205,36 +205,63 @@ async function saveArtifacts(id, page, tag = "error") {
   } catch {}
 }
 
-async function waitVisibleAny(page, id, selectorExpr, timeoutMs = 4000) {
-  // === OTOKODLAMA PATCH (begin) ===
-globalThis.__EXTRA_CANDIDATES__ = [
-  "input[name='name']","#id_name","[name='serial_number']","#id_serial_number",
-  "[data-testid]='eq-name'","[data-testid]='eq-serial'",
-  "[data-testid='eq-name']","[data-testid='eq-serial']",
-  "#content input","#content select",
-  "form .form-row input","form .form-row select",
-  "#content-main form input","#content-main form select"
-];
-// === OTOKODLAMA PATCH (end) ===
-  const candidates = expandSmartCandidates(selectorExpr);
-  const start = Date.now();
-  
-  for (const sel of candidates) {
-    const remaining = Math.max(500, timeoutMs - (Date.now() - start));
-    try {
-      await expect(page.locator(sel).first()).toBeVisible({ timeout: remaining });
-      printSuccess(`Element bulundu: ${sel}`);
-      return;
-    } catch (e) {
-      // Devam et
-    }
-  }
-  
-  await saveArtifacts(id, page, "notfound");
-  throw new Error(`HiÃ§bir aday gÃ¶rÃ¼nÃ¼r deÄŸil: ${__merged.join(", ")}`);
-}
+async function waitVisibleAny(/* (id, page, ...cands) or (page, ...cands) */) {
+  const isPageLike = (p) => p && typeof p.locator === "function";
 
-async function ensurePixelLibs() {
+  let id = "N/A";
+  let page;
+  let candidates = [];
+
+  const args = Array.from(arguments);
+  if (args.length && isPageLike(args[0])) {
+    page = args[0];
+    candidates = args.slice(1).flat();
+  } else if (args.length >= 2 && isPageLike(args[1])) {
+    id = String(args[0]);
+    page = args[1];
+    candidates = args.slice(2).flat();
+  } else {
+    throw new Error("waitVisibleAny: Geçersiz argüman dizilimi");
+  }
+
+  candidates = (Array.isArray(candidates) ? candidates : [candidates])
+    .filter(Boolean)
+    .map(String);
+
+  const extra = [
+    "form[action$='/add/']",
+    "input[name='csrfmiddlewaretoken']",
+    "div.submit-row",
+    "button[name='_save']",
+    "#content form",
+    "#content-main form",
+    "main form",
+    "#id_name",
+    "#id_serial_number",
+    "input[name='name']",
+    "input[name='serial_number']",
+    "form input[type='text']",
+    "form select"
+  ];
+
+  const merged = Array.from(new Set([
+    ...candidates,
+    ...extra,
+    ...((globalThis && globalThis.__EXTRA_CANDIDATES__) || [])
+  ]));
+
+  // Bazı ortamlarda tek CSS dizesi sorun çıkarırsa tek tek dene
+  for (const sel of merged) {
+    const loc = page.locator(sel);
+    try {
+      await expect(loc.first()).toBeVisible({ timeout: 500 });
+      return loc.first();
+    } catch {}
+  }
+
+  await saveArtifacts(id, page, "notfound");
+  throw new Error(`Hiçbir aday görünür değil: ${merged.join(", ")}`);
+}async function ensurePixelLibs() {
   if (!PNG || !pixelmatch) {
     try {
       PNG = require("pngjs").PNG;
@@ -409,6 +436,12 @@ test.afterAll(() => {
   console.log(`${colors.cyan}--- TEST ORTAMI BÄ°LGÄ°SÄ° ---${colors.reset}`);
   console.log(`Bu rapor SADECE tasks.json'dan yÃ¼klenen ${stats.total} gÃ¶revin durumunu gÃ¶sterir.\n`);
 });
+
+
+
+
+
+
 
 
 
