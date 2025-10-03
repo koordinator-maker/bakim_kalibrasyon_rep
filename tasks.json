@@ -2,7 +2,7 @@
   {
     "id": "E101",
     "title": "Equipment Listesi Sayfasını Görüntüleme",
-    "description": "Kullanıcının giriş yaptıktan sonra ekipman listesi sayfasına başarıyla ulaştığını doğrular.",
+    "description": "Kullanıcının equipment listesini görebildiğini doğrular",
     "job_definition": "open: /admin/maintenance/equipment/; expect: body; text: Equipment",
     "design_ref": "N/A",
     "visual_threshold": 0.85
@@ -10,8 +10,8 @@
   {
     "id": "E102",
     "title": "Equipment Ekleme Formuna Erişim",
-    "description": "Kullanıcının Equipment Listesi sayfasından ekleme formuna başarıyla geçtiğini doğrular.",
-    "job_definition": "open: /admin/maintenance/equipment/add/; expect: input[name='name']; expect: #id_serial_number; text: Kaydet",
+    "description": "Equipment ekleme formundaki gerekli alanların görünür olduğunu doğrular.",
+    "job_definition": "open: /admin/maintenance/equipment/add/; expect: input[name='name'], #id_serial_number; text: Kaydet",
     "design_ref": "N/A",
     "visual_threshold": 0.85
   }

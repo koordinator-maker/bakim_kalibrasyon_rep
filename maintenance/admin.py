@@ -1,15 +1,14 @@
-ï»¿from django.contrib import admin
+from django.contrib import admin
 from .models import Equipment
 
+# Equipment modelini Django Admin paneline kaydeder.
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'serial_number', 'location', 'manufacturer', 'is_active')
-    list_filter = ('location', 'is_active')
-    search_fields = ('name', 'serial_number')
+    # Admin listeleme sayfasında gösterilecek alanlar
+    list_display = ('name', 'serial_number', 'location', 'inventory_code')
     
-    # EQP-003 testi iÃ§in 'manufacturer' alanÄ±nÄ±n formda gÃ¶rÃ¼nÃ¼r olduÄŸundan emin olunur.
-    fieldsets = (
-        (None, {
-            'fields': ('name', 'serial_number', 'manufacturer', 'purchase_date', 'last_maintenance_date', 'next_maintenance_date', 'location', 'is_active')
-        }),
-    )
+    # Arama çubuğunda arama yapılabilecek alanlar
+    search_fields = ('name', 'serial_number', 'inventory_code')
+
+    # Filtreleme seçenekleri
+    list_filter = ('location',)

@@ -1,34 +1,42 @@
 ﻿from django.db import models
-import uuid
+from django.utils.translation import gettext_lazy as _
 
-# Manufacturer modelini ekliyoruz (Equipment modeli için ForeignKey gerektirebiliriz)
-# Ancak şimdilik sadece Equipment modelindeki alanı CharField olarak tutalım
-# Eğer Manufacturer ayrı bir model olsaydı, şuna benzer olurdu:
-# class Manufacturer(models.Model):
-#     name = models.CharField(max_length=100)
-#     def __str__(self):
-#         return self.name
-
-class Equipment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+class Department(models.Model):
+    """Departman modelini tanımlar."""
+    name = models.CharField(_("Departman Adı"), max_length=100, unique=True)
     
-    # admin.py'nin beklediği alanlar
-    name = models.CharField(max_length=200, verbose_name="Ekipman Adı")
-    serial_number = models.CharField(max_length=100, unique=True, verbose_name="Seri Numarası")
-    location = models.CharField(max_length=100, verbose_name="Konum")
-    
-    # EQP-003 testi için gerekli olan ve admin.py'de eklediğimiz alan
-    manufacturer = models.CharField(max_length=100, blank=True, null=True, verbose_name="Üretici Firma")
-
-    # Diğer bakım alanları
-    purchase_date = models.DateField(null=True, blank=True, verbose_name="Satın Alma Tarihi")
-    last_maintenance_date = models.DateField(null=True, blank=True, verbose_name="Son Bakım Tarihi")
-    next_maintenance_date = models.DateField(null=True, blank=True, verbose_name="Sonraki Bakım Tarihi")
-    is_active = models.BooleanField(default=True, verbose_name="Aktif")
-
     class Meta:
-        verbose_name = "Ekipman"
-        verbose_name_plural = "Ekipmanlar"
+        verbose_name = _("Departman")
+        verbose_name_plural = _("Departmanlar")
 
     def __str__(self):
         return self.name
+
+class Equipment(models.Model):
+    """Bakım ve kalibrasyon takibi yapılacak ekipmanları tanımlar."""
+    
+    # Zorunlu alanlar
+    name = models.CharField(_("Ekipman Adı"), max_length=200)
+    serial_number = models.CharField(_("Seri Numarası"), max_length=100, unique=True)
+    location = models.CharField(_("Konum"), max_length=100) # Örneğin: Atölye A, Laboratuvar B
+    
+    # Yeni eklenen alanlar
+    inventory_code = models.CharField(_("Envanter Kodu"), max_length=50, unique=True, blank=True, null=True)
+    purchase_date = models.DateField(_("Satın Alma Tarihi"), null=True, blank=True)
+    
+    # İlişkisel alan: Department modeli ile ilişki
+    department = models.ForeignKey(
+        Department, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name=_("Departman")
+    )
+
+    class Meta:
+        verbose_name = _("Ekipman")
+        verbose_name_plural = _("Ekipmanlar")
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.serial_number})"
