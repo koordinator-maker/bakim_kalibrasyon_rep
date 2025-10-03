@@ -7,8 +7,8 @@ test.use({ storageState: 'storage/user.json' });
 test.describe('EQP-003', () => {
 
     test('Ekipman Ekleme formunda Üretici Firma alanının varlığı', async ({ page }) => {
-        // 1. Ekipman Ekleme sayfasına git (Önceki denemelerden varsayılan URL: /admin/bakim_kalibrasyon/equipment/add/)
-        await page.goto('/admin/bakim_kalibrasyon/equipment/add/', { waitUntil: 'networkidle' }); 
+        // 1. Ekipman Ekleme sayfasına git (Önceki denemelerden varsayılan URL: /admin/maintenance/equipment/add/)
+        await page.goto(`${process.env.BASE_URL || "http://127.0.0.1:8010"}/admin/maintenance/equipment/add/`, { waitUntil: "networkidle" }); 
         
         // Sayfanın yüklendiğini kontrol et (Örneğin: Ana içerik alanının varlığı)
         await expect(page.locator('#content').first()).toBeVisible({ timeout: 10000 });
@@ -23,3 +23,7 @@ test.describe('EQP-003', () => {
         console.log('[TEST SUCCESS] Üretici Firma alanı (CSS konumu ile) başarıyla doğrulandı.');
     });
 });
+
+
+
+
