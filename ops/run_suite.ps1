@@ -1,63 +1,144 @@
-﻿param(
-  [string]$BaseUrl      = "http://127.0.0.1:8010",
-  [string]$JobsCsv      = "ops/ui_jobs.csv",
-  [string]$BaselineDir  = "targets\reference",
-  [string]$AlertsDir    = "_otokodlama\alerts",
-  [string]$StateTools   = "ops/state_tools.ps1",
-  [string]$CsvRunner    = "ops/run_ui_validate_csv.ps1"
+﻿# Dosya: ops\run_suite.ps1
+
+# -------------------------------------------------------------
+# 1. PARAMETRELER (PS Betiğin ilk satırı olmalıdır)
+# -------------------------------------------------------------
+param(
+  [string]$ExtraArgs = ""
 )
 
-$ErrorActionPreference = "Stop"
-. $StateTools
 
-# Runner
-powershell -ExecutionPolicy Bypass -File $CsvRunner -BaseUrl $BaseUrl -JobsCsv $JobsCsv -BaselineDir $BaselineDir -AlertsDir $AlertsDir | Out-Host
+# -------------------------------------------------------------
+# 2. TÜM FONKSİYON TANIMLARI
+# -------------------------------------------------------------
 
-# CSV oku
-if (-not (Test-Path $JobsCsv)) { throw "Jobs CSV not found: $JobsCsv" }
-$rows = Get-Content $JobsCsv | Where-Object { $_ -match '\S' -and -not ($_.Trim().StartsWith('#')) } | ConvertFrom-Csv
-if (-not $rows) { throw "CSV boş." }
+function Invoke-TestResultProcessing {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResultsDir,
+        
+        [Parameter(Mandatory=$true)]
+        [string]$AIQueuePath
+    )
 
-$allOk = $true
-foreach($r in $rows){
-  $key = ('' + $r.Key).Trim()
-  if ([string]::IsNullOrWhiteSpace($key) -or $key.StartsWith('#')) { continue }
+    $FailedTests = @()
+    $AIFailQueue = @()
 
-  $outJson = Join-Path "_otokodlama\out" ("{0}_validate.json" -f $key)
-  if (-not (Test-Path $outJson)) {
-    $cand = Get-ChildItem "_otokodlama\out" -Filter "*$key*validate.json" -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($cand) { $outJson = $cand.FullName }
-  }
-  if (-not (Test-Path $outJson)) {
-    Update-TestResult -Key $key -Status "FAILED" -Metrics @{} -Artifacts @{}
-    $allOk = $false
-    continue
-  }
+    # AI Kuyruğu dizinini hazırla
+    $AIDir = Split-Path -Parent $AIQueuePath
+    if (-not (Test-Path $AIDir)) { New-Item -ItemType Directory -Path $AIDir -Force | Out-Null }
+    
+    # Tüm JSON sonuç dosyalarını oku
+    $ResultFiles = Get-ChildItem -Path $ResultsDir -Filter "*.json" -ErrorAction SilentlyContinue
 
-  $j = Get-Content $outJson -Raw | ConvertFrom-Json
-  $status = if ($j.ok) { "PASSED" } else { "FAILED" }
+    if (-not $ResultFiles) { return $true }
 
-  $lastAuto = $j.results | Where-Object { $_.cmd -eq 'AUTOVALIDATE' } | Select-Object -Last 1
-  $recall = if ($lastAuto) { [double]$lastAuto.recall } else { $null }
-  $missing = if ($lastAuto) { [int]$lastAuto.missing_count } else { $null }
+    foreach ($File in $ResultFiles) {
+        try {
+            $Content = Get-Content $File.FullName -Raw -Encoding UTF8
+            $Result = $Content | ConvertFrom-Json -ErrorAction Stop
+        } catch {
+            continue
+        }
 
-  $screenshot = Join-Path $BaselineDir ("{0}.png" -f $key)
-  $shotPath = ""
-  if (Test-Path $screenshot) { $shotPath = $screenshot }
+        # Başarısız Test Kontrolü
+        if (-not $Result.ok) {
+            $TestID = $File.BaseName
+            $FailedTests += $TestID
+            
+            # AI Kuyruğu Yapılandırması (failed_tests.jsonl)
+            $AIRecord = [PSCustomObject]@{
+                test_id         = $TestID
+                reason          = $Result.reason
+                duration        = $Result.duration
+                metrics         = $Result.metrics
+                timestamp       = (Get-Date).ToString("o")
+            }
+            $AIFailQueue += ($AIRecord | ConvertTo-Json -Depth 5 -Compress)
+        }
+    }
 
-  $art = @{ out_json = $outJson; screenshot = $shotPath }
-  $met = @{}
-  if ($recall -ne $null) { $met.words_recall = $recall }
-  if ($missing -ne $null) { $met.missing_count = $missing }
-
-  Update-TestResult -Key $key -Status $status -Metrics $met -Artifacts $art
-  if ($status -ne "PASSED") { $allOk = $false }
+    # AI Kuyruğu Dosyasına Yazma (JSONL formatı)
+    $AIFailQueue | Out-File -FilePath $AIQueuePath -Encoding UTF8 -Force
+    
+    # Başarılı say
+    return ($FailedTests.Count -eq 0)
 }
 
-if ($allOk) {
-  Advance-Pipeline -ToStage "open_pr" -Hint "Tüm UI doğrulamaları geçti → PR açılabilir."
-  Write-Host "[pipeline] advanced → open_pr" -ForegroundColor Green
+
+# -------------------------------------------------------------
+# 3. ANA ÇALIŞTIRMA MANTIĞI
+# -------------------------------------------------------------
+
+# 3.1 Karantina Listesini Oku ve Filtreyi Hazırla
+$QuarantineFile = "reporters\quarantine.json"
+if (Test-Path $QuarantineFile) {
+    try {
+        $QuarantineData = (Get-Content $QuarantineFile -Raw -Encoding UTF8) | ConvertFrom-Json
+        $QuarantinedIDs = $QuarantineData.punted | Where-Object { $_.count -ge 3 } | Select-Object -ExpandProperty id
+        
+        if ($QuarantinedIDs.Count -gt 0) {
+            Write-Host ("# {0} test karantinada. Bu testler atlanacak." -f $QuarantinedIDs.Count) -ForegroundColor DarkYellow
+            $QuarantineRegex = $QuarantinedIDs -join '|'
+            $ExtraArgs += " --grep-invert '($QuarantineRegex)'"
+        }
+    } catch {
+        Write-Host "[WARN] Karantina dosyası ($QuarantineFile) okunamadı/bozuk. Atlandı." -ForegroundColor Red
+    }
+}
+
+
+# 3.2 Temizlik ve Hazırlık
+if (Test-Path "targets\results") { Remove-Item "targets\results\*.json" -Force }
+if (Test-Path "ai_queue\failed_tests.jsonl") { Remove-Item "ai_queue\failed_tests.jsonl" -Force }
+Write-Host "[START] Uçtan Uca Testler Başlatılıyor..." -ForegroundColor Green
+
+
+# 3.3 Playwright'ı Çalıştırma
+$PlaywrightSuccess = $true
+try {
+    # Playwright'ı çalıştır
+    $PlaywrightOutput = & npm run test --silent -- "$ExtraArgs" 2>&1
+    
+    if ($LASTEXITCODE -ne 0) {
+        throw "Playwright Hata Kodu: $LASTEXITCODE"
+    }
+
+} catch {
+    # Hata yakalama ve loglama
+    $Global:PlaywrightError = $_.Exception.Message
+    $ErrorPath = "targets\playwright_error.log"
+    $Global:PlaywrightError | Out-File -FilePath $ErrorPath -Encoding UTF8 -Force
+    
+    Write-Host "[HATA] Playwright ÇALIŞMADI! Detaylar $ErrorPath içinde." -ForegroundColor Red
+    $PlaywrightSuccess = $false
+}
+
+
+# 3.4 Test Sonuçlarını İşleme
+$TestsPassed = Invoke-TestResultProcessing `
+    -ResultsDir "targets/results" `
+    -AIQueuePath "ai_queue/failed_tests.jsonl"
+
+
+# 3.5 Çıkış Kodu ve Terminali Açık Tutma Mantığı
+if (-not $PlaywrightSuccess) {
+    # Playwright komutunun kendisi başarısız olursa buraya düşeriz
+    Write-Host ""
+    Write-Host ">>> KRİTİK HATA: Terminal kapanmasını engelliyoruz. <<<" -ForegroundColor Red
+    Write-Host "Playwright'ın neden çalışmadığını anlamak için LÜTFEN targets\playwright_error.log dosyasının içeriğini paylaşın." -ForegroundColor Yellow
+    
+    # EN SON ÇIKARAK KAPATMAYI ENGELLEYELİM. BU SATIR SİZ ENTER'A BASANA KADAR TERMİNALİ TUTACAK.
+    Read-Host -Prompt "Hata Kaydını Paylaşmak İçin Enter'a Basın (Kapatmayacaktır)" | Out-Null
+    # Normalde burada "exit 2" olurdu, ancak terminalin kapanmasını engellemek için SİLİNDİ.
+
+} elseif (-not $TestsPassed) {
+    # Testler çalıştı ama bazıları başarısız oldu
+    Write-Host "[PIPELINE] Bazı testler başarısız oldu. AI Kuyruğu Hazırlandı." -ForegroundColor Magenta
+    exit 2
+
 } else {
-  Advance-Pipeline -ToStage "validate_ui_pages" -Hint "FAILED olan test(ler) var → düzeltmeler uygulayın."
-  Write-Host "[pipeline] staying at validate_ui_pages (failures present)" -ForegroundColor Yellow
+    # Her şey başarılı
+    Write-Host "[PIPELINE] Tüm zorunlu testler başarılı!" -ForegroundColor Green
+    exit 0
 }

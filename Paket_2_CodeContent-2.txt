@@ -1,4 +1,402 @@
-﻿### DOSYA BAŞLANGIÇ: .\\ops\report_crud.ps1
+﻿### DOSYA BAŞLANGIÇ: .\\ops\run_backlog_multi.ps1
+param(
+  [string[]]$Filter = @("*"),
+  [switch]$LinkSmoke,
+  [string]$BaseUrl    = "http://127.0.0.1:8010",
+  [int]   $SmokeDepth = 1,
+  [int]   $SmokeLimit = 150,
+  [string]$ExtraArgs  = ""
+)
+
+if ($Filter -is [string]) {
+  if ($Filter -match ",") { $Filter = $Filter -split "," | ForEach-Object { $_.Trim() } }
+  else { $Filter = @($Filter) }
+}
+elseif ($Filter.Count -eq 1 -and $Filter[0] -match ",") {
+  $Filter = $Filter[0] -split "," | ForEach-Object { $_.Trim() }
+}
+
+Write-Host ("[multi] Filters: {0}" -f ($Filter -join ", ")) -ForegroundColor Cyan
+
+foreach($pat in $Filter){
+  if ([string]::IsNullOrWhiteSpace($pat)) { continue }
+  Write-Host ("[multi] Running pattern: {0}" -f $pat) -ForegroundColor Yellow
+
+  $argList = @(
+    '-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+    '-File','ops\run_backlog.ps1',
+    '-Filter', $pat,
+    '-BaseUrl', $BaseUrl,
+    '-SmokeDepth', $SmokeDepth,
+    '-SmokeLimit', $SmokeLimit,
+    '-ExtraArgs', $ExtraArgs
+  )
+  if ($LinkSmoke.IsPresent) { $argList += '-LinkSmoke' }
+
+  powershell @argList
+}
+### DOSYA BİTİŞ: run_backlog_multi.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_and_guard.ps1
+param(
+  [Parameter(Mandatory=$true)][string]$flow,         # .flow dosyasının tam yolu
+  [Parameter(Mandatory=$true)][string]$outPath,      # JSON çıktı yolu
+  [string]$BaseUrl = "http://127.0.0.1:8010",        # BASE_URL env
+  [string]$ExtraArgs = ""                            # pw_flow.py'ye ham argümanlar ("--timeout 5000" gibi)
+)
+
+$ErrorActionPreference = "Stop"
+
+# Ortam değişkenleri
+$env:BASE_URL = $BaseUrl
+$env:PYTHONUNBUFFERED = "1"
+
+# Çıktı klasörünü garanti et
+$op = Split-Path -Parent $outPath
+if ($op -and -not (Test-Path $op)) { New-Item -ItemType Directory -Force -Path $op | Out-Null }
+
+# Extra argümanları güvenli diziye çevir
+$ea = @()
+if ($ExtraArgs) {
+  # whitespace'e göre böl (ör: "--timeout 5000")
+  $ea = $ExtraArgs -split '\s+'
+}
+
+# Python çağrısı (doğrudan, güvenli)
+Write-Host ("[run_and_guard] python tools\pw_flow.py --steps {0} --out {1} {2}" -f $flow, $outPath, ($ea -join " "))
+& python -u "tools\pw_flow.py" --steps $flow --out $outPath @ea
+$exitCode = $LASTEXITCODE
+
+# Guard tarzı bilgi satırı (izleme kolaylığı için)
+if (Test-Path $outPath) { Write-Host "[guard] wrote: $outPath" }
+
+exit $exitCode
+### DOSYA BİTİŞ: run_and_guard.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\open_pr.ps1
+param(
+  [string]$RepoRoot   = ".",
+  [string]$Branch     = "main",   # PR HEAD (çalıştığınız dal)
+  [string]$BaseBranch = "main",   # PR BASE (hedef dal)
+  [string]$StateTools = "ops/state_tools.ps1"
+)
+
+$ErrorActionPreference = "Stop"
+
+function Show-GitHubErrorBody {
+  param([System.Net.WebException]$Ex)
+  try {
+    $resp = $Ex.Response
+    if ($resp -and $resp.GetResponseStream) {
+      $sr = New-Object IO.StreamReader($resp.GetResponseStream())
+      $body = $sr.ReadToEnd()
+      Write-Warning ("GitHub API error body: " + $body)
+      if ($resp.Headers["WWW-Authenticate"]) {
+        Write-Warning ("WWW-Authenticate: " + $resp.Headers["WWW-Authenticate"])
+      }
+    }
+  } catch { Write-Warning "Error body okunamadı: $($_.Exception.Message)" }
+}
+
+function Get-RepoSlug {
+  param([string]$RepoRoot)
+  Push-Location $RepoRoot
+  try {
+    $url = (& git remote get-url origin 2>$null)
+    if (-not $url) { throw "origin remote bulunamadı." }
+    if ($url -match 'github\.com[:/](.+?)(\.git)?$') { return $Matches[1] }
+    throw "GitHub repo slug çözülemedi: $url"
+  } finally { Pop-Location }
+}
+
+function Load-State {
+  param([string]$StateTools,[string]$RepoRoot)
+  . (Join-Path $RepoRoot $StateTools)
+  return (Get-State)
+}
+
+function Build-PR-Body {
+  param($state)
+  $lines = @()
+  $lines += "### UI Test Özeti"
+  if ($state.tests -and $state.tests.summary) {
+    $lines += ""
+    $lines += "- **Passed**: $($state.tests.summary.passed)"
+    $lines += "- **Failed**: $($state.tests.summary.failed)"
+    $lines += "- **Last Run**: $($state.tests.summary.last_run)"
+  }
+
+  if ($state.tests -and $state.tests.results) {
+    $lines += ""
+    $lines += "| Key | Status | words_recall | missing_count | out_json | screenshot |"
+    $lines += "|-----|--------|--------------|---------------|----------|------------|"
+
+    $keys = @()
+    if ($state.tests.results -is [hashtable]) { $keys = $state.tests.results.Keys }
+    else { $keys = ($state.tests.results.PSObject.Properties | Select-Object -ExpandProperty Name) }
+
+    foreach ($k in $keys) {
+      $it = if ($state.tests.results -is [hashtable]) { $state.tests.results[$k] } else { $state.tests.results.$k }
+      $status = $it.status
+      $recall = ""
+      $misses = ""
+      if ($it.metrics) {
+        if ($it.metrics.PSObject.Properties['words_recall']) { $recall = [string]$it.metrics.words_recall }
+        if ($it.metrics.PSObject.Properties['missing_count']) { $misses = [string]$it.metrics.missing_count }
+      }
+      $outj = ""
+      $shot = ""
+      if ($it.artifacts) {
+        if ($it.artifacts.PSObject.Properties['out_json']) { $outj = [string]$it.artifacts.out_json }
+        if ($it.artifacts.PSObject.Properties['screenshot']) { $shot = [string]$it.artifacts.screenshot }
+      }
+      $lines += "| $k | $status | $recall | $misses | $outj | $shot |"
+    }
+  }
+
+  if ($state.pending_actions -and $state.pending_actions.Count -gt 0) {
+    $lines += ""
+    $lines += "### Pending Actions"
+    foreach ($p in $state.pending_actions) {
+      $lines += "- [$($p.status)] **$($p.type)**: $($p.detail) (due_stage: $($p.due_stage), ts: $($p.ts))"
+    }
+  }
+
+  return ($lines -join "`n")
+}
+
+# ----- MAIN -----
+$repoSlug = Get-RepoSlug -RepoRoot $RepoRoot
+$state    = Load-State -StateTools $StateTools -RepoRoot $RepoRoot
+
+$title = "[auto] UI validate passed → open PR"
+$body  = Build-PR-Body -state $state
+
+# 1) Push edildiğinden emin ol
+Push-Location $RepoRoot
+try { & git push origin $Branch | Out-Null } finally { Pop-Location }
+
+# 2) PR açma: gh (CLI) → yoksa REST → ikisi de yoksa uyarı
+$createdUrl = ""
+$used = ""
+
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+  try {
+    $out = & gh pr create --title $title --body $body --base $BaseBranch --head $Branch 2>&1
+    if ($LASTEXITCODE -eq 0) {
+      $m = ($out | Select-String -Pattern 'https?://github\.com/.+?/pull/\d+' | Select-Object -First 1)
+      if ($m) { $createdUrl = $m.Matches.Value; $used = "gh" }
+    } else {
+      Write-Warning "gh pr create hata verdi: $out"
+    }
+  } catch {
+    Write-Warning "gh pr create çalışmadı: $($_.Exception.Message)"
+  }
+}
+
+if (-not $createdUrl) {
+  $token = $env:GITHUB_TOKEN
+  if ($token) {
+    $bodyObj = @{
+      title = $title
+      head  = $Branch
+      base  = $BaseBranch
+      body  = $body
+    }
+    $json = $bodyObj | ConvertTo-Json -Depth 5
+    $uri  = "https://api.github.com/repos/$repoSlug/pulls"
+
+    $headers = @{
+      "Accept"        = "application/vnd.github+json"
+      "Authorization" = "token $token"
+      "X-GitHub-Api-Version" = "2022-11-28"
+      "User-Agent"    = "ps-open-pr"
+    }
+    try {
+      $resp = Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -Body $json
+      if ($resp.html_url) { $createdUrl = $resp.html_url; $used = "rest" }
+    } catch [System.Net.WebException] {
+      Show-GitHubErrorBody $_.Exception
+      Write-Warning "REST ile PR açma denemesi hata verdi."
+    }
+  } else {
+    Write-Warning "Ne 'gh' komutu başarılı ne de GITHUB_TOKEN tanımlı. PR otomatik açılamadı (pipeline kesilmedi)."
+  }
+}
+
+if ($createdUrl) {
+  Write-Host "[pr] Açıldı ($used) → $createdUrl" -ForegroundColor Green
+  . (Join-Path $RepoRoot $StateTools)
+  Advance-Pipeline -ToStage "await_review" -Hint "PR açıldı: $createdUrl"
+} else {
+  Write-Host "[pr] PR açılamadı; stage değiştirilmedi." -ForegroundColor Yellow
+}
+
+### DOSYA BİTİŞ: open_pr.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\pipeline_local.ps1
+param(
+  [string]$BaseUrl     = "http://127.0.0.1:8010",
+  [string]$JobsCsv     = "ops/ui_jobs.csv",
+  [string]$BaselineDir = "targets\reference",
+  [string]$AlertsDir   = "_otokodlama\alerts",
+  [string]$StateTools  = "ops/state_tools.ps1",
+  [switch]$NoGitPush
+)
+
+$ErrorActionPreference = "Stop"
+
+# 1) AI patch'leri uygula (varsa)
+powershell -ExecutionPolicy Bypass -File "ops/apply_ai_files.ps1" -RepoRoot "." -InboxDir "ai_inbox" -StateTools $StateTools | Out-Host
+
+# 2) UI testlerini koştur + state güncelle
+powershell -ExecutionPolicy Bypass -File "ops/run_suite.ps1" -BaseUrl $BaseUrl -JobsCsv $JobsCsv -BaselineDir $BaselineDir -AlertsDir $AlertsDir -StateTools $StateTools | Out-Host
+
+# 3) Değişiklikleri commit/push
+if ($NoGitPush) {
+  powershell -ExecutionPolicy Bypass -File "ops/git_ops.ps1" -RepoRoot "." -Branch "main" -AddSpec "." -Message "[auto] ai apply + ui validate + state" -NoPush | Out-Host
+} else {
+  powershell -ExecutionPolicy Bypass -File "ops/git_ops.ps1" -RepoRoot "." -Branch "main" -AddSpec "." -Message "[auto] ai apply + ui validate + state" | Out-Host
+}
+
+Write-Host "`n[pipeline] DONE." -ForegroundColor Green
+### DOSYA BİTİŞ: pipeline_local.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\make_prs.ps1
+Rev: 2025-09-30 19:21 r1
+param(
+  [string]$PlanJson = "plan/tasks.json",
+  [switch]$DryRun
+)
+
+$ErrorActionPreference = "Stop"
+
+if (-not (Test-Path $PlanJson)) { throw "Plan yok: $PlanJson" }
+
+# main’i referans al
+git fetch origin | Out-Null
+
+$tasks = Get-Content $PlanJson -Raw | ConvertFrom-Json
+foreach ($t in $tasks) {
+  $branch = $t.branch_name
+  if (-not $branch) { Write-Warning "Branch yok: $($t.id)"; continue }
+
+  # remote’ta var mı?
+  $remote = git ls-remote --heads origin $branch
+  if ($remote) { Write-Host "(skip) zaten var: $branch" -ForegroundColor DarkYellow; continue }
+
+  if (-not $DryRun) {
+    git switch -c $branch origin/main | Out-Null
+
+    New-Item -ItemType Directory -Force ".github" | Out-Null
+    "task: $($t.id) - $($t.title)" | Set-Content -Encoding UTF8 ".github\pr-bumper.md"
+    git add ".github\pr-bumper.md"
+    git commit -m "auto($($t.id)): $($t.title) [bump]" | Out-Null
+    git push -u origin $branch | Out-Null
+  }
+
+  # PR body
+  $ac = ""
+  if ($t.acceptance_criteria) {
+    $ac = "Acceptance Criteria:`n" + ($t.acceptance_criteria | ForEach-Object { "- $_" }) -join "`n"
+  }
+  $body = @"
+Area: `$($t.area)`
+Type: `$($t.type)` | Priority: `$($t.priority)` | Size: `$($t.size)`
+
+$($t.description)
+
+$ac
+"@
+
+  $title = "auto: $($t.id) $($t.title)"
+  $prUrl = gh pr create -t $title -b $body -B main -H $branch
+  if ($LASTEXITCODE -ne 0) { Write-Warning "PR açılamadı: $branch"; continue }
+
+  # etiketler
+  if ($t.labels) {
+    foreach ($lbl in $t.labels) { gh pr edit $prUrl --add-label $lbl | Out-Null }
+  }
+
+  # otomatik merge (koşullar sağlanınca)
+  gh pr merge $prUrl --squash --auto | Out-Null
+
+  Write-Host "[ok] PR hazır: $prUrl" -ForegroundColor Green
+
+  # ana dala geri
+  if (-not $DryRun) {
+    git switch -C main origin/main | Out-Null
+  }
+}
+### DOSYA BİTİŞ: make_prs.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_suite.ps1
+param(
+  [string]$BaseUrl      = "http://127.0.0.1:8010",
+  [string]$JobsCsv      = "ops/ui_jobs.csv",
+  [string]$BaselineDir  = "targets\reference",
+  [string]$AlertsDir    = "_otokodlama\alerts",
+  [string]$StateTools   = "ops/state_tools.ps1",
+  [string]$CsvRunner    = "ops/run_ui_validate_csv.ps1"
+)
+
+$ErrorActionPreference = "Stop"
+. $StateTools
+
+# Runner
+powershell -ExecutionPolicy Bypass -File $CsvRunner -BaseUrl $BaseUrl -JobsCsv $JobsCsv -BaselineDir $BaselineDir -AlertsDir $AlertsDir | Out-Host
+
+# CSV oku
+if (-not (Test-Path $JobsCsv)) { throw "Jobs CSV not found: $JobsCsv" }
+$rows = Get-Content $JobsCsv | Where-Object { $_ -match '\S' -and -not ($_.Trim().StartsWith('#')) } | ConvertFrom-Csv
+if (-not $rows) { throw "CSV boş." }
+
+$allOk = $true
+foreach($r in $rows){
+  $key = ('' + $r.Key).Trim()
+  if ([string]::IsNullOrWhiteSpace($key) -or $key.StartsWith('#')) { continue }
+
+  $outJson = Join-Path "_otokodlama\out" ("{0}_validate.json" -f $key)
+  if (-not (Test-Path $outJson)) {
+    $cand = Get-ChildItem "_otokodlama\out" -Filter "*$key*validate.json" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cand) { $outJson = $cand.FullName }
+  }
+  if (-not (Test-Path $outJson)) {
+    Update-TestResult -Key $key -Status "FAILED" -Metrics @{} -Artifacts @{}
+    $allOk = $false
+    continue
+  }
+
+  $j = Get-Content $outJson -Raw | ConvertFrom-Json
+  $status = if ($j.ok) { "PASSED" } else { "FAILED" }
+
+  $lastAuto = $j.results | Where-Object { $_.cmd -eq 'AUTOVALIDATE' } | Select-Object -Last 1
+  $recall = if ($lastAuto) { [double]$lastAuto.recall } else { $null }
+  $missing = if ($lastAuto) { [int]$lastAuto.missing_count } else { $null }
+
+  $screenshot = Join-Path $BaselineDir ("{0}.png" -f $key)
+  $shotPath = ""
+  if (Test-Path $screenshot) { $shotPath = $screenshot }
+
+  $art = @{ out_json = $outJson; screenshot = $shotPath }
+  $met = @{}
+  if ($recall -ne $null) { $met.words_recall = $recall }
+  if ($missing -ne $null) { $met.missing_count = $missing }
+
+  Update-TestResult -Key $key -Status $status -Metrics $met -Artifacts $art
+  if ($status -ne "PASSED") { $allOk = $false }
+}
+
+if ($allOk) {
+  Advance-Pipeline -ToStage "open_pr" -Hint "Tüm UI doğrulamaları geçti → PR açılabilir."
+  Write-Host "[pipeline] advanced → open_pr" -ForegroundColor Green
+} else {
+  Advance-Pipeline -ToStage "validate_ui_pages" -Hint "FAILED olan test(ler) var → düzeltmeler uygulayın."
+  Write-Host "[pipeline] staying at validate_ui_pages (failures present)" -ForegroundColor Yellow
+}
+### DOSYA BİTİŞ: run_suite.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\report_crud.ps1
 param(
   [string]$OutDir    = "_otokodlama\out",
   [string]$ReportDir = "_otokodlama\reports",
@@ -169,219 +567,155 @@ Write-Host ("MD  : " + $mdPath)
 
 ### DOSYA BİTİŞ: report_crud.ps1
 
-### DOSYA BAŞLANGIÇ: .\\ops\smoke_links_wrapper.ps1
+### DOSYA BAŞLANGIÇ: .\\ops\state_tools.ps1
 param(
-  [string]$Base,
-  [string]$Start,
-  [string]$Out,
-  [int]   $Depth,
-  [int]   $Limit,
-  [string]$PathPrefix,
-  [int]   $Timeout,
-  [string]$OkRedirectTo
-)
-& "$PSScriptRoot\smoke_links.ps1" `
-  -Base $Base `
-  -Start $Start `
-  -Out $Out `
-  -Depth $Depth `
-  -Limit $Limit `
-  -PathPrefix $PathPrefix `
-  -Timeout $Timeout `
-  -OkRedirectTo $OkRedirectTo
-### DOSYA BİTİŞ: smoke_links_wrapper.ps1
-
-### DOSYA BAŞLANGIÇ: .\\ops\run_ui_validate.ps1
-param(
-  [string]$BaseUrl     = "http://127.0.0.1:8010",
-  [string]$BaselineDir = "targets\reference",
-  [string]$AlertsDir   = "_otokodlama\alerts"
+  # Varsayılan yol, bu dosyanın (ops/) yanına state.json olarak ayarlanır
+  [string]$StatePath = ""
 )
 
 $ErrorActionPreference = "Stop"
-$null = New-Item -ItemType Directory -Force -Path "ops\flows",$BaselineDir,"_otokodlama\out",$AlertsDir
-$env:BASE_URL = $BaseUrl
 
-# (İdempotent) equipment redirect loop fix
-Get-ChildItem ops\flows -Filter *equipment*.flow -ErrorAction SilentlyContinue | ForEach-Object {
-  (Get-Content $_.FullName -Raw) `
-    -replace 'GOTO\s+/admin/maintenance/equipment/(\s*)$', 'GOTO /admin/maintenance/equipment/_direct/$1' `
-  | Set-Content -LiteralPath $_.FullName -Encoding UTF8
+# --- Yol yardımcıları ---
+$__ThisFile   = $MyInvocation.MyCommand.Path
+$__ScriptRoot = Split-Path -Parent $__ThisFile
+if ([string]::IsNullOrWhiteSpace($StatePath)) {
+  $StatePath = Join-Path $__ScriptRoot "state.json"
 }
 
-function New-UiBaselineAndValidate {
-param(
-  [Parameter(Mandatory=$true)][string]$Key,     # ex: equipment_ui_list
-  [Parameter(Mandatory=$true)][string]$Url,     # ex: /admin/maintenance/equipment/_direct/
-  [string]$WaitSelector = 'css=:is(form#changelist-form,table#result_list,#content-main,#content,body)',
-  [double]$Recall = 0.90,
-  [int]$MinTokenLen = 3,
-  [switch]$UseOCR,
-  [string]$IgnorePatterns = 'csrf,token,\d{2,},page_\d+,id_\d+,ts_\d+'
-)
-  $baselinePng = Join-Path $BaselineDir ("{0}.png" -f $Key)
-  $flowBase = "ops\flows\_{0}_make_baseline.flow" -f $Key
-  $flowVal  = "ops\flows\{0}_validate.flow" -f $Key
+function _Is-Hashtable { param($x) return ($x -is [hashtable]) }
+function _Is-PSObj     { param($x) return ($x -is [pscustomobject]) }
 
-@"
-COMMENT make baseline ($Key)
-GOTO /admin/login/
-WAIT SELECTOR input#id_username
-FILL input#id_username admin
-FILL input#id_password Admin!2345
-CLICK input[type=submit]
-WAIT URL CONTAINS /admin/
-GOTO $Url
-WAIT SELECTOR $WaitSelector
-SCREENSHOT $baselinePng
-"@ | Set-Content -LiteralPath $flowBase -Encoding UTF8
+function _Ensure-Dir {
+  param([Parameter(Mandatory=$true)][string]$Path)
+  $dir = Split-Path -Parent $Path
+  if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+}
 
-  $live = if($UseOCR){"dom+ocr"} else {"dom"}
-@"
-COMMENT validate $Key ($live)
-GOTO /admin/login/
-WAIT SELECTOR input#id_username
-FILL input#id_username admin
-FILL input#id_password Admin!2345
-CLICK input[type=submit]
-WAIT URL CONTAINS /admin/
-GOTO $Url
-WAIT SELECTOR $WaitSelector
-AUTOVALIDATE key=$Key baseline=$baselinePng words_recall=$Recall live_source=$live alert_dir=$AlertsDir min_token_len=$MinTokenLen ignore_numbers=yes ignore_patterns=$IgnorePatterns
-"@ | Set-Content -LiteralPath $flowVal -Encoding UTF8
+function _Ensure-Prop {
+  param($Obj,[string]$Name,$Default=$null)
+  if (_Is-Hashtable $Obj) { if (-not $Obj.ContainsKey($Name)) { $Obj[$Name]=$Default }; return }
+  if (-not $Obj.PSObject.Properties[$Name]) { Add-Member -InputObject $Obj -MemberType NoteProperty -Name $Name -Value $Default }
+}
 
-  $outA = "_otokodlama\out\_{0}_make_baseline.json" -f $Key
-  $outB = "_otokodlama\out\{0}_validate.json" -f $Key
+function _Set-Prop {
+  param($Obj,[string]$Name,$Value)
+  if (_Is-Hashtable $Obj) { $Obj[$Name]=$Value; return }
+  if (-not $Obj.PSObject.Properties[$Name]) { Add-Member -InputObject $Obj -MemberType NoteProperty -Name $Name -Value $Value }
+  else { $Obj.$Name = $Value }
+}
 
-  Write-Host "[run] BASELINE → $Key" -ForegroundColor Cyan
-  python tools\pw_flow.py --steps $flowBase --out $outA | Out-Host
+# Map benzeri alanlara anahtar/değer yaz (Hashtable veya PSCustomObject fark etmeksizin)
+function _Map-Set {
+  param($Map,[string]$Key,$Value)
+  if (_Is-Hashtable $Map) { $Map[$Key] = $Value; return }
+  if (-not $Map.PSObject.Properties[$Key]) { Add-Member -InputObject $Map -MemberType NoteProperty -Name $Key -Value $Value }
+  else { $Map.$Key = $Value }
+}
 
-  Write-Host "[run] VALIDATE → $Key ($live)" -ForegroundColor Yellow
-  python tools\pw_flow.py --steps $flowVal  --out $outB | Out-Host
+# Map benzeri alanın anahtarlarını döndür
+function _Map-Keys {
+  param($Map)
+  if (_Is-Hashtable $Map) { return $Map.Keys }
+  return ($Map.PSObject.Properties | Select-Object -ExpandProperty Name)
+}
 
-  $j = Get-Content $outB -Raw | ConvertFrom-Json
-  $lastAuto = $j.results | Where-Object { $_.cmd -eq 'AUTOVALIDATE' } | Select-Object -Last 1
-  [pscustomobject]@{
-    key           = $Key
-    ok            = $j.ok
-    recall        = if($lastAuto){ '{0:N2}' -f [double]$lastAuto.recall } else {''}
-    missing_count = if($lastAuto){ $lastAuto.missing_count } else {''}
-    out_json      = $outB
+function Get-State {
+  param([string]$Path = $StatePath)
+  try {
+    if (Test-Path $Path) {
+      $s = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+      _Ensure-Prop $s 'project' ''
+      _Ensure-Prop $s 'repo' ''
+      _Ensure-Prop $s 'pipeline' (@{ stage="validate_ui_pages"; history=@() })
+      _Ensure-Prop $s 'tests'    (@{ results=@{}; summary=@{ passed=0; failed=0; last_run="" } })
+      _Ensure-Prop $s 'pending_actions' @()
+      _Ensure-Prop $s 'last_updated'    ""
+      _Ensure-Prop $s.pipeline 'stage'   'validate_ui_pages'
+      _Ensure-Prop $s.pipeline 'history' @()
+      _Ensure-Prop $s.tests    'results' @{}
+      _Ensure-Prop $s.tests    'summary' (@{ passed=0; failed=0; last_run="" })
+      _Ensure-Prop $s.tests.summary 'passed'   0
+      _Ensure-Prop $s.tests.summary 'failed'   0
+      _Ensure-Prop $s.tests.summary 'last_run' ""
+      return $s
+    }
+  } catch { }
+
+  return [pscustomobject]@{
+    project=""
+    repo=""
+    pipeline=@{ stage="validate_ui_pages"; history=@() }
+    tests=@{ results=@{}; summary=@{ passed=0; failed=0; last_run="" } }
+    pending_actions=@()
+    last_updated=""
   }
 }
 
-# ====== TEST SETİ ======
-$jobs = @(
-  @{ Key="equipment_ui_list";   Url="/admin/maintenance/equipment/_direct/";  OCR=$false },
-  @{ Key="calibration_ui_list"; Url="/admin/maintenance/calibration/_direct/";OCR=$false },
-  @{ Key="admin_home_fast";     Url="/admin/";                                OCR=$false }
-  # İstediğin yeni modülü aşağıya sadece Key/Url girerek ekle:
-  # @{ Key="bakim_plan_ui_list"; Url="/admin/maintenance/plan/_direct/"; OCR=$false }
-)
-
-$results = foreach($j in $jobs){
-  if($j.OCR){ New-UiBaselineAndValidate -Key $j.Key -Url $j.Url -UseOCR }
-  else      { New-UiBaselineAndValidate -Key $j.Key -Url $j.Url }
+function Save-State {
+  param([Parameter(Mandatory=$true)]$State,[string]$Path=$StatePath)
+  _Ensure-Prop $State 'last_updated' ""
+  _Set-Prop    $State 'last_updated' ((Get-Date).ToString("s"))
+  _Ensure-Dir  -Path $Path
+  $json = $State | ConvertTo-Json -Depth 20
+  [IO.File]::WriteAllText($Path,$json,[Text.UTF8Encoding]::new($false))
 }
 
-"`n=== SUMMARY ==="
-$results | Format-Table key,ok,recall,missing_count,out_json -AutoSize
-
-if (Test-Path (Join-Path $AlertsDir 'alerts_log.csv')) {
-  "`n=== Alerts (last 10) ==="
-  Import-Csv (Join-Path $AlertsDir 'alerts_log.csv') -Delimiter ';' |
-    Select-Object ts,key,ok,recall,misses,alert_md |
-    Select-Object -Last 10 | Format-Table -AutoSize
-}
-### DOSYA BİTİŞ: run_ui_validate.ps1
-
-### DOSYA BAŞLANGIÇ: .\\ops\run_and_guard.ps1
-param(
-  [Parameter(Mandatory=$true)][string]$flow,         # .flow dosyasının tam yolu
-  [Parameter(Mandatory=$true)][string]$outPath,      # JSON çıktı yolu
-  [string]$BaseUrl = "http://127.0.0.1:8010",        # BASE_URL env
-  [string]$ExtraArgs = ""                            # pw_flow.py'ye ham argümanlar ("--timeout 5000" gibi)
-)
-
-$ErrorActionPreference = "Stop"
-
-# Ortam değişkenleri
-$env:BASE_URL = $BaseUrl
-$env:PYTHONUNBUFFERED = "1"
-
-# Çıktı klasörünü garanti et
-$op = Split-Path -Parent $outPath
-if ($op -and -not (Test-Path $op)) { New-Item -ItemType Directory -Force -Path $op | Out-Null }
-
-# Extra argümanları güvenli diziye çevir
-$ea = @()
-if ($ExtraArgs) {
-  # whitespace'e göre böl (ör: "--timeout 5000")
-  $ea = $ExtraArgs -split '\s+'
-}
-
-# Python çağrısı (doğrudan, güvenli)
-Write-Host ("[run_and_guard] python tools\pw_flow.py --steps {0} --out {1} {2}" -f $flow, $outPath, ($ea -join " "))
-& python -u "tools\pw_flow.py" --steps $flow --out $outPath @ea
-$exitCode = $LASTEXITCODE
-
-# Guard tarzı bilgi satırı (izleme kolaylığı için)
-if (Test-Path $outPath) { Write-Host "[guard] wrote: $outPath" }
-
-exit $exitCode
-### DOSYA BİTİŞ: run_and_guard.ps1
-
-### DOSYA BAŞLANGIÇ: .\\ops\run_backlog_multi.ps1
-param(
-  [string[]]$Filter = @("*"),
-  [switch]$LinkSmoke,
-  [string]$BaseUrl    = "http://127.0.0.1:8010",
-  [int]   $SmokeDepth = 1,
-  [int]   $SmokeLimit = 150,
-  [string]$ExtraArgs  = ""
-)
-
-if ($Filter -is [string]) {
-  if ($Filter -match ",") { $Filter = $Filter -split "," | ForEach-Object { $_.Trim() } }
-  else { $Filter = @($Filter) }
-}
-elseif ($Filter.Count -eq 1 -and $Filter[0] -match ",") {
-  $Filter = $Filter[0] -split "," | ForEach-Object { $_.Trim() }
-}
-
-Write-Host ("[multi] Filters: {0}" -f ($Filter -join ", ")) -ForegroundColor Cyan
-
-foreach($pat in $Filter){
-  if ([string]::IsNullOrWhiteSpace($pat)) { continue }
-  Write-Host ("[multi] Running pattern: {0}" -f $pat) -ForegroundColor Yellow
-
-  $argList = @(
-    '-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
-    '-File','ops\run_backlog.ps1',
-    '-Filter', $pat,
-    '-BaseUrl', $BaseUrl,
-    '-SmokeDepth', $SmokeDepth,
-    '-SmokeLimit', $SmokeLimit,
-    '-ExtraArgs', $ExtraArgs
+function Update-TestResult {
+  param(
+    [Parameter(Mandatory=$true)][string]$Key,
+    [ValidateSet("PASSED","FAILED")][string]$Status,
+    [hashtable]$Metrics,[hashtable]$Artifacts,
+    [string]$StatePathParam = $StatePath
   )
-  if ($LinkSmoke.IsPresent) { $argList += '-LinkSmoke' }
+  $st = Get-State -Path $StatePathParam
+  _Ensure-Prop $st 'tests' (@{ results=@{}; summary=@{passed=0;failed=0;last_run=""} })
+  _Ensure-Prop $st.tests 'results' @{}
+  _Ensure-Prop $st.tests 'summary' (@{ passed=0; failed=0; last_run="" })
+  if (-not $Metrics)   { $Metrics   = @{} }
+  if (-not $Artifacts) { $Artifacts = @{} }
 
-  powershell @argList
-}
-### DOSYA BİTİŞ: run_backlog_multi.ps1
+  $entry = @{
+    status=$Status; metrics=$Metrics; artifacts=$Artifacts; ts=(Get-Date).ToString("s")
+  }
+  _Map-Set $st.tests.results $Key $entry
 
-### DOSYA BAŞLANGIÇ: .\\ops\run_ci_pr_approve.ps1
-param()
-if (-not $env:OZKAN_PAT) {
-  Write-Error "Set OZKAN_PAT (ozkanrepo1 PAT, scopes: repo, read:org)"; exit 1
+  $passed=0; $failed=0
+  foreach($k in (_Map-Keys $st.tests.results)){
+    $it = if (_Is-Hashtable $st.tests.results) { $st.tests.results[$k] } else { $st.tests.results.$k }
+    if($it.status -eq "PASSED"){$passed++}else{$failed++}
+  }
+  _Set-Prop $st.tests.summary 'passed'   $passed
+  _Set-Prop $st.tests.summary 'failed'   $failed
+  _Set-Prop $st.tests.summary 'last_run' ((Get-Date).ToString("s"))
+
+  Save-State -State $st -Path $StatePathParam
 }
-$env:GH_TOKEN = $env:OZKAN_PAT
-try {
-  & "$PSScriptRoot\auto_pr.ps1" -WaitForMerge
-} finally {
-  Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
+
+function Add-PendingAction {
+  param(
+    [Parameter(Mandatory=$true)][string]$Id,
+    [Parameter(Mandatory=$true)][string]$Type,
+    [Parameter(Mandatory=$true)][string]$Detail,
+    [string]$DueStage="",
+    [string]$StatePathParam = $StatePath
+  )
+  $st = Get-State -Path $StatePathParam
+  _Ensure-Prop $st 'pending_actions' @()
+  $st.pending_actions += @{ id=$Id; type=$Type; detail=$Detail; due_stage=$DueStage; ts=(Get-Date).ToString("s"); status="open" }
+  Save-State -State $st -Path $StatePathParam
 }
-### DOSYA BİTİŞ: run_ci_pr_approve.ps1
+
+function Advance-Pipeline {
+  param([Parameter(Mandatory=$true)][string]$ToStage,[string]$Hint="",[string]$StatePathParam=$StatePath)
+  $st = Get-State -Path $StatePathParam
+  _Ensure-Prop $st 'pipeline' (@{ stage="validate_ui_pages"; history=@() })
+  _Ensure-Prop $st.pipeline 'stage' "validate_ui_pages"
+  _Ensure-Prop $st.pipeline 'history' @()
+  $st.pipeline.history += @{ from=$st.pipeline.stage; to=$ToStage; hint=$Hint; ts=(Get-Date).ToString("s") }
+  _Set-Prop $st.pipeline 'stage' $ToStage
+  Save-State -State $st -Path $StatePathParam
+}
+### DOSYA BİTİŞ: state_tools.ps1
 
 ### DOSYA BAŞLANGIÇ: .\\ops\rebase_auto.ps1
 param(
@@ -471,465 +805,6 @@ Write-Host "[done] $Branch güncellendi ve push edildi." -ForegroundColor Green
 if ($PrNumber -gt 0) { Write-Host "[note] PR #$PrNumber auto-merge açık; koşullar tamamlanınca birleşir." -ForegroundColor Yellow }
 ### DOSYA BİTİŞ: rebase_auto.ps1
 
-### DOSYA BAŞLANGIÇ: .\\ops\pipeline_local.ps1
-param(
-  [string]$BaseUrl     = "http://127.0.0.1:8010",
-  [string]$JobsCsv     = "ops/ui_jobs.csv",
-  [string]$BaselineDir = "targets\reference",
-  [string]$AlertsDir   = "_otokodlama\alerts",
-  [string]$StateTools  = "ops/state_tools.ps1",
-  [switch]$NoGitPush
-)
-
-$ErrorActionPreference = "Stop"
-
-# 1) AI patch'leri uygula (varsa)
-powershell -ExecutionPolicy Bypass -File "ops/apply_ai_files.ps1" -RepoRoot "." -InboxDir "ai_inbox" -StateTools $StateTools | Out-Host
-
-# 2) UI testlerini koştur + state güncelle
-powershell -ExecutionPolicy Bypass -File "ops/run_suite.ps1" -BaseUrl $BaseUrl -JobsCsv $JobsCsv -BaselineDir $BaselineDir -AlertsDir $AlertsDir -StateTools $StateTools | Out-Host
-
-# 3) Değişiklikleri commit/push
-if ($NoGitPush) {
-  powershell -ExecutionPolicy Bypass -File "ops/git_ops.ps1" -RepoRoot "." -Branch "main" -AddSpec "." -Message "[auto] ai apply + ui validate + state" -NoPush | Out-Host
-} else {
-  powershell -ExecutionPolicy Bypass -File "ops/git_ops.ps1" -RepoRoot "." -Branch "main" -AddSpec "." -Message "[auto] ai apply + ui validate + state" | Out-Host
-}
-
-Write-Host "`n[pipeline] DONE." -ForegroundColor Green
-### DOSYA BİTİŞ: pipeline_local.ps1
-
-### DOSYA BAŞLANGIÇ: .\\ops\open_pr.ps1
-param(
-  [string]$RepoRoot   = ".",
-  [string]$Branch     = "main",   # PR HEAD (çalıştığınız dal)
-  [string]$BaseBranch = "main",   # PR BASE (hedef dal)
-  [string]$StateTools = "ops/state_tools.ps1"
-)
-
-$ErrorActionPreference = "Stop"
-
-function Show-GitHubErrorBody {
-  param([System.Net.WebException]$Ex)
-  try {
-    $resp = $Ex.Response
-    if ($resp -and $resp.GetResponseStream) {
-      $sr = New-Object IO.StreamReader($resp.GetResponseStream())
-      $body = $sr.ReadToEnd()
-      Write-Warning ("GitHub API error body: " + $body)
-      if ($resp.Headers["WWW-Authenticate"]) {
-        Write-Warning ("WWW-Authenticate: " + $resp.Headers["WWW-Authenticate"])
-      }
-    }
-  } catch { Write-Warning "Error body okunamadı: $($_.Exception.Message)" }
-}
-
-function Get-RepoSlug {
-  param([string]$RepoRoot)
-  Push-Location $RepoRoot
-  try {
-    $url = (& git remote get-url origin 2>$null)
-    if (-not $url) { throw "origin remote bulunamadı." }
-    if ($url -match 'github\.com[:/](.+?)(\.git)?$') { return $Matches[1] }
-    throw "GitHub repo slug çözülemedi: $url"
-  } finally { Pop-Location }
-}
-
-function Load-State {
-  param([string]$StateTools,[string]$RepoRoot)
-  . (Join-Path $RepoRoot $StateTools)
-  return (Get-State)
-}
-
-function Build-PR-Body {
-  param($state)
-  $lines = @()
-  $lines += "### UI Test Özeti"
-  if ($state.tests -and $state.tests.summary) {
-    $lines += ""
-    $lines += "- **Passed**: $($state.tests.summary.passed)"
-    $lines += "- **Failed**: $($state.tests.summary.failed)"
-    $lines += "- **Last Run**: $($state.tests.summary.last_run)"
-  }
-
-  if ($state.tests -and $state.tests.results) {
-    $lines += ""
-    $lines += "| Key | Status | words_recall | missing_count | out_json | screenshot |"
-    $lines += "|-----|--------|--------------|---------------|----------|------------|"
-
-    $keys = @()
-    if ($state.tests.results -is [hashtable]) { $keys = $state.tests.results.Keys }
-    else { $keys = ($state.tests.results.PSObject.Properties | Select-Object -ExpandProperty Name) }
-
-    foreach ($k in $keys) {
-      $it = if ($state.tests.results -is [hashtable]) { $state.tests.results[$k] } else { $state.tests.results.$k }
-      $status = $it.status
-      $recall = ""
-      $misses = ""
-      if ($it.metrics) {
-        if ($it.metrics.PSObject.Properties['words_recall']) { $recall = [string]$it.metrics.words_recall }
-        if ($it.metrics.PSObject.Properties['missing_count']) { $misses = [string]$it.metrics.missing_count }
-      }
-      $outj = ""
-      $shot = ""
-      if ($it.artifacts) {
-        if ($it.artifacts.PSObject.Properties['out_json']) { $outj = [string]$it.artifacts.out_json }
-        if ($it.artifacts.PSObject.Properties['screenshot']) { $shot = [string]$it.artifacts.screenshot }
-      }
-      $lines += "| $k | $status | $recall | $misses | $outj | $shot |"
-    }
-  }
-
-  if ($state.pending_actions -and $state.pending_actions.Count -gt 0) {
-    $lines += ""
-    $lines += "### Pending Actions"
-    foreach ($p in $state.pending_actions) {
-      $lines += "- [$($p.status)] **$($p.type)**: $($p.detail) (due_stage: $($p.due_stage), ts: $($p.ts))"
-    }
-  }
-
-  return ($lines -join "`n")
-}
-
-# ----- MAIN -----
-$repoSlug = Get-RepoSlug -RepoRoot $RepoRoot
-$state    = Load-State -StateTools $StateTools -RepoRoot $RepoRoot
-
-$title = "[auto] UI validate passed → open PR"
-$body  = Build-PR-Body -state $state
-
-# 1) Push edildiğinden emin ol
-Push-Location $RepoRoot
-try { & git push origin $Branch | Out-Null } finally { Pop-Location }
-
-# 2) PR açma: gh (CLI) → yoksa REST → ikisi de yoksa uyarı
-$createdUrl = ""
-$used = ""
-
-if (Get-Command gh -ErrorAction SilentlyContinue) {
-  try {
-    $out = & gh pr create --title $title --body $body --base $BaseBranch --head $Branch 2>&1
-    if ($LASTEXITCODE -eq 0) {
-      $m = ($out | Select-String -Pattern 'https?://github\.com/.+?/pull/\d+' | Select-Object -First 1)
-      if ($m) { $createdUrl = $m.Matches.Value; $used = "gh" }
-    } else {
-      Write-Warning "gh pr create hata verdi: $out"
-    }
-  } catch {
-    Write-Warning "gh pr create çalışmadı: $($_.Exception.Message)"
-  }
-}
-
-if (-not $createdUrl) {
-  $token = $env:GITHUB_TOKEN
-  if ($token) {
-    $bodyObj = @{
-      title = $title
-      head  = $Branch
-      base  = $BaseBranch
-      body  = $body
-    }
-    $json = $bodyObj | ConvertTo-Json -Depth 5
-    $uri  = "https://api.github.com/repos/$repoSlug/pulls"
-
-    $headers = @{
-      "Accept"        = "application/vnd.github+json"
-      "Authorization" = "token $token"
-      "X-GitHub-Api-Version" = "2022-11-28"
-      "User-Agent"    = "ps-open-pr"
-    }
-    try {
-      $resp = Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -Body $json
-      if ($resp.html_url) { $createdUrl = $resp.html_url; $used = "rest" }
-    } catch [System.Net.WebException] {
-      Show-GitHubErrorBody $_.Exception
-      Write-Warning "REST ile PR açma denemesi hata verdi."
-    }
-  } else {
-    Write-Warning "Ne 'gh' komutu başarılı ne de GITHUB_TOKEN tanımlı. PR otomatik açılamadı (pipeline kesilmedi)."
-  }
-}
-
-if ($createdUrl) {
-  Write-Host "[pr] Açıldı ($used) → $createdUrl" -ForegroundColor Green
-  . (Join-Path $RepoRoot $StateTools)
-  Advance-Pipeline -ToStage "await_review" -Hint "PR açıldı: $createdUrl"
-} else {
-  Write-Host "[pr] PR açılamadı; stage değiştirilmedi." -ForegroundColor Yellow
-}
-
-### DOSYA BİTİŞ: open_pr.ps1
-
-### DOSYA BAŞLANGIÇ: .\\ops\make_prs.ps1
-Rev: 2025-09-30 19:21 r1
-param(
-  [string]$PlanJson = "plan/tasks.json",
-  [switch]$DryRun
-)
-
-$ErrorActionPreference = "Stop"
-
-if (-not (Test-Path $PlanJson)) { throw "Plan yok: $PlanJson" }
-
-# main’i referans al
-git fetch origin | Out-Null
-
-$tasks = Get-Content $PlanJson -Raw | ConvertFrom-Json
-foreach ($t in $tasks) {
-  $branch = $t.branch_name
-  if (-not $branch) { Write-Warning "Branch yok: $($t.id)"; continue }
-
-  # remote’ta var mı?
-  $remote = git ls-remote --heads origin $branch
-  if ($remote) { Write-Host "(skip) zaten var: $branch" -ForegroundColor DarkYellow; continue }
-
-  if (-not $DryRun) {
-    git switch -c $branch origin/main | Out-Null
-
-    New-Item -ItemType Directory -Force ".github" | Out-Null
-    "task: $($t.id) - $($t.title)" | Set-Content -Encoding UTF8 ".github\pr-bumper.md"
-    git add ".github\pr-bumper.md"
-    git commit -m "auto($($t.id)): $($t.title) [bump]" | Out-Null
-    git push -u origin $branch | Out-Null
-  }
-
-  # PR body
-  $ac = ""
-  if ($t.acceptance_criteria) {
-    $ac = "Acceptance Criteria:`n" + ($t.acceptance_criteria | ForEach-Object { "- $_" }) -join "`n"
-  }
-  $body = @"
-Area: `$($t.area)`
-Type: `$($t.type)` | Priority: `$($t.priority)` | Size: `$($t.size)`
-
-$($t.description)
-
-$ac
-"@
-
-  $title = "auto: $($t.id) $($t.title)"
-  $prUrl = gh pr create -t $title -b $body -B main -H $branch
-  if ($LASTEXITCODE -ne 0) { Write-Warning "PR açılamadı: $branch"; continue }
-
-  # etiketler
-  if ($t.labels) {
-    foreach ($lbl in $t.labels) { gh pr edit $prUrl --add-label $lbl | Out-Null }
-  }
-
-  # otomatik merge (koşullar sağlanınca)
-  gh pr merge $prUrl --squash --auto | Out-Null
-
-  Write-Host "[ok] PR hazır: $prUrl" -ForegroundColor Green
-
-  # ana dala geri
-  if (-not $DryRun) {
-    git switch -C main origin/main | Out-Null
-  }
-}
-### DOSYA BİTİŞ: make_prs.ps1
-
-### DOSYA BAŞLANGIÇ: .\\ops\smoke_links.ps1
-# Rev: 2025-09-28 15:20 r4
-param(
-  [Parameter(Mandatory=$true)][string]$Base,
-  [Parameter(Mandatory=$true)][string]$Start,
-  [Parameter(Mandatory=$true)][string]$Out,
-  [int]$Depth = 1,
-  [int]$Limit = 150,
-  [string]$PathPrefix = "/",
-  [string]$LoginPath = "/admin/login/",
-  [string]$User = "admin",
-  [string]$Pass = "Admin!2345",
-  [int]$Timeout = 20000,
-  [string]$OkRedirectTo = ""   # ör: "/_direct/.*|/admin/.*"
-)
-
-function Join-Url([uri]$baseUri, [string]$url) {
-  if ([string]::IsNullOrWhiteSpace($url)) { return $null }
-  $u = $null
-  if ([System.Uri]::TryCreate($url, [System.UriKind]::Absolute, [ref]$u)) { return $u }
-  return [uri]::new($baseUri, $url)
-}
-
-function InScope([string]$locPath, [string]$prefix) {
-  if ([string]::IsNullOrWhiteSpace($locPath)) { return $false }
-  if ([string]::IsNullOrWhiteSpace($prefix))  { return $true }
-  return $locPath.ToLower().StartsWith($prefix.ToLower())
-}
-
-function DepthOf([string]$path, [string]$prefix) {
-  if (-not $path) { return 0 }
-  $p   = $path
-  $pre = if ($null -ne $prefix) { $prefix } else { "" }
-  $p   = $p.Trim('/')
-  $pre = $pre.Trim('/')
-  if ($pre -and $p.ToLower().StartsWith($pre.ToLower())) {
-    $p = $p.Substring($pre.Length).Trim('/')
-  }
-  if ([string]::IsNullOrWhiteSpace($p)) { return 0 }
-  return ($p.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries).Length)
-}
-
-function ParseLinks([string]$html, [uri]$docUri) {
-  $set = New-Object System.Collections.Generic.HashSet[string]
-  if (-not $html) { return @() }
-  $rx = [regex]'(?isx)
-      <a\b[^>]*?href\s*=\s*["''](?<u>[^"''#>]+)["'']
-    | <link\b[^>]*?href\s*=\s*["''](?<u>[^"''#>]+)["'']
-    | <script\b[^>]*?src\s*=\s*["''](?<u>[^"''#>]+)["'']
-  '
-  foreach ($m in $rx.Matches($html)) {
-    $u = $m.Groups['u'].Value
-    if ([string]::IsNullOrWhiteSpace($u)) { continue }
-    try {
-      $abs = (Join-Url $docUri $u)
-      if ($abs) { [void]$set.Add($abs.AbsolutePath) }
-    } catch {}
-  }
-  # .ToArray() .NET Framework'te extension; 5.1'de garanti değil → düz diziye çevir
-  return @($set)
-}
-
-Add-Type -AssemblyName System.Net.Http
-$handler = New-Object System.Net.Http.HttpClientHandler
-$cookieJar = New-Object System.Net.CookieContainer
-$handler.CookieContainer   = $cookieJar
-$handler.AllowAutoRedirect = $false
-$client  = New-Object System.Net.Http.HttpClient($handler)
-$client.Timeout = [TimeSpan]::FromMilliseconds([Math]::Max(1000, $Timeout))
-$baseUri = [uri]$Base
-
-function Get-Resp([uri]$uri, [string]$method="GET", [string]$body="", [hashtable]$headers=@{}) {
-  $req = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::$method, $uri)
-  foreach ($k in $headers.Keys) { $req.Headers.TryAddWithoutValidation($k, [string]$headers[$k]) | Out-Null }
-  if ($method -eq "POST") {
-    $req.Content = New-Object System.Net.Http.StringContent($body, [System.Text.Encoding]::UTF8, "application/x-www-form-urlencoded")
-  }
-  $resp = $client.SendAsync($req).Result
-  return $resp
-}
-
-function Do-Login {
-  try {
-    $loginUri = Join-Url $baseUri $LoginPath
-    $r1 = Get-Resp $loginUri "GET"
-    $html = $r1.Content.ReadAsStringAsync().Result
-    $token = ""
-    $m = [regex]::Match($html, 'name=["'']csrfmiddlewaretoken["'']\s+value=["'']([^"'']+)["'']', 'IgnoreCase')
-    if ($m.Success) { $token = $m.Groups[1].Value }
-    $body = "username=$([uri]::EscapeDataString($User))&password=$([uri]::EscapeDataString($Pass))"
-    if ($token) { $body += "&csrfmiddlewaretoken=$([uri]::EscapeDataString($token))" }
-    $null = Get-Resp $loginUri "POST" $body @{ "Referer" = $loginUri.AbsoluteUri }
-    return $true
-  } catch {
-    Write-Host "[link-smoke] login hata: $($_.Exception.Message)" -ForegroundColor Yellow
-    return $false
-  }
-}
-
-$null = Do-Login
-
-$queue   = New-Object System.Collections.Generic.Queue[object]
-$visited = New-Object System.Collections.Generic.HashSet[string]
-$bad     = New-Object System.Collections.Generic.List[object]
-$checked = 0
-
-$startUri = Join-Url $baseUri $Start
-$queue.Enqueue([pscustomobject]@{ Uri=$startUri; Depth=0 })
-
-while(($queue.Count -gt 0) -and ($checked -lt $Limit)) {
-  $item = $queue.Dequeue()
-  $u = $item.Uri
-  $d = [int]$item.Depth
-  if (-not $u) { continue }
-
-  $key = $u.AbsolutePath.ToLower()
-  if ($visited.Contains($key)) { continue }
-  [void]$visited.Add($key)
-
-  try {
-    $resp = Get-Resp $u "GET"
-    $status = [int]$resp.StatusCode
-    $locHdr = $resp.Headers.Location
-    $locAbs = $null
-    if ($locHdr) { $locAbs = Join-Url $u $locHdr.ToString() }
-
-    if ($status -ge 300 -and $status -lt 400) {
-      $okRedirect = $false
-      if ($locAbs -and -not [string]::IsNullOrWhiteSpace($OkRedirectTo)) {
-        if ($locAbs.AbsolutePath -match $OkRedirectTo) { $okRedirect = $true }
-      }
-      $inScopeNext = ($locAbs -ne $null) -and (InScope $locAbs.AbsolutePath $PathPrefix)
-      if ($inScopeNext -and -not $okRedirect) {
-        $locStr = if ($locAbs) { $locAbs.AbsoluteUri } else { "" }
-        $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=$status; location=$locStr }) | Out-Null
-      }
-      if ($locAbs -and (InScope $locAbs.AbsolutePath $PathPrefix) -and ($d -lt $Depth)) {
-        $queue.Enqueue([pscustomobject]@{ Uri=$locAbs; Depth=$d })
-      }
-    }
-    elseif ($status -ge 200 -and $status -lt 300) {
-      $ct = $resp.Content.Headers.ContentType
-      if ($ct -and $ct.MediaType -like "text/html") {
-        $html = $resp.Content.ReadAsStringAsync().Result
-        if ((InScope $u.AbsolutePath $PathPrefix) -and ($d -lt $Depth)) {
-          foreach ($p in (ParseLinks $html $u)) {
-            if (InScope $p $PathPrefix) {
-              $depthNext = (DepthOf $p $PathPrefix)
-              if ($depthNext -le $Depth) {
-                $abs = Join-Url $baseUri $p
-                if ($abs -and -not $visited.Contains($abs.AbsolutePath.ToLower())) {
-                  $queue.Enqueue([pscustomobject]@{ Uri=$abs; Depth=$depthNext })
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    else {
-      $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=$status; location="" }) | Out-Null
-    }
-  } catch {
-    $msg = $_.Exception.Message
-    Write-Host "[link-smoke] GET hata: $msg" -ForegroundColor Yellow
-    $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=-1; location=""; error=$msg }) | Out-Null
-  }
-
-  $checked++
-}
-
-$result = [pscustomobject]@{
-  checked      = $checked
-  bad          = $bad.Count
-  bad_list     = $bad
-  visited      = $visited | Sort-Object
-  scope_prefix = $PathPrefix
-  base         = $Base
-  start        = $Start
-  ok_redirect  = $OkRedirectTo
-  depth        = $Depth
-  limit        = $Limit
-}
-$dir = Split-Path -Parent $Out
-if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-$result | ConvertTo-Json -Depth 6 | Out-File -FilePath $Out -Encoding UTF8
-
-if ($bad.Count -gt 0) {
-  Write-Host ("[link-smoke] checked={0} bad={1} scope_prefix={2}" -f $checked, $bad.Count, $PathPrefix) -ForegroundColor Red
-  $i = 0
-  foreach ($b in $bad) {
-    Write-Host ("    {0} {1} {2}" -f $i, $b.status, $b.url)
-    $i++
-  }
-  exit 2
-} else {
-  Write-Host ("[link-smoke] checked={0} bad=0 scope_prefix={1}" -f $checked, $PathPrefix) -ForegroundColor Green
-  Write-Host "[link-smoke] YEŞİL" -ForegroundColor Green
-  exit 0
-}
-### DOSYA BİTİŞ: smoke_links.ps1
-
 ### DOSYA BAŞLANGIÇ: .\\ops\git_ops.ps1
 param(
   [string]$RepoRoot = ".",
@@ -956,67 +831,85 @@ if (-not $NoPush) {
 }
 ### DOSYA BİTİŞ: git_ops.ps1
 
-### DOSYA BAŞLANGIÇ: .\\core\mw_fix_equip_redirect.py
-# -*- coding: utf-8 -*-
-# core/mw_fix_equip_redirect.py
-from urllib.parse import parse_qsl, urlencode
-from django.utils.deprecation import MiddlewareMixin
-from django.http import HttpResponseRedirect
+### DOSYA BAŞLANGIÇ: .\\ops\_spawn.ps1
+param(
+  [Parameter(Mandatory=$true)][string]$File,
+  [string[]]$Args = @(),
+  [int]$HardTimeoutSec = 300,
+  [int]$HeartbeatSec   = 5
+)
 
-CANONICAL = "/admin/maintenance/equipment/"
-DIRECT    = "/admin/maintenance/equipment/_direct/"
+# Argümanları tek stringe dönüştür (içinde boşluk olanları tırnakla)
+function Join-Args([string[]]$arr){
+  $arr | ForEach-Object {
+    if ($_ -match '\s' -and $_ -notmatch '^".*"$') { '"' + $_ + '"' } else { $_ }
+  } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | ForEach-Object { $_ } -join ' '
+}
 
-BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName               = $File
+$psi.Arguments              = (Join-Args $Args)
+$psi.UseShellExecute        = $false
+$psi.RedirectStandardOutput = $true
+$psi.RedirectStandardError  = $true
+$psi.CreateNoWindow         = $true
 
-def _filtered_qs(environ_qs: str) -> str:
-    try:
-        pairs = parse_qsl(environ_qs or "", keep_blank_values=True)
-    except Exception:
-        pairs = []
-    pairs = [(k, v) for (k, v) in pairs if k not in BLOCK_KEYS]
-    qs = urlencode(pairs, doseq=True)
-    return ("?" + qs) if qs else ""
+$p = New-Object System.Diagnostics.Process
+$p.StartInfo = $psi
+[void]$p.Start()
 
-class AdminEquipmentRedirectFixMiddleware(MiddlewareMixin):
-    """
-    /admin/maintenance/equipment/ hedefli TÜM istek/yanıtları güvenli _direct listesine çevirir.
-    - process_request: view'e gitmeden önce 302'yle _direct'e yönlendir.
-    - process_response: 301/302 Location header'ı kanonik listeyi gösteriyorsa _direct'e çevir.
-    """
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$lastBeat = 0
 
-    def process_request(self, request):
-        try:
-            path = request.path
-        except Exception:
-            path = ""
-        if path.endswith(CANONICAL):
-            qs = _filtered_qs(getattr(request.META, "QUERY_STRING", "") or request.META.get("QUERY_STRING",""))
-            return HttpResponseRedirect(DIRECT + qs)
+while(-not $p.HasExited){
+  while(-not $p.StandardOutput.EndOfStream){
+    $line = $p.StandardOutput.ReadLine()
+    if($line){ Write-Host $line; [Console]::Out.Flush() }
+  }
+  while(-not $p.StandardError.EndOfStream){
+    $eline = $p.StandardError.ReadLine()
+    if($eline){ Write-Host $eline -ForegroundColor DarkYellow; [Console]::Out.Flush() }
+  }
 
-    def process_response(self, request, response):
-        # Yanıt 301/302 ise ve hedef kanonik listeyse, _direct'e çevir
-        try:
-            loc = response["Location"] if hasattr(response, "has_header") and response.has_header("Location") \
-                  else (response.headers.get("Location") if hasattr(response, "headers") else None)
-        except Exception:
-            loc = None
+  Start-Sleep -Milliseconds 50  # hızlandırıldı (100 -> 50)
 
-        code = getattr(response, "status_code", 200)
-        if code in (301, 302) and loc:
-            # Sadece path kısmı ile karşılaştır: çoğu zaman relative Location geliyor
-            if str(loc).split("?",1)[0].endswith(CANONICAL):
-                qs = ""
-                try:
-                    # request tarafındaki mevcut QUERY_STRING'i filtreleyip koru
-                    qs = _filtered_qs(request.META.get("QUERY_STRING",""))
-                except Exception:
-                    qs = ""
-                try:
-                    response["Location"] = DIRECT + qs
-                except Exception:
-                    pass
-        return response
-### DOSYA BİTİŞ: mw_fix_equip_redirect.py
+  if($sw.Elapsed.TotalSeconds -ge $HardTimeoutSec){
+    Write-Host "[spawn] HARD TIMEOUT ($HardTimeoutSec s). Killing..." -ForegroundColor Red
+    try { $p.Kill() } catch {}
+    break
+  }
+
+  if([int]$sw.Elapsed.TotalSeconds -ge ($lastBeat + $HeartbeatSec)){
+    Write-Host ("[spawn] heartbeat {0}s" -f [int]$sw.Elapsed.TotalSeconds) -ForegroundColor DarkGray
+    [Console]::Out.Flush()
+    $lastBeat = [int]$sw.Elapsed.TotalSeconds
+  }
+}
+# kuyrukta kalan
+if($p){
+  try{
+    $restOut = $p.StandardOutput.ReadToEnd()
+    if($restOut){ Write-Host $restOut; [Console]::Out.Flush() }
+  }catch{}
+  try{
+    $restErr = $p.StandardError.ReadToEnd()
+    if($restErr){ Write-Host $restErr -ForegroundColor DarkYellow; [Console]::Out.Flush() }
+  }catch{}
+}
+
+exit ($p.ExitCode)
+
+
+
+
+
+
+
+
+
+
+
+### DOSYA BİTİŞ: _spawn.ps1
 
 ### DOSYA BAŞLANGIÇ: .\\ops\auto_pr.ps1
 param(
@@ -1187,85 +1080,67 @@ if ($deleted) { "`n-- Deleted files --"; $deleted | ForEach-Object { "  - $_" } 
 if ($skipped) { "`n-- Skipped --"; $skipped | ForEach-Object { "  - $_" } }
 ### DOSYA BİTİŞ: apply_ai_files.ps1
 
-### DOSYA BAŞLANGIÇ: .\\ops\_spawn.ps1
-param(
-  [Parameter(Mandatory=$true)][string]$File,
-  [string[]]$Args = @(),
-  [int]$HardTimeoutSec = 300,
-  [int]$HeartbeatSec   = 5
-)
+### DOSYA BAŞLANGIÇ: .\\core\mw_fix_equip_redirect.py
+# -*- coding: utf-8 -*-
+# core/mw_fix_equip_redirect.py
+from urllib.parse import parse_qsl, urlencode
+from django.utils.deprecation import MiddlewareMixin
+from django.http import HttpResponseRedirect
 
-# Argümanları tek stringe dönüştür (içinde boşluk olanları tırnakla)
-function Join-Args([string[]]$arr){
-  $arr | ForEach-Object {
-    if ($_ -match '\s' -and $_ -notmatch '^".*"$') { '"' + $_ + '"' } else { $_ }
-  } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | ForEach-Object { $_ } -join ' '
-}
+CANONICAL = "/admin/maintenance/equipment/"
+DIRECT    = "/admin/maintenance/equipment/_direct/"
 
-$psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName               = $File
-$psi.Arguments              = (Join-Args $Args)
-$psi.UseShellExecute        = $false
-$psi.RedirectStandardOutput = $true
-$psi.RedirectStandardError  = $true
-$psi.CreateNoWindow         = $true
+BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
 
-$p = New-Object System.Diagnostics.Process
-$p.StartInfo = $psi
-[void]$p.Start()
+def _filtered_qs(environ_qs: str) -> str:
+    try:
+        pairs = parse_qsl(environ_qs or "", keep_blank_values=True)
+    except Exception:
+        pairs = []
+    pairs = [(k, v) for (k, v) in pairs if k not in BLOCK_KEYS]
+    qs = urlencode(pairs, doseq=True)
+    return ("?" + qs) if qs else ""
 
-$sw = [System.Diagnostics.Stopwatch]::StartNew()
-$lastBeat = 0
+class AdminEquipmentRedirectFixMiddleware(MiddlewareMixin):
+    """
+    /admin/maintenance/equipment/ hedefli TÜM istek/yanıtları güvenli _direct listesine çevirir.
+    - process_request: view'e gitmeden önce 302'yle _direct'e yönlendir.
+    - process_response: 301/302 Location header'ı kanonik listeyi gösteriyorsa _direct'e çevir.
+    """
 
-while(-not $p.HasExited){
-  while(-not $p.StandardOutput.EndOfStream){
-    $line = $p.StandardOutput.ReadLine()
-    if($line){ Write-Host $line; [Console]::Out.Flush() }
-  }
-  while(-not $p.StandardError.EndOfStream){
-    $eline = $p.StandardError.ReadLine()
-    if($eline){ Write-Host $eline -ForegroundColor DarkYellow; [Console]::Out.Flush() }
-  }
+    def process_request(self, request):
+        try:
+            path = request.path
+        except Exception:
+            path = ""
+        if path.endswith(CANONICAL):
+            qs = _filtered_qs(getattr(request.META, "QUERY_STRING", "") or request.META.get("QUERY_STRING",""))
+            return HttpResponseRedirect(DIRECT + qs)
 
-  Start-Sleep -Milliseconds 50  # hızlandırıldı (100 -> 50)
+    def process_response(self, request, response):
+        # Yanıt 301/302 ise ve hedef kanonik listeyse, _direct'e çevir
+        try:
+            loc = response["Location"] if hasattr(response, "has_header") and response.has_header("Location") \
+                  else (response.headers.get("Location") if hasattr(response, "headers") else None)
+        except Exception:
+            loc = None
 
-  if($sw.Elapsed.TotalSeconds -ge $HardTimeoutSec){
-    Write-Host "[spawn] HARD TIMEOUT ($HardTimeoutSec s). Killing..." -ForegroundColor Red
-    try { $p.Kill() } catch {}
-    break
-  }
-
-  if([int]$sw.Elapsed.TotalSeconds -ge ($lastBeat + $HeartbeatSec)){
-    Write-Host ("[spawn] heartbeat {0}s" -f [int]$sw.Elapsed.TotalSeconds) -ForegroundColor DarkGray
-    [Console]::Out.Flush()
-    $lastBeat = [int]$sw.Elapsed.TotalSeconds
-  }
-}
-# kuyrukta kalan
-if($p){
-  try{
-    $restOut = $p.StandardOutput.ReadToEnd()
-    if($restOut){ Write-Host $restOut; [Console]::Out.Flush() }
-  }catch{}
-  try{
-    $restErr = $p.StandardError.ReadToEnd()
-    if($restErr){ Write-Host $restErr -ForegroundColor DarkYellow; [Console]::Out.Flush() }
-  }catch{}
-}
-
-exit ($p.ExitCode)
-
-
-
-
-
-
-
-
-
-
-
-### DOSYA BİTİŞ: _spawn.ps1
+        code = getattr(response, "status_code", 200)
+        if code in (301, 302) and loc:
+            # Sadece path kısmı ile karşılaştır: çoğu zaman relative Location geliyor
+            if str(loc).split("?",1)[0].endswith(CANONICAL):
+                qs = ""
+                try:
+                    # request tarafındaki mevcut QUERY_STRING'i filtreleyip koru
+                    qs = _filtered_qs(request.META.get("QUERY_STRING",""))
+                except Exception:
+                    qs = ""
+                try:
+                    response["Location"] = DIRECT + qs
+                except Exception:
+                    pass
+        return response
+### DOSYA BİTİŞ: mw_fix_equip_redirect.py
 
 ### DOSYA BAŞLANGIÇ: .\\tools\tasks_from_csv.py
 Rev: 2025-09-30 19:21 r1

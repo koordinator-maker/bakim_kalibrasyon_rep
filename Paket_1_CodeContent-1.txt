@@ -1,272 +1,4 @@
-﻿### DOSYA BAŞLANGIÇ: .\\example.spec.js
-// Dosya: example.spec.js
-// Bu dosya, Playwright'ın doğru çalıştığını ve raporlayıcıyı tetiklediğini doğrulamak için eklenmiştir.
-
-const { test, expect } = require('@playwright/test');
-
-test('example basic test', async ({ page }) => {
-  // Basit bir sayfaya gitmeyi dener
-  await page.goto('https://playwright.dev/');
-  
-  // Başlıkta 'Playwright' kelimesinin geçtiğini doğrular
-  await expect(page).toHaveTitle(/Playwright/);
-  
-  // 'Get started' bağlantısını bulur ve tıklar
-  await page.getByRole('link', { name: 'Get started' }).click();
-  
-  // URL'nin /docs/intro ile bittiğini doğrular (navigasyon başarılı)
-  await expect(page).toHaveURL(/.*intro/);
-});
-### DOSYA BİTİŞ: example.spec.js
-
-### DOSYA BAŞLANGIÇ: .\\reporters\custom_json_reporter.js
-// Dosya: reporters/custom_json_reporter.js
-
-const fs = require('fs');
-const path = require('path');
-
-// Test sonuçlarının kaydedileceği hedef klasör
-const RESULTS_DIR = path.join(process.cwd(), 'targets', 'results');
-
-class CustomJsonReporter {
-  constructor(options) {
-    this.options = options;
-    // Raporlayıcı başlatıldığında hedef klasörün var olduğundan emin olunur.
-    if (!fs.existsSync(RESULTS_DIR)) {
-      fs.mkdirSync(RESULTS_DIR, { recursive: true });
-    }
-    console.log(`[Reporter] Sonuçlar şu klasöre yazılacak: ${RESULTS_DIR}`);
-  }
-
-  // Playwright tüm test koşusu bittiğinde bu metodu çağırır.
-  onEnd(result) {
-    // Sonuçların genel başarısızlık durumunu kontrol et
-    const overallSuccess = result.status === 'passed';
-    
-    // Playwright test koşusu sonucu.
-    const runSummary = {
-        status: result.status,
-        passed: overallSuccess,
-        startTime: result.startTime,
-        duration: result.duration
-    };
-    
-    // run_summary.json dosyasına genel koşu özetini yaz
-    const summaryFilePath = path.join(RESULTS_DIR, 'run_summary.json');
-    fs.writeFileSync(summaryFilePath, JSON.stringify(runSummary, null, 2));
-
-    // Testlerin ayrıntılı sonuçlarını döngüye al
-    for (const suite of result.suites) {
-      this.processSuite(suite);
-    }
-  }
-  
-  // Test gruplarını (suite) ve alt testleri işlemek için yardımcı metod
-  processSuite(suite) {
-    for (const test of suite.tests) {
-      this.processTest(test);
-    }
-    for (const childSuite of suite.suites) {
-      this.processSuite(childSuite);
-    }
-  }
-  
-  // Tek bir testin sonucunu işlemek için metod
-  processTest(test) {
-    const testStatus = test.outcome();
-    const testTitle = test.title;
-    
-    // Her bir test sonucu için tek bir dosya oluştur (AI kuyruğu için lazım olacak)
-    const fileName = `${testTitle.replace(/[^a-z0-9]/gi, '_')}.json`;
-    const filePath = path.join(RESULTS_DIR, fileName);
-
-    let failReason = null;
-    let duration = 0;
-    
-    // Eğer test başarısız olduysa, hata detaylarını al
-    if (testStatus !== 'expected') {
-        const lastStep = test.results[test.results.length - 1];
-        if (lastStep && lastStep.error) {
-            failReason = lastStep.error.message || lastStep.error.stack || 'Bilinmeyen hata.';
-        }
-        duration = lastStep ? lastStep.duration : 0;
-    } else {
-        // Başarılı testin süresini al
-        duration = test.results[test.results.length - 1].duration;
-    }
-
-    // Sonuç yapısı (PowerShell'in okuyacağı format)
-    const testResult = {
-        ok: testStatus === 'expected',
-        status: testStatus,
-        reason: failReason,
-        duration: duration,
-        // AI'ın analiz edebileceği ek metrikler buraya eklenebilir
-        metrics: {
-            steps: test.results.length > 0 ? test.results[test.results.length - 1].steps.map(s => s.title) : []
-        }
-    };
-
-    fs.writeFileSync(filePath, JSON.stringify(testResult, null, 2));
-    
-    // Eğer test başarısızsa terminale ekstra uyarı yaz
-    if (testResult.ok === false) {
-      console.log(`[FAIL] ${testTitle} sonuç dosyası yazıldı: ${filePath}`);
-    }
-  }
-}
-
-module.exports = CustomJsonReporter;
-### DOSYA BİTİŞ: custom_json_reporter.js
-
-### DOSYA BAŞLANGIÇ: .\\ops\run_suite.ps1
-# Dosya: ops\run_suite.ps1
-
-# -------------------------------------------------------------
-# 1. PARAMETRELER (PS Betiğin ilk satırı olmalıdır)
-# -------------------------------------------------------------
-param(
-  [string]$ExtraArgs = ""
-)
-
-
-# -------------------------------------------------------------
-# 2. TÜM FONKSİYON TANIMLARI
-# -------------------------------------------------------------
-
-function Invoke-TestResultProcessing {
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$ResultsDir,
-        
-        [Parameter(Mandatory=$true)]
-        [string]$AIQueuePath
-    )
-
-    $FailedTests = @()
-    $AIFailQueue = @()
-
-    # AI Kuyruğu dizinini hazırla
-    $AIDir = Split-Path -Parent $AIQueuePath
-    if (-not (Test-Path $AIDir)) { New-Item -ItemType Directory -Path $AIDir -Force | Out-Null }
-    
-    # Tüm JSON sonuç dosyalarını oku
-    $ResultFiles = Get-ChildItem -Path $ResultsDir -Filter "*.json" -ErrorAction SilentlyContinue
-
-    if (-not $ResultFiles) { return $true }
-
-    foreach ($File in $ResultFiles) {
-        try {
-            $Content = Get-Content $File.FullName -Raw -Encoding UTF8
-            $Result = $Content | ConvertFrom-Json -ErrorAction Stop
-        } catch {
-            continue
-        }
-
-        # Başarısız Test Kontrolü
-        if (-not $Result.ok) {
-            $TestID = $File.BaseName
-            $FailedTests += $TestID
-            
-            # AI Kuyruğu Yapılandırması (failed_tests.jsonl)
-            $AIRecord = [PSCustomObject]@{
-                test_id         = $TestID
-                reason          = $Result.reason
-                duration        = $Result.duration
-                metrics         = $Result.metrics
-                timestamp       = (Get-Date).ToString("o")
-            }
-            $AIFailQueue += ($AIRecord | ConvertTo-Json -Depth 5 -Compress)
-        }
-    }
-
-    # AI Kuyruğu Dosyasına Yazma (JSONL formatı)
-    $AIFailQueue | Out-File -FilePath $AIQueuePath -Encoding UTF8 -Force
-    
-    # Başarılı say
-    return ($FailedTests.Count -eq 0)
-}
-
-
-# -------------------------------------------------------------
-# 3. ANA ÇALIŞTIRMA MANTIĞI
-# -------------------------------------------------------------
-
-# 3.1 Karantina Listesini Oku ve Filtreyi Hazırla
-$QuarantineFile = "reporters\quarantine.json"
-if (Test-Path $QuarantineFile) {
-    try {
-        $QuarantineData = (Get-Content $QuarantineFile -Raw -Encoding UTF8) | ConvertFrom-Json
-        $QuarantinedIDs = $QuarantineData.punted | Where-Object { $_.count -ge 3 } | Select-Object -ExpandProperty id
-        
-        if ($QuarantinedIDs.Count -gt 0) {
-            Write-Host ("# {0} test karantinada. Bu testler atlanacak." -f $QuarantinedIDs.Count) -ForegroundColor DarkYellow
-            $QuarantineRegex = $QuarantinedIDs -join '|'
-            $ExtraArgs += " --grep-invert '($QuarantineRegex)'"
-        }
-    } catch {
-        Write-Host "[WARN] Karantina dosyası ($QuarantineFile) okunamadı/bozuk. Atlandı." -ForegroundColor Red
-    }
-}
-
-
-# 3.2 Temizlik ve Hazırlık
-if (Test-Path "targets\results") { Remove-Item "targets\results\*.json" -Force }
-if (Test-Path "ai_queue\failed_tests.jsonl") { Remove-Item "ai_queue\failed_tests.jsonl" -Force }
-Write-Host "[START] Uçtan Uca Testler Başlatılıyor..." -ForegroundColor Green
-
-
-# 3.3 Playwright'ı Çalıştırma
-$PlaywrightSuccess = $true
-try {
-    # Playwright'ı çalıştır
-    $PlaywrightOutput = & npm run test --silent -- "$ExtraArgs" 2>&1
-    
-    if ($LASTEXITCODE -ne 0) {
-        throw "Playwright Hata Kodu: $LASTEXITCODE"
-    }
-
-} catch {
-    # Hata yakalama ve loglama
-    $Global:PlaywrightError = $_.Exception.Message
-    $ErrorPath = "targets\playwright_error.log"
-    $Global:PlaywrightError | Out-File -FilePath $ErrorPath -Encoding UTF8 -Force
-    
-    Write-Host "[HATA] Playwright ÇALIŞMADI! Detaylar $ErrorPath içinde." -ForegroundColor Red
-    $PlaywrightSuccess = $false
-}
-
-
-# 3.4 Test Sonuçlarını İşleme
-$TestsPassed = Invoke-TestResultProcessing `
-    -ResultsDir "targets/results" `
-    -AIQueuePath "ai_queue/failed_tests.jsonl"
-
-
-# 3.5 Çıkış Kodu ve Terminali Açık Tutma Mantığı
-if (-not $PlaywrightSuccess) {
-    # Playwright komutunun kendisi başarısız olursa buraya düşeriz
-    Write-Host ""
-    Write-Host ">>> KRİTİK HATA: Terminal kapanmasını engelliyoruz. <<<" -ForegroundColor Red
-    Write-Host "Playwright'ın neden çalışmadığını anlamak için LÜTFEN targets\playwright_error.log dosyasının içeriğini paylaşın." -ForegroundColor Yellow
-    
-    # EN SON ÇIKARAK KAPATMAYI ENGELLEYELİM. BU SATIR SİZ ENTER'A BASANA KADAR TERMİNALİ TUTACAK.
-    Read-Host -Prompt "Hata Kaydını Paylaşmak İçin Enter'a Basın (Kapatmayacaktır)" | Out-Null
-    # Normalde burada "exit 2" olurdu, ancak terminalin kapanmasını engellemek için SİLİNDİ.
-
-} elseif (-not $TestsPassed) {
-    # Testler çalıştı ama bazıları başarısız oldu
-    Write-Host "[PIPELINE] Bazı testler başarısız oldu. AI Kuyruğu Hazırlandı." -ForegroundColor Magenta
-    exit 2
-
-} else {
-    # Her şey başarılı
-    Write-Host "[PIPELINE] Tüm zorunlu testler başarılı!" -ForegroundColor Green
-    exit 0
-}
-### DOSYA BİTİŞ: run_suite.ps1
-
-### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0008_department_remove_calibrationrecord_asset_and_more.py
+﻿### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0008_department_remove_calibrationrecord_asset_and_more.py
 # Generated by Django 5.2.6 on 2025-10-03 13:59
 
 import django.db.models.deletion
@@ -1287,75 +1019,6 @@ test('test', async ({ page }) => {
 });
 ### DOSYA BİTİŞ: EQP-002.spec.js
 
-### DOSYA BAŞLANGIÇ: .\\ops\run_backlog.ps1
-param(
-    [string]$FlowsDir = "flows",
-    [string]$Filter = "*",
-    [string]$BaseUrl = "http://127.0.0.1:8010",
-    [bool]$LinkSmoke = $false,
-    [int]$SmokeDepth = 1,
-    [int]$SmokeLimit = 200,
-    [string]$ExtraArgs = ""
-)
-
-$ErrorActionPreference = "Stop"
-
-Write-Host "[run] Filters: $Filter" -ForegroundColor Yellow
-
-$flowFiles = Get-ChildItem -Path $FlowsDir -Filter "*_flow.json" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like $Filter.Replace('*', '*') + "_flow.json" }
-
-if ($flowFiles.Count -eq 0) {
-    Write-Host "[run] Akış bulunamadı. Aranılan dizin: $FlowsDir" -ForegroundColor Red
-    Write-Host "[DEBUG] Filtre: $Filter.Replace('*', '*') + '_flow.json'" -ForegroundColor DarkGray
-    exit 1
-}
-
-Write-Host "[run] 0 adet akış bulundu. Başlatılıyor..." -ForegroundColor Green
-
-foreach ($file in $flowFiles) {
-    $flowPath = $file.FullName
-    $id = $file.BaseName -replace '_flow$'
-
-    Write-Host "--- Başlatılıyor: $id ($flowPath) ---" -ForegroundColor Cyan
-    
-    $args = @(
-        "npx", 
-        "playwright", 
-        "flow", 
-        "run", 
-        "", 
-        "--base-url", 
-        ""
-    )
-
-    if ($LinkSmoke) {
-        $args += @(
-            "--extra-command", 
-            "powershell -ExecutionPolicy Bypass -File ops/smoke_links.ps1 -TargetUrl "" -TargetFlow "" -SmokeDepth $SmokeDepth -SmokeLimit $SmokeLimit -OkRedirectTo /_direct/.*",
-            "--log-file",
-            "logs/$id_smoke_$(Get-Date -Format 'yyyyMMddHHmmss').log"
-        )
-    }
-
-    if ($ExtraArgs) {
-        $args += $ExtraArgs.Split(' ') | Where-Object { -not [string]::IsNullOrEmpty($_) }
-    }
-
-    $commandLine = $args -join ' '
-    Write-Host "[DEBUG] Çalıştırılan Komut: $commandLine" -ForegroundColor DarkGray
-    
-    $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $commandLine" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "logs/$id_pw_$(Get-Date -Format 'yyyyMMddHHmmss').log" -RedirectStandardError "logs/$id_error_$(Get-Date -Format 'yyyyMMddHHmmss').log"
-    
-    if ($process.ExitCode -eq 0) {
-        Write-Host "✅ Başarılı: $id" -ForegroundColor Green
-    } else {
-        Write-Host "❌ Başarısız: $id (Exit Kodu: $(.ExitCode))" -ForegroundColor Red
-    }
-}
-
-Write-Host "--- Koşucu BİTTİ ---" -ForegroundColor Yellow
-### DOSYA BİTİŞ: run_backlog.ps1
-
 ### DOSYA BAŞLANGIÇ: .\\ops\gen_from_backlog.ps1
 param(
     [string]$BacklogPath = "ops/backlog.json",
@@ -1428,6 +1091,75 @@ if ($generatedCount -gt 0) {
     exit 1
 }
 ### DOSYA BİTİŞ: gen_from_backlog.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_backlog.ps1
+param(
+    [string]$FlowsDir = "flows",
+    [string]$Filter = "*",
+    [string]$BaseUrl = "http://127.0.0.1:8010",
+    [bool]$LinkSmoke = $false,
+    [int]$SmokeDepth = 1,
+    [int]$SmokeLimit = 200,
+    [string]$ExtraArgs = ""
+)
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "[run] Filters: $Filter" -ForegroundColor Yellow
+
+$flowFiles = Get-ChildItem -Path $FlowsDir -Filter "*_flow.json" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like $Filter.Replace('*', '*') + "_flow.json" }
+
+if ($flowFiles.Count -eq 0) {
+    Write-Host "[run] Akış bulunamadı. Aranılan dizin: $FlowsDir" -ForegroundColor Red
+    Write-Host "[DEBUG] Filtre: $Filter.Replace('*', '*') + '_flow.json'" -ForegroundColor DarkGray
+    exit 1
+}
+
+Write-Host "[run] 0 adet akış bulundu. Başlatılıyor..." -ForegroundColor Green
+
+foreach ($file in $flowFiles) {
+    $flowPath = $file.FullName
+    $id = $file.BaseName -replace '_flow$'
+
+    Write-Host "--- Başlatılıyor: $id ($flowPath) ---" -ForegroundColor Cyan
+    
+    $args = @(
+        "npx", 
+        "playwright", 
+        "flow", 
+        "run", 
+        "", 
+        "--base-url", 
+        ""
+    )
+
+    if ($LinkSmoke) {
+        $args += @(
+            "--extra-command", 
+            "powershell -ExecutionPolicy Bypass -File ops/smoke_links.ps1 -TargetUrl "" -TargetFlow "" -SmokeDepth $SmokeDepth -SmokeLimit $SmokeLimit -OkRedirectTo /_direct/.*",
+            "--log-file",
+            "logs/$id_smoke_$(Get-Date -Format 'yyyyMMddHHmmss').log"
+        )
+    }
+
+    if ($ExtraArgs) {
+        $args += $ExtraArgs.Split(' ') | Where-Object { -not [string]::IsNullOrEmpty($_) }
+    }
+
+    $commandLine = $args -join ' '
+    Write-Host "[DEBUG] Çalıştırılan Komut: $commandLine" -ForegroundColor DarkGray
+    
+    $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $commandLine" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "logs/$id_pw_$(Get-Date -Format 'yyyyMMddHHmmss').log" -RedirectStandardError "logs/$id_error_$(Get-Date -Format 'yyyyMMddHHmmss').log"
+    
+    if ($process.ExitCode -eq 0) {
+        Write-Host "✅ Başarılı: $id" -ForegroundColor Green
+    } else {
+        Write-Host "❌ Başarısız: $id (Exit Kodu: $(.ExitCode))" -ForegroundColor Red
+    }
+}
+
+Write-Host "--- Koşucu BİTTİ ---" -ForegroundColor Yellow
+### DOSYA BİTİŞ: run_backlog.ps1
 
 ### DOSYA BAŞLANGIÇ: .\\tools\tasks_from_csv.ps1
 param(
@@ -1666,46 +1398,6 @@ Write-Host "PASS: $totalPass    FAIL: $totalFail    ERROR: $totalError" -Foregro
 Write-Host "==============================================================" -ForegroundColor Cyan
 ### DOSYA BİTİŞ: report_console.ps1
 
-### DOSYA BAŞLANGIÇ: .\\tools\img_hash_compare.ps1
-param(
-  [Parameter(Mandatory=$true)][string]$A,
-  [Parameter(Mandatory=$true)][string]$B
-)
-Add-Type -AssemblyName System.Drawing
-
-function Get-ImageHash([string]$path) {
-  if (!(Test-Path $path)) { throw "Image not found: $path" }
-  $bmp = New-Object System.Drawing.Bitmap (Get-Item $path).FullName
-  try {
-    $thumb = New-Object System.Drawing.Bitmap 8,8
-    $g = [System.Drawing.Graphics]::FromImage($thumb)
-    $g.InterpolationMode = "HighQualityBicubic"
-    $g.DrawImage($bmp, 0,0, 8,8)
-    $g.Dispose()
-    $vals = New-Object 'System.Collections.Generic.List[double]'
-    for ($y=0;$y -lt 8;$y++) { for ($x=0;$x -lt 8;$x++) {
-      $c = $thumb.GetPixel($x,$y)
-      $vals.Add(0.299*$c.R + 0.587*$c.G + 0.114*$c.B)
-    } }
-    $avg = ($vals | Measure-Object -Average).Average
-    $bits = New-Object 'System.Collections.Generic.List[int]'
-    foreach ($v in $vals) { $bits.Add( [int]([double]$v - $avg -ge 0) ) }
-    return ($bits -join '')
-  } finally {
-    $bmp.Dispose(); $thumb.Dispose()
-  }
-}
-
-$h1 = Get-ImageHash $A
-$h2 = Get-ImageHash $B
-$dist = 0; for ($i=0;$i -lt 64;$i++) { if ($h1[$i] -ne $h2[$i]) { $dist++ } }
-$sim = 1.0 - ($dist / 64.0)
-
-$result = @{ a=$A; b=$B; similarity=[Math]::Round($sim,4) } | ConvertTo-Json -Compress
-$result
-if ($sim -ge 0.90) { exit 0 } else { exit 2 }
-### DOSYA BİTİŞ: img_hash_compare.ps1
-
 ### DOSYA BAŞLANGIÇ: .\\tools\apply_runcard.ps1
 param(
   [Parameter(Mandatory=$true)]
@@ -1763,217 +1455,6 @@ foreach ($m in $matches) {
 }
 "[OK] Wrote $($written.Count) file(s)."
 ### DOSYA BİTİŞ: apply_codepack.ps1
-
-### DOSYA BAŞLANGIÇ: .\\tools\pipeline_and_next.ps1
-param(
-  [string]$BindHost = "127.0.0.1",
-  [int]$Port = 8010,
-  [switch]$SkipFlows,
-  [switch]$NonBlocking,
-  [switch]$DryRun
-)
-
-$ErrorActionPreference = "Stop"
-
-# --- Yol / klasörler ---
-$repoRoot = Split-Path $PSCommandPath -Parent | Split-Path -Parent
-$outDir   = Join-Path $repoRoot "_otokodlama\out"
-$logFile  = Join-Path $repoRoot "_otokodlama\pipeline_last.log"
-New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-
-# --- Yardımcılar ---
-function Start-DjangoServer {
-  param([string]$BindAddr, [int]$BindPort)   # $Host çakışması yok
-  $args = @("manage.py","runserver","$BindAddr`:$BindPort","--settings=core.settings_maintenance","--noreload")
-  $p = Start-Process -FilePath "python" -ArgumentList $args -PassThru -WorkingDirectory $repoRoot -WindowStyle Hidden
-  return $p
-}
-
-function Wait-ServerUp {
-  param([string]$Url, [int]$TimeoutSec = 90)
-  $deadline = (Get-Date).AddSeconds($TimeoutSec)
-  while((Get-Date) -lt $deadline){
-    try {
-      $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
-      if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500){ return $true }
-    } catch { Start-Sleep -Milliseconds 500 }
-  }
-  return $false
-}
-
-function Stop-ProcessSafe {
-  param([int]$ProcId)   # $PID çakışması yok
-  try { if ($ProcId) { Stop-Process -Id $ProcId -Force -ErrorAction Stop } } catch {}
-}
-
-# --- Sunucu başlat ---
-$server = Start-DjangoServer -BindAddr $BindHost -BindPort $Port
-"[$(Get-Date -Format HH:mm:ss)] DEV server PID=$($server.Id)" | Tee-Object -FilePath $logFile -Append | Out-Null
-Start-Sleep -Seconds 2
-
-$baseUrl = "http://$BindHost`:$Port"
-
-# *** KRİTİK: Playwright için BASE_URL ve Django settings ***
-$env:BASE_URL = $baseUrl
-$env:DJANGO_SETTINGS_MODULE = "core.settings_maintenance"
-$env:PYTHONUNBUFFERED = "1"
-
-if (-not (Wait-ServerUp -Url "$baseUrl/admin/login/" -TimeoutSec 90)) {
-  Write-Warning "[SERVER] Ayağa kalkmadı ama NonBlocking mod akışı deneyecek."
-}
-
-# --- Flows çalıştır ---
-$runFlows = Join-Path $repoRoot "tools\run_flows.ps1"
-$flows_ok = $true
-$flows_rc = $null
-if (-not $SkipFlows -and (Test-Path $runFlows)) {
-  if ($NonBlocking) {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $runFlows -Soft
-  } else {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $runFlows -FailFast
-  }
-  $flows_rc = $LASTEXITCODE
-  $flows_ok = ($NonBlocking) -or ($flows_rc -eq 0)
-}
-
-# --- Görsel gate (varsa) ---
-$visual_ok = $true
-$vg = Join-Path $repoRoot "tools\visual_gate.ps1"
-if (Test-Path $vg) {
-  & powershell -NoProfile -ExecutionPolicy Bypass -File $vg
-  $visual_ok = ($LASTEXITCODE -eq 0)
-}
-
-# --- Layout acceptance (THROW YOK; asla patlatma) ---
-$layout_json = Join-Path $outDir "layout_report.json"
-$sim = 1.0
-$layout_ok = $true
-if (Test-Path $layout_json) {
-  try {
-    $lj = Get-Content $layout_json -Raw | ConvertFrom-Json
-    if ($lj.similarity -ne $null) { $sim = [double]$lj.similarity }
-    $layout_ok = $true
-  } catch {
-    Write-Warning "[NEXT] layout_report.json okunamadı; layout gate devre dışı."
-    $sim = 1.0; $layout_ok = $true
-  }
-} else {
-  Write-Warning "[NEXT] layout_report.json yok; layout gate devre dışı."
-  $sim = 1.0; $layout_ok = $true
-}
-
-# --- NEXT kararı ---
-if ($layout_ok -and $flows_ok -and $visual_ok) {
-  Write-Host "[ACCEPT] mode=guided similarity=$sim target=target.png"
-  Write-Host "[NEXT] OK (layout AND flows)."
-  # ops/next_ok_runcard.txt çalıştır
-  $card = Join-Path $repoRoot "ops\next_ok_runcard.txt"
-  if (Test-Path $card) {
-    if ($DryRun) {
-      Write-Host "[DRY] tools\apply_runcard.ps1 -Card $card -NoConfirm"
-    } else {
-      $apply = Join-Path $repoRoot "tools\apply_runcard.ps1"
-      if (Test-Path $apply) {
-        & powershell -NoProfile -ExecutionPolicy Bypass -File $apply -Card $card -NoConfirm
-      }
-    }
-  }
-} else {
-  Write-Warning "[NEXT] NOT satisfied. layout_ok=$layout_ok flows_ok=$flows_ok visual_ok=$visual_ok (sim=$sim)"
-}
-
-# --- Sunucuyu kapat ---
-if ($server -and $server.Id) { Stop-ProcessSafe -ProcId $server.Id }
-
-# Ortamı kirletmeyelim (isteğe bağlı)
-Remove-Item Env:BASE_URL -ErrorAction SilentlyContinue
-Remove-Item Env:DJANGO_SETTINGS_MODULE -ErrorAction SilentlyContinue
-Remove-Item Env:PYTHONUNBUFFERED -ErrorAction SilentlyContinue
-
-exit 0
-### DOSYA BİTİŞ: pipeline_and_next.ps1
-
-### DOSYA BAŞLANGIÇ: .\\tools\serve_then_pipeline.ps1
-# REV: 1.0 | 2025-09-25 | Hash: 7b3e92ad | Parça: 1/1
-param(
-  [string]$BindHost = "127.0.0.1",
-  [int]$Port = 8000
-)
-$ErrorActionPreference = "Stop"
-
-# Yol/ortam
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot  = Resolve-Path (Join-Path $ScriptDir "..")
-$VenvPy    = Join-Path $RepoRoot "venv\Scripts\python.exe"
-if (!(Test-Path $VenvPy)) { throw "Venv bulunamadı: $VenvPy" }
-
-$env:PATH                   = (Join-Path $RepoRoot "venv\Scripts") + ";" + $env:PATH
-$env:PYTHONPATH             = $RepoRoot
-$env:DJANGO_SETTINGS_MODULE = "core.settings"
-
-# Config & hedef ekran görüntüsü
-$cfgPath = Join-Path $RepoRoot "pipeline.config.json"
-if (!(Test-Path $cfgPath)) { throw "pipeline.config.json yok: $cfgPath" }
-try { $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json } catch { throw "pipeline.config.json geçersiz JSON." }
-
-$targetPng = Join-Path $RepoRoot $cfg.target_screenshot
-if (!(Test-Path $targetPng)) {
-  $shotsDir = Join-Path $RepoRoot $cfg.screenshots_dir
-  if (Test-Path $shotsDir) {
-    $latest = Get-ChildItem $shotsDir -Filter *.png | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($latest) {
-      New-Item -ItemType Directory -Force -Path (Split-Path $targetPng) | Out-Null
-      Copy-Item $latest.FullName $targetPng -Force
-      Write-Host "==> Target oluşturuldu: $targetPng"
-    }
-  }
-}
-
-# Sunucu
-Write-Host "==> runserver başlatılıyor..."
-$runArgs = @("manage.py","runserver","$BindHost`:$Port","--noreload")
-$server  = Start-Process -FilePath $VenvPy -ArgumentList $runArgs -PassThru -WindowStyle Hidden -WorkingDirectory $RepoRoot
-
-# Port bekleme
-$ok = $false
-for($i=1; $i -le 60; $i++){
-  if (Test-NetConnection $BindHost -Port $Port -InformationLevel Quiet) { $ok = $true; break }
-  Start-Sleep -Milliseconds 500
-}
-if(-not $ok){
-  try { if($server -and !$server.HasExited){ $server | Stop-Process -Force } } catch {}
-  throw "runserver portu (${BindHost}:$Port) açılmadı."
-}
-
-# Pipeline
-Write-Host "==> pipeline"
-. (Join-Path $RepoRoot "tools\run_pipeline_venv.ps1")
-
-# Sunucuyu kapat
-Write-Host "==> runserver kapatılıyor..."
-try { if($server -and !$server.HasExited){ $server | Stop-Process -Force } } catch {}
-
-# Son rapor
-$outRoot = Join-Path $RepoRoot "_otokodlama\out"
-if (Test-Path $outRoot) {
-  $last = Get-ChildItem $outRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  if ($last) {
-    $lay = Join-Path $last.FullName "layout_report.json"
-    if (Test-Path $lay) {
-      Write-Host "==> layout_report.json:"
-      Get-Content $lay -Raw | Write-Host
-    } else {
-      Write-Host "layout_report.json bulunamadı."
-    }
-  } else {
-    Write-Host "_otokodlama\out altında klasör yok."
-  }
-} else {
-  Write-Host "_otokodlama\out bulunamadı."
-}
-
-Write-Host "[ALL DONE]"
-### DOSYA BİTİŞ: serve_then_pipeline.ps1
 
 ### DOSYA BAŞLANGIÇ: .\\tools\visual_gate.ps1
 param([string]$State="ops\state.json")
@@ -2060,40 +1541,127 @@ $report | ConvertTo-Json -Depth 5 | Set-Content "$outD\visual_report.json"
 if ($allOk) { Write-Host "[VISUAL] ALL PASSED"; exit 0 } else { Write-Warning "[VISUAL] SOME FAILED"; exit 1 }
 ### DOSYA BİTİŞ: visual_gate.ps1
 
-### DOSYA BAŞLANGIÇ: .\\tools\run_pipeline_venv.ps1
-# REV: 1.0 | 2025-09-25 | Hash: a1f2c3d4 | Parça: 1/1
-param()
+### DOSYA BAŞLANGIÇ: .\\tools\img_hash_compare.ps1
+param(
+  [Parameter(Mandatory=$true)][string]$A,
+  [Parameter(Mandatory=$true)][string]$B
+)
+Add-Type -AssemblyName System.Drawing
+
+function Get-ImageHash([string]$path) {
+  if (!(Test-Path $path)) { throw "Image not found: $path" }
+  $bmp = New-Object System.Drawing.Bitmap (Get-Item $path).FullName
+  try {
+    $thumb = New-Object System.Drawing.Bitmap 8,8
+    $g = [System.Drawing.Graphics]::FromImage($thumb)
+    $g.InterpolationMode = "HighQualityBicubic"
+    $g.DrawImage($bmp, 0,0, 8,8)
+    $g.Dispose()
+    $vals = New-Object 'System.Collections.Generic.List[double]'
+    for ($y=0;$y -lt 8;$y++) { for ($x=0;$x -lt 8;$x++) {
+      $c = $thumb.GetPixel($x,$y)
+      $vals.Add(0.299*$c.R + 0.587*$c.G + 0.114*$c.B)
+    } }
+    $avg = ($vals | Measure-Object -Average).Average
+    $bits = New-Object 'System.Collections.Generic.List[int]'
+    foreach ($v in $vals) { $bits.Add( [int]([double]$v - $avg -ge 0) ) }
+    return ($bits -join '')
+  } finally {
+    $bmp.Dispose(); $thumb.Dispose()
+  }
+}
+
+$h1 = Get-ImageHash $A
+$h2 = Get-ImageHash $B
+$dist = 0; for ($i=0;$i -lt 64;$i++) { if ($h1[$i] -ne $h2[$i]) { $dist++ } }
+$sim = 1.0 - ($dist / 64.0)
+
+$result = @{ a=$A; b=$B; similarity=[Math]::Round($sim,4) } | ConvertTo-Json -Compress
+$result
+if ($sim -ge 0.90) { exit 0 } else { exit 2 }
+### DOSYA BİTİŞ: img_hash_compare.ps1
+
+### DOSYA BAŞLANGIÇ: .\\tools\serve_then_pipeline.ps1
+# REV: 1.0 | 2025-09-25 | Hash: 7b3e92ad | Parça: 1/1
+param(
+  [string]$BindHost = "127.0.0.1",
+  [int]$Port = 8000
+)
 $ErrorActionPreference = "Stop"
+
+# Yol/ortam
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot  = Resolve-Path (Join-Path $ScriptDir "..")
 $VenvPy    = Join-Path $RepoRoot "venv\Scripts\python.exe"
 if (!(Test-Path $VenvPy)) { throw "Venv bulunamadı: $VenvPy" }
+
 $env:PATH                   = (Join-Path $RepoRoot "venv\Scripts") + ";" + $env:PATH
 $env:PYTHONPATH             = $RepoRoot
 $env:DJANGO_SETTINGS_MODULE = "core.settings"
-& $VenvPy -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('playwright') else 1)"
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "==> Playwright kuruluyor..."
-  & $VenvPy -m pip install --disable-pip-version-check -q playwright
-  if ($LASTEXITCODE -ne 0) { throw "pip install playwright başarısız." }
-  & $VenvPy -m playwright install chromium
-  if ($LASTEXITCODE -ne 0) { throw "playwright install chromium başarısız." }
+
+# Config & hedef ekran görüntüsü
+$cfgPath = Join-Path $RepoRoot "pipeline.config.json"
+if (!(Test-Path $cfgPath)) { throw "pipeline.config.json yok: $cfgPath" }
+try { $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json } catch { throw "pipeline.config.json geçersiz JSON." }
+
+$targetPng = Join-Path $RepoRoot $cfg.target_screenshot
+if (!(Test-Path $targetPng)) {
+  $shotsDir = Join-Path $RepoRoot $cfg.screenshots_dir
+  if (Test-Path $shotsDir) {
+    $latest = Get-ChildItem $shotsDir -Filter *.png | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($latest) {
+      New-Item -ItemType Directory -Force -Path (Split-Path $targetPng) | Out-Null
+      Copy-Item $latest.FullName $targetPng -Force
+      Write-Host "==> Target oluşturuldu: $targetPng"
+    }
+  }
 }
-Write-Host "==> pipeline.ps1 çalışıyor..."
-. (Join-Path $RepoRoot "pipeline.ps1")
-### DOSYA BİTİŞ: run_pipeline_venv.ps1
 
-### DOSYA BAŞLANGIÇ: .\\tools\run_all.ps1
-param([string]$BindHost="127.0.0.1",[int]$Port=8000)
-$ErrorActionPreference="Stop"
+# Sunucu
+Write-Host "==> runserver başlatılıyor..."
+$runArgs = @("manage.py","runserver","$BindHost`:$Port","--noreload")
+$server  = Start-Process -FilePath $VenvPy -ArgumentList $runArgs -PassThru -WindowStyle Hidden -WorkingDirectory $RepoRoot
 
-# Betiklerle aynı klasörde güvenli çağrı
-$serve = Join-Path $PSScriptRoot 'serve_then_pipeline.ps1'
-$accept = Join-Path $PSScriptRoot 'accept_visual.ps1'
+# Port bekleme
+$ok = $false
+for($i=1; $i -le 60; $i++){
+  if (Test-NetConnection $BindHost -Port $Port -InformationLevel Quiet) { $ok = $true; break }
+  Start-Sleep -Milliseconds 500
+}
+if(-not $ok){
+  try { if($server -and !$server.HasExited){ $server | Stop-Process -Force } } catch {}
+  throw "runserver portu (${BindHost}:$Port) açılmadı."
+}
 
-powershell -ExecutionPolicy Bypass -File $serve -BindHost $BindHost -Port $Port
-powershell -ExecutionPolicy Bypass -File $accept
-### DOSYA BİTİŞ: run_all.ps1
+# Pipeline
+Write-Host "==> pipeline"
+. (Join-Path $RepoRoot "tools\run_pipeline_venv.ps1")
+
+# Sunucuyu kapat
+Write-Host "==> runserver kapatılıyor..."
+try { if($server -and !$server.HasExited){ $server | Stop-Process -Force } } catch {}
+
+# Son rapor
+$outRoot = Join-Path $RepoRoot "_otokodlama\out"
+if (Test-Path $outRoot) {
+  $last = Get-ChildItem $outRoot -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if ($last) {
+    $lay = Join-Path $last.FullName "layout_report.json"
+    if (Test-Path $lay) {
+      Write-Host "==> layout_report.json:"
+      Get-Content $lay -Raw | Write-Host
+    } else {
+      Write-Host "layout_report.json bulunamadı."
+    }
+  } else {
+    Write-Host "_otokodlama\out altında klasör yok."
+  }
+} else {
+  Write-Host "_otokodlama\out bulunamadı."
+}
+
+Write-Host "[ALL DONE]"
+### DOSYA BİTİŞ: serve_then_pipeline.ps1
 
 ### DOSYA BAŞLANGIÇ: .\\tools\run_flows.ps1
 param(
@@ -2230,155 +1798,191 @@ if (\) {
 }
 ### DOSYA BİTİŞ: run_flows.ps1
 
-### DOSYA BAŞLANGIÇ: .\\ops\state_tools.ps1
+### DOSYA BAŞLANGIÇ: .\\tools\run_pipeline_venv.ps1
+# REV: 1.0 | 2025-09-25 | Hash: a1f2c3d4 | Parça: 1/1
+param()
+$ErrorActionPreference = "Stop"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot  = Resolve-Path (Join-Path $ScriptDir "..")
+$VenvPy    = Join-Path $RepoRoot "venv\Scripts\python.exe"
+if (!(Test-Path $VenvPy)) { throw "Venv bulunamadı: $VenvPy" }
+$env:PATH                   = (Join-Path $RepoRoot "venv\Scripts") + ";" + $env:PATH
+$env:PYTHONPATH             = $RepoRoot
+$env:DJANGO_SETTINGS_MODULE = "core.settings"
+& $VenvPy -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('playwright') else 1)"
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "==> Playwright kuruluyor..."
+  & $VenvPy -m pip install --disable-pip-version-check -q playwright
+  if ($LASTEXITCODE -ne 0) { throw "pip install playwright başarısız." }
+  & $VenvPy -m playwright install chromium
+  if ($LASTEXITCODE -ne 0) { throw "playwright install chromium başarısız." }
+}
+Write-Host "==> pipeline.ps1 çalışıyor..."
+. (Join-Path $RepoRoot "pipeline.ps1")
+### DOSYA BİTİŞ: run_pipeline_venv.ps1
+
+### DOSYA BAŞLANGIÇ: .\\tools\pipeline_and_next.ps1
 param(
-  # Varsayılan yol, bu dosyanın (ops/) yanına state.json olarak ayarlanır
-  [string]$StatePath = ""
+  [string]$BindHost = "127.0.0.1",
+  [int]$Port = 8010,
+  [switch]$SkipFlows,
+  [switch]$NonBlocking,
+  [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
 
-# --- Yol yardımcıları ---
-$__ThisFile   = $MyInvocation.MyCommand.Path
-$__ScriptRoot = Split-Path -Parent $__ThisFile
-if ([string]::IsNullOrWhiteSpace($StatePath)) {
-  $StatePath = Join-Path $__ScriptRoot "state.json"
+# --- Yol / klasörler ---
+$repoRoot = Split-Path $PSCommandPath -Parent | Split-Path -Parent
+$outDir   = Join-Path $repoRoot "_otokodlama\out"
+$logFile  = Join-Path $repoRoot "_otokodlama\pipeline_last.log"
+New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+
+# --- Yardımcılar ---
+function Start-DjangoServer {
+  param([string]$BindAddr, [int]$BindPort)   # $Host çakışması yok
+  $args = @("manage.py","runserver","$BindAddr`:$BindPort","--settings=core.settings_maintenance","--noreload")
+  $p = Start-Process -FilePath "python" -ArgumentList $args -PassThru -WorkingDirectory $repoRoot -WindowStyle Hidden
+  return $p
 }
 
-function _Is-Hashtable { param($x) return ($x -is [hashtable]) }
-function _Is-PSObj     { param($x) return ($x -is [pscustomobject]) }
-
-function _Ensure-Dir {
-  param([Parameter(Mandatory=$true)][string]$Path)
-  $dir = Split-Path -Parent $Path
-  if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+function Wait-ServerUp {
+  param([string]$Url, [int]$TimeoutSec = 90)
+  $deadline = (Get-Date).AddSeconds($TimeoutSec)
+  while((Get-Date) -lt $deadline){
+    try {
+      $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
+      if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500){ return $true }
+    } catch { Start-Sleep -Milliseconds 500 }
+  }
+  return $false
 }
 
-function _Ensure-Prop {
-  param($Obj,[string]$Name,$Default=$null)
-  if (_Is-Hashtable $Obj) { if (-not $Obj.ContainsKey($Name)) { $Obj[$Name]=$Default }; return }
-  if (-not $Obj.PSObject.Properties[$Name]) { Add-Member -InputObject $Obj -MemberType NoteProperty -Name $Name -Value $Default }
+function Stop-ProcessSafe {
+  param([int]$ProcId)   # $PID çakışması yok
+  try { if ($ProcId) { Stop-Process -Id $ProcId -Force -ErrorAction Stop } } catch {}
 }
 
-function _Set-Prop {
-  param($Obj,[string]$Name,$Value)
-  if (_Is-Hashtable $Obj) { $Obj[$Name]=$Value; return }
-  if (-not $Obj.PSObject.Properties[$Name]) { Add-Member -InputObject $Obj -MemberType NoteProperty -Name $Name -Value $Value }
-  else { $Obj.$Name = $Value }
+# --- Sunucu başlat ---
+$server = Start-DjangoServer -BindAddr $BindHost -BindPort $Port
+"[$(Get-Date -Format HH:mm:ss)] DEV server PID=$($server.Id)" | Tee-Object -FilePath $logFile -Append | Out-Null
+Start-Sleep -Seconds 2
+
+$baseUrl = "http://$BindHost`:$Port"
+
+# *** KRİTİK: Playwright için BASE_URL ve Django settings ***
+$env:BASE_URL = $baseUrl
+$env:DJANGO_SETTINGS_MODULE = "core.settings_maintenance"
+$env:PYTHONUNBUFFERED = "1"
+
+if (-not (Wait-ServerUp -Url "$baseUrl/admin/login/" -TimeoutSec 90)) {
+  Write-Warning "[SERVER] Ayağa kalkmadı ama NonBlocking mod akışı deneyecek."
 }
 
-# Map benzeri alanlara anahtar/değer yaz (Hashtable veya PSCustomObject fark etmeksizin)
-function _Map-Set {
-  param($Map,[string]$Key,$Value)
-  if (_Is-Hashtable $Map) { $Map[$Key] = $Value; return }
-  if (-not $Map.PSObject.Properties[$Key]) { Add-Member -InputObject $Map -MemberType NoteProperty -Name $Key -Value $Value }
-  else { $Map.$Key = $Value }
+# --- Flows çalıştır ---
+$runFlows = Join-Path $repoRoot "tools\run_flows.ps1"
+$flows_ok = $true
+$flows_rc = $null
+if (-not $SkipFlows -and (Test-Path $runFlows)) {
+  if ($NonBlocking) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $runFlows -Soft
+  } else {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $runFlows -FailFast
+  }
+  $flows_rc = $LASTEXITCODE
+  $flows_ok = ($NonBlocking) -or ($flows_rc -eq 0)
 }
 
-# Map benzeri alanın anahtarlarını döndür
-function _Map-Keys {
-  param($Map)
-  if (_Is-Hashtable $Map) { return $Map.Keys }
-  return ($Map.PSObject.Properties | Select-Object -ExpandProperty Name)
+# --- Görsel gate (varsa) ---
+$visual_ok = $true
+$vg = Join-Path $repoRoot "tools\visual_gate.ps1"
+if (Test-Path $vg) {
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $vg
+  $visual_ok = ($LASTEXITCODE -eq 0)
 }
 
-function Get-State {
-  param([string]$Path = $StatePath)
+# --- Layout acceptance (THROW YOK; asla patlatma) ---
+$layout_json = Join-Path $outDir "layout_report.json"
+$sim = 1.0
+$layout_ok = $true
+if (Test-Path $layout_json) {
   try {
-    if (Test-Path $Path) {
-      $s = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-      _Ensure-Prop $s 'project' ''
-      _Ensure-Prop $s 'repo' ''
-      _Ensure-Prop $s 'pipeline' (@{ stage="validate_ui_pages"; history=@() })
-      _Ensure-Prop $s 'tests'    (@{ results=@{}; summary=@{ passed=0; failed=0; last_run="" } })
-      _Ensure-Prop $s 'pending_actions' @()
-      _Ensure-Prop $s 'last_updated'    ""
-      _Ensure-Prop $s.pipeline 'stage'   'validate_ui_pages'
-      _Ensure-Prop $s.pipeline 'history' @()
-      _Ensure-Prop $s.tests    'results' @{}
-      _Ensure-Prop $s.tests    'summary' (@{ passed=0; failed=0; last_run="" })
-      _Ensure-Prop $s.tests.summary 'passed'   0
-      _Ensure-Prop $s.tests.summary 'failed'   0
-      _Ensure-Prop $s.tests.summary 'last_run' ""
-      return $s
+    $lj = Get-Content $layout_json -Raw | ConvertFrom-Json
+    if ($lj.similarity -ne $null) { $sim = [double]$lj.similarity }
+    $layout_ok = $true
+  } catch {
+    Write-Warning "[NEXT] layout_report.json okunamadı; layout gate devre dışı."
+    $sim = 1.0; $layout_ok = $true
+  }
+} else {
+  Write-Warning "[NEXT] layout_report.json yok; layout gate devre dışı."
+  $sim = 1.0; $layout_ok = $true
+}
+
+# --- NEXT kararı ---
+if ($layout_ok -and $flows_ok -and $visual_ok) {
+  Write-Host "[ACCEPT] mode=guided similarity=$sim target=target.png"
+  Write-Host "[NEXT] OK (layout AND flows)."
+  # ops/next_ok_runcard.txt çalıştır
+  $card = Join-Path $repoRoot "ops\next_ok_runcard.txt"
+  if (Test-Path $card) {
+    if ($DryRun) {
+      Write-Host "[DRY] tools\apply_runcard.ps1 -Card $card -NoConfirm"
+    } else {
+      $apply = Join-Path $repoRoot "tools\apply_runcard.ps1"
+      if (Test-Path $apply) {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $apply -Card $card -NoConfirm
+      }
     }
-  } catch { }
-
-  return [pscustomobject]@{
-    project=""
-    repo=""
-    pipeline=@{ stage="validate_ui_pages"; history=@() }
-    tests=@{ results=@{}; summary=@{ passed=0; failed=0; last_run="" } }
-    pending_actions=@()
-    last_updated=""
   }
+} else {
+  Write-Warning "[NEXT] NOT satisfied. layout_ok=$layout_ok flows_ok=$flows_ok visual_ok=$visual_ok (sim=$sim)"
 }
 
-function Save-State {
-  param([Parameter(Mandatory=$true)]$State,[string]$Path=$StatePath)
-  _Ensure-Prop $State 'last_updated' ""
-  _Set-Prop    $State 'last_updated' ((Get-Date).ToString("s"))
-  _Ensure-Dir  -Path $Path
-  $json = $State | ConvertTo-Json -Depth 20
-  [IO.File]::WriteAllText($Path,$json,[Text.UTF8Encoding]::new($false))
-}
+# --- Sunucuyu kapat ---
+if ($server -and $server.Id) { Stop-ProcessSafe -ProcId $server.Id }
 
-function Update-TestResult {
-  param(
-    [Parameter(Mandatory=$true)][string]$Key,
-    [ValidateSet("PASSED","FAILED")][string]$Status,
-    [hashtable]$Metrics,[hashtable]$Artifacts,
-    [string]$StatePathParam = $StatePath
-  )
-  $st = Get-State -Path $StatePathParam
-  _Ensure-Prop $st 'tests' (@{ results=@{}; summary=@{passed=0;failed=0;last_run=""} })
-  _Ensure-Prop $st.tests 'results' @{}
-  _Ensure-Prop $st.tests 'summary' (@{ passed=0; failed=0; last_run="" })
-  if (-not $Metrics)   { $Metrics   = @{} }
-  if (-not $Artifacts) { $Artifacts = @{} }
+# Ortamı kirletmeyelim (isteğe bağlı)
+Remove-Item Env:BASE_URL -ErrorAction SilentlyContinue
+Remove-Item Env:DJANGO_SETTINGS_MODULE -ErrorAction SilentlyContinue
+Remove-Item Env:PYTHONUNBUFFERED -ErrorAction SilentlyContinue
 
-  $entry = @{
-    status=$Status; metrics=$Metrics; artifacts=$Artifacts; ts=(Get-Date).ToString("s")
-  }
-  _Map-Set $st.tests.results $Key $entry
+exit 0
+### DOSYA BİTİŞ: pipeline_and_next.ps1
 
-  $passed=0; $failed=0
-  foreach($k in (_Map-Keys $st.tests.results)){
-    $it = if (_Is-Hashtable $st.tests.results) { $st.tests.results[$k] } else { $st.tests.results.$k }
-    if($it.status -eq "PASSED"){$passed++}else{$failed++}
-  }
-  _Set-Prop $st.tests.summary 'passed'   $passed
-  _Set-Prop $st.tests.summary 'failed'   $failed
-  _Set-Prop $st.tests.summary 'last_run' ((Get-Date).ToString("s"))
+### DOSYA BAŞLANGIÇ: .\\tools\run_all.ps1
+param([string]$BindHost="127.0.0.1",[int]$Port=8000)
+$ErrorActionPreference="Stop"
 
-  Save-State -State $st -Path $StatePathParam
-}
+# Betiklerle aynı klasörde güvenli çağrı
+$serve = Join-Path $PSScriptRoot 'serve_then_pipeline.ps1'
+$accept = Join-Path $PSScriptRoot 'accept_visual.ps1'
 
-function Add-PendingAction {
-  param(
-    [Parameter(Mandatory=$true)][string]$Id,
-    [Parameter(Mandatory=$true)][string]$Type,
-    [Parameter(Mandatory=$true)][string]$Detail,
-    [string]$DueStage="",
-    [string]$StatePathParam = $StatePath
-  )
-  $st = Get-State -Path $StatePathParam
-  _Ensure-Prop $st 'pending_actions' @()
-  $st.pending_actions += @{ id=$Id; type=$Type; detail=$Detail; due_stage=$DueStage; ts=(Get-Date).ToString("s"); status="open" }
-  Save-State -State $st -Path $StatePathParam
-}
+powershell -ExecutionPolicy Bypass -File $serve -BindHost $BindHost -Port $Port
+powershell -ExecutionPolicy Bypass -File $accept
+### DOSYA BİTİŞ: run_all.ps1
 
-function Advance-Pipeline {
-  param([Parameter(Mandatory=$true)][string]$ToStage,[string]$Hint="",[string]$StatePathParam=$StatePath)
-  $st = Get-State -Path $StatePathParam
-  _Ensure-Prop $st 'pipeline' (@{ stage="validate_ui_pages"; history=@() })
-  _Ensure-Prop $st.pipeline 'stage' "validate_ui_pages"
-  _Ensure-Prop $st.pipeline 'history' @()
-  $st.pipeline.history += @{ from=$st.pipeline.stage; to=$ToStage; hint=$Hint; ts=(Get-Date).ToString("s") }
-  _Set-Prop $st.pipeline 'stage' $ToStage
-  Save-State -State $st -Path $StatePathParam
-}
-### DOSYA BİTİŞ: state_tools.ps1
+### DOSYA BAŞLANGIÇ: .\\ops\smoke_links_wrapper.ps1
+param(
+  [string]$Base,
+  [string]$Start,
+  [string]$Out,
+  [int]   $Depth,
+  [int]   $Limit,
+  [string]$PathPrefix,
+  [int]   $Timeout,
+  [string]$OkRedirectTo
+)
+& "$PSScriptRoot\smoke_links.ps1" `
+  -Base $Base `
+  -Start $Start `
+  -Out $Out `
+  -Depth $Depth `
+  -Limit $Limit `
+  -PathPrefix $PathPrefix `
+  -Timeout $Timeout `
+  -OkRedirectTo $OkRedirectTo
+### DOSYA BİTİŞ: smoke_links_wrapper.ps1
 
 ### DOSYA BAŞLANGIÇ: .\\tools\accept_visual.ps1
 # tools/accept_visual.ps1
@@ -2431,6 +2035,110 @@ switch ($mode) {
   default   { Write-Host "[ACCEPT] Bilinmeyen mode: $mode" ; exit 0 }
 }
 ### DOSYA BİTİŞ: accept_visual.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_ui_validate.ps1
+param(
+  [string]$BaseUrl     = "http://127.0.0.1:8010",
+  [string]$BaselineDir = "targets\reference",
+  [string]$AlertsDir   = "_otokodlama\alerts"
+)
+
+$ErrorActionPreference = "Stop"
+$null = New-Item -ItemType Directory -Force -Path "ops\flows",$BaselineDir,"_otokodlama\out",$AlertsDir
+$env:BASE_URL = $BaseUrl
+
+# (İdempotent) equipment redirect loop fix
+Get-ChildItem ops\flows -Filter *equipment*.flow -ErrorAction SilentlyContinue | ForEach-Object {
+  (Get-Content $_.FullName -Raw) `
+    -replace 'GOTO\s+/admin/maintenance/equipment/(\s*)$', 'GOTO /admin/maintenance/equipment/_direct/$1' `
+  | Set-Content -LiteralPath $_.FullName -Encoding UTF8
+}
+
+function New-UiBaselineAndValidate {
+param(
+  [Parameter(Mandatory=$true)][string]$Key,     # ex: equipment_ui_list
+  [Parameter(Mandatory=$true)][string]$Url,     # ex: /admin/maintenance/equipment/_direct/
+  [string]$WaitSelector = 'css=:is(form#changelist-form,table#result_list,#content-main,#content,body)',
+  [double]$Recall = 0.90,
+  [int]$MinTokenLen = 3,
+  [switch]$UseOCR,
+  [string]$IgnorePatterns = 'csrf,token,\d{2,},page_\d+,id_\d+,ts_\d+'
+)
+  $baselinePng = Join-Path $BaselineDir ("{0}.png" -f $Key)
+  $flowBase = "ops\flows\_{0}_make_baseline.flow" -f $Key
+  $flowVal  = "ops\flows\{0}_validate.flow" -f $Key
+
+@"
+COMMENT make baseline ($Key)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO $Url
+WAIT SELECTOR $WaitSelector
+SCREENSHOT $baselinePng
+"@ | Set-Content -LiteralPath $flowBase -Encoding UTF8
+
+  $live = if($UseOCR){"dom+ocr"} else {"dom"}
+@"
+COMMENT validate $Key ($live)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO $Url
+WAIT SELECTOR $WaitSelector
+AUTOVALIDATE key=$Key baseline=$baselinePng words_recall=$Recall live_source=$live alert_dir=$AlertsDir min_token_len=$MinTokenLen ignore_numbers=yes ignore_patterns=$IgnorePatterns
+"@ | Set-Content -LiteralPath $flowVal -Encoding UTF8
+
+  $outA = "_otokodlama\out\_{0}_make_baseline.json" -f $Key
+  $outB = "_otokodlama\out\{0}_validate.json" -f $Key
+
+  Write-Host "[run] BASELINE → $Key" -ForegroundColor Cyan
+  python tools\pw_flow.py --steps $flowBase --out $outA | Out-Host
+
+  Write-Host "[run] VALIDATE → $Key ($live)" -ForegroundColor Yellow
+  python tools\pw_flow.py --steps $flowVal  --out $outB | Out-Host
+
+  $j = Get-Content $outB -Raw | ConvertFrom-Json
+  $lastAuto = $j.results | Where-Object { $_.cmd -eq 'AUTOVALIDATE' } | Select-Object -Last 1
+  [pscustomobject]@{
+    key           = $Key
+    ok            = $j.ok
+    recall        = if($lastAuto){ '{0:N2}' -f [double]$lastAuto.recall } else {''}
+    missing_count = if($lastAuto){ $lastAuto.missing_count } else {''}
+    out_json      = $outB
+  }
+}
+
+# ====== TEST SETİ ======
+$jobs = @(
+  @{ Key="equipment_ui_list";   Url="/admin/maintenance/equipment/_direct/";  OCR=$false },
+  @{ Key="calibration_ui_list"; Url="/admin/maintenance/calibration/_direct/";OCR=$false },
+  @{ Key="admin_home_fast";     Url="/admin/";                                OCR=$false }
+  # İstediğin yeni modülü aşağıya sadece Key/Url girerek ekle:
+  # @{ Key="bakim_plan_ui_list"; Url="/admin/maintenance/plan/_direct/"; OCR=$false }
+)
+
+$results = foreach($j in $jobs){
+  if($j.OCR){ New-UiBaselineAndValidate -Key $j.Key -Url $j.Url -UseOCR }
+  else      { New-UiBaselineAndValidate -Key $j.Key -Url $j.Url }
+}
+
+"`n=== SUMMARY ==="
+$results | Format-Table key,ok,recall,missing_count,out_json -AutoSize
+
+if (Test-Path (Join-Path $AlertsDir 'alerts_log.csv')) {
+  "`n=== Alerts (last 10) ==="
+  Import-Csv (Join-Path $AlertsDir 'alerts_log.csv') -Delimiter ';' |
+    Select-Object ts,key,ok,recall,misses,alert_md |
+    Select-Object -Last 10 | Format-Table -AutoSize
+}
+### DOSYA BİTİŞ: run_ui_validate.ps1
 
 ### DOSYA BAŞLANGIÇ: .\\ops\run_ui_validate_csv.ps1
 param(
@@ -2562,4 +2270,219 @@ if (Test-Path (Join-Path $AlertsDir 'alerts_log.csv')) {
     Select-Object -Last 10 | Format-Table -AutoSize
 }
 ### DOSYA BİTİŞ: run_ui_validate_csv.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\smoke_links.ps1
+# Rev: 2025-09-28 15:20 r4
+param(
+  [Parameter(Mandatory=$true)][string]$Base,
+  [Parameter(Mandatory=$true)][string]$Start,
+  [Parameter(Mandatory=$true)][string]$Out,
+  [int]$Depth = 1,
+  [int]$Limit = 150,
+  [string]$PathPrefix = "/",
+  [string]$LoginPath = "/admin/login/",
+  [string]$User = "admin",
+  [string]$Pass = "Admin!2345",
+  [int]$Timeout = 20000,
+  [string]$OkRedirectTo = ""   # ör: "/_direct/.*|/admin/.*"
+)
+
+function Join-Url([uri]$baseUri, [string]$url) {
+  if ([string]::IsNullOrWhiteSpace($url)) { return $null }
+  $u = $null
+  if ([System.Uri]::TryCreate($url, [System.UriKind]::Absolute, [ref]$u)) { return $u }
+  return [uri]::new($baseUri, $url)
+}
+
+function InScope([string]$locPath, [string]$prefix) {
+  if ([string]::IsNullOrWhiteSpace($locPath)) { return $false }
+  if ([string]::IsNullOrWhiteSpace($prefix))  { return $true }
+  return $locPath.ToLower().StartsWith($prefix.ToLower())
+}
+
+function DepthOf([string]$path, [string]$prefix) {
+  if (-not $path) { return 0 }
+  $p   = $path
+  $pre = if ($null -ne $prefix) { $prefix } else { "" }
+  $p   = $p.Trim('/')
+  $pre = $pre.Trim('/')
+  if ($pre -and $p.ToLower().StartsWith($pre.ToLower())) {
+    $p = $p.Substring($pre.Length).Trim('/')
+  }
+  if ([string]::IsNullOrWhiteSpace($p)) { return 0 }
+  return ($p.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries).Length)
+}
+
+function ParseLinks([string]$html, [uri]$docUri) {
+  $set = New-Object System.Collections.Generic.HashSet[string]
+  if (-not $html) { return @() }
+  $rx = [regex]'(?isx)
+      <a\b[^>]*?href\s*=\s*["''](?<u>[^"''#>]+)["'']
+    | <link\b[^>]*?href\s*=\s*["''](?<u>[^"''#>]+)["'']
+    | <script\b[^>]*?src\s*=\s*["''](?<u>[^"''#>]+)["'']
+  '
+  foreach ($m in $rx.Matches($html)) {
+    $u = $m.Groups['u'].Value
+    if ([string]::IsNullOrWhiteSpace($u)) { continue }
+    try {
+      $abs = (Join-Url $docUri $u)
+      if ($abs) { [void]$set.Add($abs.AbsolutePath) }
+    } catch {}
+  }
+  # .ToArray() .NET Framework'te extension; 5.1'de garanti değil → düz diziye çevir
+  return @($set)
+}
+
+Add-Type -AssemblyName System.Net.Http
+$handler = New-Object System.Net.Http.HttpClientHandler
+$cookieJar = New-Object System.Net.CookieContainer
+$handler.CookieContainer   = $cookieJar
+$handler.AllowAutoRedirect = $false
+$client  = New-Object System.Net.Http.HttpClient($handler)
+$client.Timeout = [TimeSpan]::FromMilliseconds([Math]::Max(1000, $Timeout))
+$baseUri = [uri]$Base
+
+function Get-Resp([uri]$uri, [string]$method="GET", [string]$body="", [hashtable]$headers=@{}) {
+  $req = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::$method, $uri)
+  foreach ($k in $headers.Keys) { $req.Headers.TryAddWithoutValidation($k, [string]$headers[$k]) | Out-Null }
+  if ($method -eq "POST") {
+    $req.Content = New-Object System.Net.Http.StringContent($body, [System.Text.Encoding]::UTF8, "application/x-www-form-urlencoded")
+  }
+  $resp = $client.SendAsync($req).Result
+  return $resp
+}
+
+function Do-Login {
+  try {
+    $loginUri = Join-Url $baseUri $LoginPath
+    $r1 = Get-Resp $loginUri "GET"
+    $html = $r1.Content.ReadAsStringAsync().Result
+    $token = ""
+    $m = [regex]::Match($html, 'name=["'']csrfmiddlewaretoken["'']\s+value=["'']([^"'']+)["'']', 'IgnoreCase')
+    if ($m.Success) { $token = $m.Groups[1].Value }
+    $body = "username=$([uri]::EscapeDataString($User))&password=$([uri]::EscapeDataString($Pass))"
+    if ($token) { $body += "&csrfmiddlewaretoken=$([uri]::EscapeDataString($token))" }
+    $null = Get-Resp $loginUri "POST" $body @{ "Referer" = $loginUri.AbsoluteUri }
+    return $true
+  } catch {
+    Write-Host "[link-smoke] login hata: $($_.Exception.Message)" -ForegroundColor Yellow
+    return $false
+  }
+}
+
+$null = Do-Login
+
+$queue   = New-Object System.Collections.Generic.Queue[object]
+$visited = New-Object System.Collections.Generic.HashSet[string]
+$bad     = New-Object System.Collections.Generic.List[object]
+$checked = 0
+
+$startUri = Join-Url $baseUri $Start
+$queue.Enqueue([pscustomobject]@{ Uri=$startUri; Depth=0 })
+
+while(($queue.Count -gt 0) -and ($checked -lt $Limit)) {
+  $item = $queue.Dequeue()
+  $u = $item.Uri
+  $d = [int]$item.Depth
+  if (-not $u) { continue }
+
+  $key = $u.AbsolutePath.ToLower()
+  if ($visited.Contains($key)) { continue }
+  [void]$visited.Add($key)
+
+  try {
+    $resp = Get-Resp $u "GET"
+    $status = [int]$resp.StatusCode
+    $locHdr = $resp.Headers.Location
+    $locAbs = $null
+    if ($locHdr) { $locAbs = Join-Url $u $locHdr.ToString() }
+
+    if ($status -ge 300 -and $status -lt 400) {
+      $okRedirect = $false
+      if ($locAbs -and -not [string]::IsNullOrWhiteSpace($OkRedirectTo)) {
+        if ($locAbs.AbsolutePath -match $OkRedirectTo) { $okRedirect = $true }
+      }
+      $inScopeNext = ($locAbs -ne $null) -and (InScope $locAbs.AbsolutePath $PathPrefix)
+      if ($inScopeNext -and -not $okRedirect) {
+        $locStr = if ($locAbs) { $locAbs.AbsoluteUri } else { "" }
+        $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=$status; location=$locStr }) | Out-Null
+      }
+      if ($locAbs -and (InScope $locAbs.AbsolutePath $PathPrefix) -and ($d -lt $Depth)) {
+        $queue.Enqueue([pscustomobject]@{ Uri=$locAbs; Depth=$d })
+      }
+    }
+    elseif ($status -ge 200 -and $status -lt 300) {
+      $ct = $resp.Content.Headers.ContentType
+      if ($ct -and $ct.MediaType -like "text/html") {
+        $html = $resp.Content.ReadAsStringAsync().Result
+        if ((InScope $u.AbsolutePath $PathPrefix) -and ($d -lt $Depth)) {
+          foreach ($p in (ParseLinks $html $u)) {
+            if (InScope $p $PathPrefix) {
+              $depthNext = (DepthOf $p $PathPrefix)
+              if ($depthNext -le $Depth) {
+                $abs = Join-Url $baseUri $p
+                if ($abs -and -not $visited.Contains($abs.AbsolutePath.ToLower())) {
+                  $queue.Enqueue([pscustomobject]@{ Uri=$abs; Depth=$depthNext })
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    else {
+      $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=$status; location="" }) | Out-Null
+    }
+  } catch {
+    $msg = $_.Exception.Message
+    Write-Host "[link-smoke] GET hata: $msg" -ForegroundColor Yellow
+    $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=-1; location=""; error=$msg }) | Out-Null
+  }
+
+  $checked++
+}
+
+$result = [pscustomobject]@{
+  checked      = $checked
+  bad          = $bad.Count
+  bad_list     = $bad
+  visited      = $visited | Sort-Object
+  scope_prefix = $PathPrefix
+  base         = $Base
+  start        = $Start
+  ok_redirect  = $OkRedirectTo
+  depth        = $Depth
+  limit        = $Limit
+}
+$dir = Split-Path -Parent $Out
+if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+$result | ConvertTo-Json -Depth 6 | Out-File -FilePath $Out -Encoding UTF8
+
+if ($bad.Count -gt 0) {
+  Write-Host ("[link-smoke] checked={0} bad={1} scope_prefix={2}" -f $checked, $bad.Count, $PathPrefix) -ForegroundColor Red
+  $i = 0
+  foreach ($b in $bad) {
+    Write-Host ("    {0} {1} {2}" -f $i, $b.status, $b.url)
+    $i++
+  }
+  exit 2
+} else {
+  Write-Host ("[link-smoke] checked={0} bad=0 scope_prefix={1}" -f $checked, $PathPrefix) -ForegroundColor Green
+  Write-Host "[link-smoke] YEŞİL" -ForegroundColor Green
+  exit 0
+}
+### DOSYA BİTİŞ: smoke_links.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_ci_pr_approve.ps1
+param()
+if (-not $env:OZKAN_PAT) {
+  Write-Error "Set OZKAN_PAT (ozkanrepo1 PAT, scopes: repo, read:org)"; exit 1
+}
+$env:GH_TOKEN = $env:OZKAN_PAT
+try {
+  & "$PSScriptRoot\auto_pr.ps1" -WaitForMerge
+} finally {
+  Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
+}
+### DOSYA BİTİŞ: run_ci_pr_approve.ps1
 
