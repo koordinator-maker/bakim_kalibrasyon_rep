@@ -1,45 +1,35 @@
 ﻿const { chromium } = require("playwright");
 
 (async () => {
-  const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext({ storageState: "storage/user.json" });
-  const page = await context.newPage();
-  
-  console.log("🔗 URL: http://127.0.0.1:8010/admin/");
-  
-  await page.goto("http://127.0.0.1:8010/admin/");
-  await page.waitForLoadState("networkidle");
-  
-  const url = page.url();
-  console.log("📍 Final URL:", url);
-  
-  const title = await page.title();
-  console.log("📄 Title:", title);
-  
-  // Tüm HTML'i kaydet
-  const html = await page.content();
-  require("fs").writeFileSync("admin_full.html", html, "utf8");
-  console.log("✅ HTML kaydedildi: admin_full.html");
-  
-  // Screenshot
-  await page.screenshot({ path: "admin_full.png", fullPage: true });
-  console.log("✅ Screenshot: admin_full.png");
-  
-  // Body metni
-  const bodyText = await page.locator("body").textContent();
-  console.log("\n📝 Body ilk 1000 karakter:");
-  console.log(bodyText.substring(0, 1000));
-  
-  // Tüm selector'ları kontrol et
-  const hasContent = await page.locator("#content").count();
-  const hasBody = await page.locator("body").count();
-  const hasDjangoAdmin = await page.locator(".django-admin").count();
-  
-  console.log("\n🔎 Element kontrolü:");
-  console.log("  #content:", hasContent);
-  console.log("  body:", hasBody);
-  console.log("  .django-admin:", hasDjangoAdmin);
-  
-  await page.pause();
-  await browser.close();
+   const browser = await chromium.launch({ headless: false }); // Başlıklı modda çalışır
+   const context = await browser.newContext({ storageState: "storage/user.json" });
+   const page = await context.newPage();
+
+   const urlToTest = "http://127.0.0.1:8010/admin/"; // Kök Admin Sayfası
+   console.log("?? URL:", urlToTest);
+
+   await page.goto(urlToTest);
+   await page.waitForLoadState("networkidle");
+
+   console.log("?? Title:", await page.title());
+
+   // Tüm HTML'i kaydet
+   const html = await page.content();
+   require("fs").writeFileSync("debug_admin_root.html", html, "utf8");
+   console.log("✅ HTML kaydedildi: debug_admin_root.html");
+
+   // Screenshot al
+   await page.screenshot({ path: "debug_admin_root.png", fullPage: true });
+   console.log("✅ Screenshot kaydedildi: debug_admin_root.png");
+
+   // Sayfadaki tüm linkleri (URL'leri) bul ve yazdır
+   console.log("\n?? Admin Sayfasındaki Tüm Linkler:");
+   const links = await page.$$eval("a", anchors => anchors.map(a => a.href));
+   
+   // Sadece "/admin/" ile başlayanları filtrele
+   const adminLinks = links.filter(link => link.includes('/admin/') && !link.endsWith('/admin/')).slice(0, 10);
+   
+   adminLinks.forEach(link => console.log(link));
+
+   await browser.close();
 })();
