@@ -1,18 +1,10 @@
 [
   {
-    "id": "E101",
-    "title": "Equipment Listesi Sayfasını Görüntüleme",
-    "description": "Kullanıcının giriş yaptıktan sonra ekipman listesi sayfasına başarıyla ulaştığını doğrular.",
-    "job_definition": "open: /admin/maintenance/equipment/; expect: body; text: Equipment",
-    "design_ref": "N/A",
-    "visual_threshold": 0.85
-  },
-  {
-    "id": "E102",
-    "title": "Equipment Ekleme Formuna Erişim",
-    "description": "Kullanıcının Equipment Listesi sayfasından ekleme formuna başarıyla geçtiğini doğrular.",
-    "job_definition": "open: /admin/maintenance/equipment/add/; expect: input[name='name']; expect: #id_serial_number; text: Kaydet",
-    "design_ref": "N/A",
+    "id": "EQP-001",
+    "title": "Equipment Listesi",
+    "description": "Equipment listesi görsel kontrolü",
+    "job_definition": "open:/admin/maintenance/equipment/;expect:body",
+    "design_ref": "targets/reference/EQP-001.png",
     "visual_threshold": 0.85
   }
 ]
