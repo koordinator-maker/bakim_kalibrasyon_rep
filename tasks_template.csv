@@ -1,2 +1,3 @@
 ﻿id,type,title,design_ref,visual_threshold,job_definition
-MAINT-001,ui,Maintenance Sayfası,N/A,0.90,"open:/maintenance/;expect:body"
+MAINT-001,ui,Maintenance Anasayfa Kontrolü,N/A,0.90,"open:/maintenance/;expect:body"
+EQP-001,ui,Cihaz Listeleme Sayfası Kontrolü,N/A,0.90,"open:/admin/maintenance/equipment/;expect:.addlink"
