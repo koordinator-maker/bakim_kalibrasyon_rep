@@ -282,6 +282,16 @@ async function looksLikeLogin(page){
   return body.includes("login") || body.includes("giriş");
 }
 
+async function ensureAdminForm(page){
+  const sel = [
+    "form[action*='/add/']",
+    "button[name='_save']",
+    "input[name='_save']",
+    "div.submit-row"
+  ].join(",");
+  const c = await page.locator(sel).count();
+  return c > 0;
+}
 async function openAddSmart_v2(page, url){
   // 1) Direkt /add/
   await page.goto(url, { waitUntil: "load" });
@@ -303,19 +313,7 @@ async function openAddSmart_v2(page, url){
     await add.click();
     await page.waitForLoadState("domcontentloaded");
   }
-}
-async function ensureAdminForm(page){
-  const selectors = [
-    "input[name='csrfmiddlewaretoken']",
-    "form[method='post']",
-    "button[name='_save']",
-    "input[name='_save']",
-    "div.submit-row"
-  ];
-  for (const s of selectors){
-    const loc = page.locator(s).first();
-    if (await loc.count() > 0){
-      try { await expect(loc).toBeVisible({ timeout: 500 }); return true; } catch {}
+
     }
   }
   return false;
@@ -438,6 +436,10 @@ test.afterAll(() => {
     printBox('⚠️  BAZI TESTLER BAŞARISIZ', summary, colors.yellow);
   }
 });
+
+
+
+
 
 
 
