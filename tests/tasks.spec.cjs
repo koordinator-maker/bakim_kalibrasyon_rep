@@ -267,7 +267,44 @@ test.beforeAll(() => {
   ], colors.magenta);
 });
 
-for (const t of tasks) {
+async function looksLikeLogin(page){
+  const markers = [
+    "input[name='username']",
+    "input[name='password']",
+    "form[action*='login']",
+    "input[name='login']",
+    "#login-form"
+  ];
+  for (const m of markers){
+    if (await page.locator(m).count() > 0) return true;
+  }
+  const body = (await page.locator("body").innerText()).toLowerCase();
+  return body.includes("login") || body.includes("giriş");
+}
+
+async function openAddSmart(page, url){
+  // 1) Direkt /add/
+  await page.goto(url, { waitUntil: "load" });
+  await page.waitForLoadState("networkidle");
+  if (await page.locator("form[action$='/add/'], form[method='post']").count() > 0) return;
+
+  // 2) /add/_direct/
+  const direct = url.replace(/\/add\/?$/, "/add/_direct/");
+  await page.goto(direct, { waitUntil: "load" });
+  await page.waitForLoadState("networkidle");
+  if (await page.locator("form[action$='/add/'], form[method='post']").count() > 0) return;
+
+  // 3) Liste -> +Add
+  const listUrl = url.replace(/\/add\/?$/, "/");
+  await page.goto(listUrl, { waitUntil: "load" });
+  await page.waitForLoadState("networkidle");
+  const add = page.locator("ul.object-tools a.addlink, #content-main .object-tools a.addlink, a[href$='/add/']").first();
+  if (await add.count() > 0 && await add.isVisible()) {
+    await add.click();
+    await page.waitForLoadState("domcontentloaded");
+  }
+}
+for (const t of tasks){
   test(`${t.id} - ${t.title}`, async ({ page }) => {
     const start = Date.now();
     printTestHeader(t.id, t.title);
@@ -360,4 +397,5 @@ test.afterAll(() => {
     printBox('⚠️  BAZI TESTLER BAŞARISIZ', summary, colors.yellow);
   }
 });
+
 
