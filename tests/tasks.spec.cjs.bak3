@@ -282,7 +282,7 @@ async function looksLikeLogin(page){
   return body.includes("login") || body.includes("giriş");
 }
 
-async function openAddSmart_v2(page, url){
+async function openAddSmart(page, url){
   // 1) Direkt /add/
   await page.goto(url, { waitUntil: "load" });
   await page.waitForLoadState("networkidle");
@@ -304,23 +304,6 @@ async function openAddSmart_v2(page, url){
     await page.waitForLoadState("domcontentloaded");
   }
 }
-async function ensureAdminForm(page){
-  const selectors = [
-    "input[name='csrfmiddlewaretoken']",
-    "form[method='post']",
-    "button[name='_save']",
-    "input[name='_save']",
-    "div.submit-row"
-  ];
-  for (const s of selectors){
-    const loc = page.locator(s).first();
-    if (await loc.count() > 0){
-      try { await expect(loc).toBeVisible({ timeout: 500 }); return true; } catch {}
-    }
-  }
-  return false;
-}
-
 for (const t of tasks){
   test(`${t.id} - ${t.title}`, async ({ page }) => {
     const start = Date.now();
@@ -338,7 +321,7 @@ for (const t of tasks){
         const absolute = s.startsWith("http") ? s : BASE + s;
         if (/\/add\/?$/.test(absolute)) {
           __openSmartActive = true;
-          try { await openAddSmart_v2(page, absolute); }
+          try { await openAddSmart(page, absolute); }
           finally { __openSmartActive = false; }
           return page; // openAddSmart zaten navigate etti
         }
@@ -438,8 +421,6 @@ test.afterAll(() => {
     printBox('⚠️  BAZI TESTLER BAŞARISIZ', summary, colors.yellow);
   }
 });
-
-
 
 
 

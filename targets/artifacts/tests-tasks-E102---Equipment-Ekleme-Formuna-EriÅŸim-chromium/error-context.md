@@ -11,9 +11,9 @@
         - 'row "Request Method: GET" [ref=e7]':
           - rowheader "Request Method:" [ref=e8]
           - cell "GET" [ref=e9]
-        - 'row "Request URL: http://127.0.0.1:8010/admin/maintenance/equipment/add/" [ref=e10]':
+        - 'row "Request URL: http://127.0.0.1:8010/admin/maintenance/equipment/_direct/" [ref=e10]':
           - rowheader "Request URL:" [ref=e11]
-          - cell "http://127.0.0.1:8010/admin/maintenance/equipment/add/" [ref=e12]
+          - cell "http://127.0.0.1:8010/admin/maintenance/equipment/_direct/" [ref=e12]
         - 'row "Raised by: django.contrib.admin.sites.catch_all_view" [ref=e13]':
           - rowheader "Raised by:" [ref=e14]
           - cell "django.contrib.admin.sites.catch_all_view" [ref=e15]
@@ -54,7 +54,7 @@
         - code [ref=e48]: (?P<url>.*)$
     - paragraph [ref=e49]:
       - text: The current path,
-      - code [ref=e50]: admin/maintenance/equipment/add/
+      - code [ref=e50]: admin/maintenance/equipment/_direct/
       - text: ", matched the last one."
   - contentinfo [ref=e51]:
     - paragraph [ref=e52]:
