@@ -1,19 +1,19 @@
 ﻿{
-  "name": "bakim_kalibrasyon_e2e",
-  "version": "1.0.0",
-  "description": "Bakım ve Kalibrasyon Uygulaması Uçtan Uca Testleri",
-  "main": "index.js",
-  "scripts": {
-    "test": "playwright test --reporter=line,./reporters/custom_json_reporter.js --output=targets/artifacts"
-  },
-  "keywords": [
-    "playwright",
-    "e2e",
-    "testing"
-  ],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@playwright/test": "^1.44.1"
-  }
+    "name":  "bakim_kalibrasyon_e2e",
+    "version":  "1.0.0",
+    "description":  "Bakım ve Kalibrasyon Uygulaması Uçtan Uca Testleri",
+    "main":  "index.js",
+    "scripts":  {
+                    "test":  "playwright test --reporter=line,./reporters/custom_json_reporter.js --output=targets/artifacts"
+                },
+    "keywords":  [
+                     "playwright",
+                     "e2e",
+                     "testing"
+                 ],
+    "author":  "",
+    "license":  "ISC",
+    "devDependencies":  {
+                            "@playwright/test":  "^1.44.1"
+                        }
 }
