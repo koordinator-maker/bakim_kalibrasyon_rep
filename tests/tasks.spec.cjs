@@ -282,16 +282,6 @@ async function looksLikeLogin(page){
   return body.includes("login") || body.includes("giriş");
 }
 
-async function ensureAdminForm(page){
-  const sel = [
-    "form[action*='/add/']",
-    "button[name='_save']",
-    "input[name='_save']",
-    "div.submit-row"
-  ].join(",");
-  const c = await page.locator(sel).count();
-  return c > 0;
-}
 async function openAddSmart_v2(page, url){
   // 1) Direkt /add/
   await page.goto(url, { waitUntil: "load" });
@@ -313,7 +303,19 @@ async function openAddSmart_v2(page, url){
     await add.click();
     await page.waitForLoadState("domcontentloaded");
   }
-
+}
+async function ensureAdminForm(page){
+  const selectors = [
+    "input[name='csrfmiddlewaretoken']",
+    "form[method='post']",
+    "button[name='_save']",
+    "input[name='_save']",
+    "div.submit-row"
+  ];
+  for (const s of selectors){
+    const loc = page.locator(s).first();
+    if (await loc.count() > 0){
+      try { await expect(loc).toBeVisible({ timeout: 500 }); return true; } catch {}
     }
   }
   return false;
@@ -324,31 +326,7 @@ for (const t of tasks){
     const start = Date.now();
     printTestHeader(t.id, t.title);
     beep();
-    
-    
-  // --- inject: wrap page.goto to handle /add/ smart nav ---
-  let __openSmartActive = false;
-  const __origGoto = page.goto.bind(page);
-  page.goto = async (u, opts) => {
-    try {
-      if (!__openSmartActive) {
-        const s = (typeof u === "string" ? u : String(u));
-        const absolute = s.startsWith("http") ? s : BASE + s;
-        if (/\/add\/?$/.test(absolute)) {
-          __openSmartActive = true;
-          try { await openAddSmart_v2(page, absolute); }
-          finally { __openSmartActive = false; }
-          return page; // openAddSmart zaten navigate etti
-        }
-      }
-      const r = await __origGoto(u, opts);
-      await page.waitForLoadState("networkidle").catch(()=>{});
-      return r;
-    } catch(e){
-      throw e;
-    }
-  };
-  // --- /inject ---
+---
 const steps = parseSteps(t.job_definition);
     printTaskRequirements(steps, t.design_ref, t.visual_threshold);
     printInfo(`Adım: ${steps.length}`);
@@ -360,7 +338,8 @@ const steps = parseSteps(t.job_definition);
         printInfo(`Açılıyor: ${url}`);
         await page.goto(url, { waitUntil: "load" });
         await page.waitForLoadState("networkidle");
-        printSuccess(`Yüklendi: ${page.url()}`);
+        printSuccess(Yüklendi: );
+    printInfo('TITLE: ' + await page.title());
       }
       
       for (const s of steps.filter(s => s.cmd === "expect")) {
@@ -436,7 +415,6 @@ test.afterAll(() => {
     printBox('⚠️  BAZI TESTLER BAŞARISIZ', summary, colors.yellow);
   }
 });
-
 
 
 

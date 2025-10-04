@@ -1,4 +1,6 @@
-﻿// tests/_setup.spec.js
+﻿ /* override storage for setup only */
+ try { require('@playwright/test').test.use({ storageState: undefined }); } catch {}
+// tests/_setup.spec.js
 import { test as setup, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
@@ -39,4 +41,6 @@ setup("login state -> storage/user.json", async ({ page, context }) => {
   if (!fs.existsSync(authFile)) throw new Error("storage/user.json yazılamadı");
   console.log(`[SETUP SUCCESS] Saved: ${authFile} — URL: ${page.url()}`);
 });
+
+
 
