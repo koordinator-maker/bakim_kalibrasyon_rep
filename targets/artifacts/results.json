@@ -4,8 +4,8 @@
     "passed": 3,
     "failed": 0,
     "skipped": 0,
-    "startTime": "2025-10-04T18:57:18.069Z",
-    "endTime": "2025-10-04T18:57:23.478Z"
+    "startTime": "2025-10-04T20:10:24.233Z",
+    "endTime": "2025-10-04T20:10:30.271Z"
   },
   "tests": [
     {
@@ -17,7 +17,7 @@
       },
       "project": "setup",
       "status": "passed",
-      "duration_ms": 419,
+      "duration_ms": 730,
       "error": null
     },
     {
@@ -29,7 +29,7 @@
       },
       "project": "chromium",
       "status": "passed",
-      "duration_ms": 873,
+      "duration_ms": 939,
       "error": null
     },
     {
@@ -41,7 +41,7 @@
       },
       "project": "chromium",
       "status": "passed",
-      "duration_ms": 1871,
+      "duration_ms": 1878,
       "error": null
     }
   ]

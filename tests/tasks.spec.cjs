@@ -1,4 +1,4 @@
-const { test, expect } = require("@playwright/test");
+﻿const { test, expect } = require("@playwright/test");
 const fs = require("fs");
 const path = require("path");
 
@@ -364,17 +364,6 @@ const steps = parseSteps(t.job_definition);
         await page.waitForLoadState("networkidle");
         printSuccess(`Yüklendi: ${page.url()}`);
       }
-// Guard: "add" formu yoksa (404 ya da _direct'e dönüldüyse) testten sessizce çık.
-if (open && /\/add\/?$/.test(open.val)) {
-  const title = (await page.title()).toLowerCase();
-  const bodyText = (await page.locator("body").innerText()).toLowerCase();
-  const redirected = page.url().includes("_direct/");
-  const looks404 = title.includes("page not found") || bodyText.includes("page not found");
-  if (redirected || looks404) {
-    printInfo("E102 SKIP: Model add formu yok/404 → testten çıkılıyor.");
-    return;
-  }
-}
       
       for (const s of steps.filter(s => s.cmd === "expect")) {
         printInfo(`Bekleniyor: ${s.val}`);
