@@ -282,7 +282,8 @@ for (const t of tasks) {
       if (open) {
         const url = open.val.startsWith("http") ? open.val : BASE + open.val;
         printInfo(`Açılıyor: ${url}`);
-        await page.goto(url, { waitUntil: "domcontentloaded" });
+        await page.goto(url, { waitUntil: "load" });
+        await page.waitForLoadState("networkidle");
         printSuccess(`Yüklendi: ${page.url()}`);
       }
       
@@ -359,3 +360,4 @@ test.afterAll(() => {
     printBox('⚠️  BAZI TESTLER BAŞARISIZ', summary, colors.yellow);
   }
 });
+
