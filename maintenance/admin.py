@@ -4,11 +4,11 @@ from .models import Equipment
 # Equipment modelini Django Admin paneline kaydeder.
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
-    # Admin listeleme sayfas�nda g�sterilecek alanlar
+    # Admin listeleme sayfasÃ„Â±nda gÃƒÂ¶sterilecek alanlar
     list_display = ('name', 'serial_number', 'location', 'inventory_code')
     
-    # Arama �ubu�unda arama yap�labilecek alanlar
+    # Arama ÃƒÂ§ubuÃ„Å¸unda arama yapÃ„Â±labilecek alanlar
     search_fields = ('name', 'serial_number', 'inventory_code')
 
-    # Filtreleme se�enekleri
+    # Filtreleme seÃƒÂ§enekleri
     list_filter = ('location',)
