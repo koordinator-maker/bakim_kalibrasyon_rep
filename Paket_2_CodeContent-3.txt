@@ -1,0 +1,2154 @@
+﻿### DOSYA BAŞLANGIÇ: .\\ops\report_crud.ps1
+param(
+  [string]$OutDir    = "_otokodlama\out",
+  [string]$ReportDir = "_otokodlama\reports",
+  [string]$Include   = "*.json",
+  [int]   $MaxErrLen = 200
+)
+
+function New-DirIfMissing($p) { if (!(Test-Path $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null } }
+New-DirIfMissing $ReportDir
+
+function Shorten([string]$s, [int]$n) {
+  if ([string]::IsNullOrWhiteSpace($s)) { return "" }
+  $flat = ($s -replace "\s+"," ").Trim()
+  if ($flat.Length -le $n) { return $flat }
+  return $flat.Substring(0,[Math]::Min($n,$flat.Length))
+}
+
+function Classify-Failure($step) {
+  $cmd = "$($step.cmd)".ToUpper()
+  $arg = [string]$step.arg
+  $err = [string]$step.error
+  $url = [string]$step.url
+
+  if ($cmd -eq "AUTOVALIDATE") {
+    $parts = @()
+    if ($step.ok_words  -eq $false) { $parts += "kelime-recall" }
+    if ($step.ok_visual -eq $false) { $parts += "görsel-benzerlik" }
+    if ($step.ok_selects -eq $false){ $parts += "select-kontrolü" }
+    if ($parts.Count -eq 0) { $parts = @("autovalidate") }
+    return "autovalidate: " + ($parts -join "+")
+  }
+
+  if ($err -match "ERR_TOO_MANY_REDIRECTS") { return "redirect-loop" }
+  if ($url -like "chrome-error://*")       { return "browser/navigation-error" }
+  if ($err -match "ERR_CONNECTION_REFUSED") { return "server-down" }
+  if ($err -match "403|Forbidden")          { return "403-forbidden" }
+  if ($err -match "401|Unauthorized")       { return "401-unauthorized" }
+
+  if ($err -match "TimeoutError: Page\.wait_for_selector") {
+    if ($arg -match "table#result_list")                     { return "liste-boş/kayıt-yok/selector-değişti" }
+    if ($arg -match "form#changelist-search|input#searchbar"){ return "arama-çubuğu-bulunamadı" }
+    if ($arg -match "form#equipment_form")                   { return "form-yüklenmedi" }
+    if ($arg -match "\.messagelist")                         { return "başarı-mesajı-yok" }
+    return "selector-timeout"
+  }
+
+  if ($cmd -eq "CLICK" -and $err -match "not visible|detached|is not visible") { return "click-mümkün-değil" }
+  return "diğer"
+}
+
+# Dosya listesi (Include destekli)
+$rows = @()
+$files = @()
+$patterns = $Include -split '[,; ]+' | Where-Object { $_ -and $_.Trim() -ne "" }
+if ($patterns.Count -eq 0) { $patterns = @("*.json") }
+foreach ($p in $patterns) { $files += Get-ChildItem (Join-Path $OutDir $p) -ErrorAction SilentlyContinue }
+if ($files.Count -eq 0)   { $files  = Get-ChildItem (Join-Path $OutDir "*.json") -ErrorAction SilentlyContinue }
+$files = $files | Sort-Object LastWriteTime
+
+foreach ($f in $files) {
+  # JSON'u UTF-8 olarak oku; gerekirse .NET fallback
+  try {
+    $raw = Get-Content $f.FullName -Raw -Encoding UTF8
+  } catch {
+    $raw = [IO.File]::ReadAllText($f.FullName, [Text.UTF8Encoding]::new($true))
+  }
+  try {
+    $j = $raw | ConvertFrom-Json
+  } catch {
+    $rows += [pscustomobject]@{
+      Flow=[IO.Path]::GetFileNameWithoutExtension($f.Name); Pass=$false; FirstFailStep=''; Cmd='';
+      Reason='json-parse-error'; ErrorSnippet=(Shorten "$($_.Exception.Message)" $MaxErrLen);
+      Url=''; Recall=''; VisualSim=''; OkWords=''; OkVisual=''; OkSelects=''; MissingCount='';
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
+    }
+    continue
+  }
+
+  if ($null -eq $j.ok -or $null -eq $j.results) {
+    $rows += [pscustomobject]@{
+      Flow=[IO.Path]::GetFileNameWithoutExtension($f.Name); Pass=$false; FirstFailStep=''; Cmd='';
+      Reason='schema-mismatch'; ErrorSnippet=''; Url=''; Recall=''; VisualSim=''; OkWords=''; OkVisual=''; OkSelects=''; MissingCount='';
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
+    }
+    continue
+  }
+
+  $flow  = [IO.Path]::GetFileNameWithoutExtension($f.Name)
+  $pass  = [bool]$j.ok
+  $steps = @($j.results)
+  $firstFail = $steps | Where-Object { $_.ok -ne $true } | Select-Object -First 1
+
+  # Autovalidate metrikleri (varsa)
+  $recall=''; $visual=''; $okw=''; $okv=''; $oks=''; $miss=''
+  foreach ($s in $steps) {
+    if ("$($s.cmd)".ToUpper() -eq "AUTOVALIDATE") {
+      $recall=$s.recall; $visual=$s.visual_sim; $okw=$s.ok_words; $okv=$s.ok_visual; $oks=$s.ok_selects; $miss=$s.missing_count
+    }
+  }
+
+  if (-not $firstFail -and -not $pass) {
+    $toolErr = ""; try { $toolErr = [string]$j.tool_error } catch {}
+    $rows += [pscustomobject]@{
+      Flow=$flow; Pass=$pass; FirstFailStep=''; Cmd=''; Reason='tool-error/no-steps';
+      ErrorSnippet=(Shorten $toolErr $MaxErrLen); Url='';
+      Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss;
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
+    }
+    continue
+  }
+
+  if ($firstFail) {
+    $rows += [pscustomobject]@{
+      Flow=$flow; Pass=$pass; FirstFailStep=$firstFail.i; Cmd=$firstFail.cmd;
+      Reason=(Classify-Failure $firstFail); ErrorSnippet=(Shorten([string]$firstFail.error, $MaxErrLen));
+      Url=$firstFail.url; Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss;
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
+    }
+  } else {
+    $lastUrl = ''; if ($steps.Count -gt 0) { $lastUrl = $steps[-1].url }
+    $rows += [pscustomobject]@{
+      Flow=$flow; Pass=$pass; FirstFailStep=''; Cmd=''; Reason='passed'; ErrorSnippet=''; Url=$lastUrl;
+      Recall=$recall; VisualSim=$visual; OkWords=$okw; OkVisual=$okv; OkSelects=$oks; MissingCount=$miss;
+      Log=([IO.Path]::ChangeExtension($f.FullName,'log'))
+    }
+  }
+}
+
+# Çıktılar
+$csvPath  = Join-Path $ReportDir "crud_summary.csv"
+$jsonPath = Join-Path $ReportDir "crud_summary.json"
+$mdPath   = Join-Path $ReportDir "crud_summary.md"
+
+New-DirIfMissing $ReportDir
+$rows | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
+$rows | ConvertTo-Json -Depth 8 | Out-File $jsonPath -Encoding utf8
+
+$passCount = ($rows | Where-Object {$_.Pass -eq $true}).Count
+$failCount = ($rows | Where-Object {$_.Pass -ne $true}).Count
+$byReason  = $rows | Group-Object Reason | Sort-Object Count -Descending
+
+$md = @()
+$md += "# Admin PW Koşu Özeti"
+$md += ""
+$md += "*Toplam:* $($rows.Count)  |  *Geçti:* $passCount  |  *Kaldı:* $failCount"
+$md += ""
+$md += "## Hata Dağılımı"
+foreach ($g in $byReason) { $md += "- **$($g.Name)**: $($g.Count)" }
+$md += ""
+$md += "## Akışlar"
+$md += ""
+$md += "| Flow | Pass | Reason | FirstFailStep | Cmd | Recall | VisualSim | OkWords | OkVisual | OkSelects | Missing | ErrorSnippet | Log |"
+$md += "|------|------|--------|---------------|-----|--------|-----------|---------|----------|-----------|---------|--------------|-----|"
+foreach ($r in $rows) {
+  $md += "| $($r.Flow) | $($r.Pass) | $($r.Reason) | $($r.FirstFailStep) | $($r.Cmd) | $($r.Recall) | $($r.VisualSim) | $($r.OkWords) | $($r.OkVisual) | $($r.OkSelects) | $($r.MissingCount) | $(($r.ErrorSnippet -replace '\|','/')) | $($r.Log) |"
+}
+$md -join "`r`n" | Out-File $mdPath -Encoding utf8
+
+Write-Host "== PW RAPORU ==" -ForegroundColor Cyan
+"{0,-38} {1,-6} {2,-24} {3,-5} {4}" -f "Flow","Pass","Reason","Step","Cmd"
+foreach ($r in $rows) {
+  "{0,-38} {1,-6} {2,-24} {3,-5} {4}" -f $r.Flow, $r.Pass, (Shorten $r.Reason 24), $r.FirstFailStep, $r.Cmd
+}
+Write-Host ""
+Write-Host ("CSV : " + $csvPath)
+Write-Host ("JSON: " + $jsonPath)
+Write-Host ("MD  : " + $mdPath)
+
+### DOSYA BİTİŞ: report_crud.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\smoke_links_wrapper.ps1
+param(
+  [string]$Base,
+  [string]$Start,
+  [string]$Out,
+  [int]   $Depth,
+  [int]   $Limit,
+  [string]$PathPrefix,
+  [int]   $Timeout,
+  [string]$OkRedirectTo
+)
+& "$PSScriptRoot\smoke_links.ps1" `
+  -Base $Base `
+  -Start $Start `
+  -Out $Out `
+  -Depth $Depth `
+  -Limit $Limit `
+  -PathPrefix $PathPrefix `
+  -Timeout $Timeout `
+  -OkRedirectTo $OkRedirectTo
+### DOSYA BİTİŞ: smoke_links_wrapper.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_ui_validate.ps1
+param(
+  [string]$BaseUrl     = "http://127.0.0.1:8010",
+  [string]$BaselineDir = "targets\reference",
+  [string]$AlertsDir   = "_otokodlama\alerts"
+)
+
+$ErrorActionPreference = "Stop"
+$null = New-Item -ItemType Directory -Force -Path "ops\flows",$BaselineDir,"_otokodlama\out",$AlertsDir
+$env:BASE_URL = $BaseUrl
+
+# (İdempotent) equipment redirect loop fix
+Get-ChildItem ops\flows -Filter *equipment*.flow -ErrorAction SilentlyContinue | ForEach-Object {
+  (Get-Content $_.FullName -Raw) `
+    -replace 'GOTO\s+/admin/maintenance/equipment/(\s*)$', 'GOTO /admin/maintenance/equipment/_direct/$1' `
+  | Set-Content -LiteralPath $_.FullName -Encoding UTF8
+}
+
+function New-UiBaselineAndValidate {
+param(
+  [Parameter(Mandatory=$true)][string]$Key,     # ex: equipment_ui_list
+  [Parameter(Mandatory=$true)][string]$Url,     # ex: /admin/maintenance/equipment/_direct/
+  [string]$WaitSelector = 'css=:is(form#changelist-form,table#result_list,#content-main,#content,body)',
+  [double]$Recall = 0.90,
+  [int]$MinTokenLen = 3,
+  [switch]$UseOCR,
+  [string]$IgnorePatterns = 'csrf,token,\d{2,},page_\d+,id_\d+,ts_\d+'
+)
+  $baselinePng = Join-Path $BaselineDir ("{0}.png" -f $Key)
+  $flowBase = "ops\flows\_{0}_make_baseline.flow" -f $Key
+  $flowVal  = "ops\flows\{0}_validate.flow" -f $Key
+
+@"
+COMMENT make baseline ($Key)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO $Url
+WAIT SELECTOR $WaitSelector
+SCREENSHOT $baselinePng
+"@ | Set-Content -LiteralPath $flowBase -Encoding UTF8
+
+  $live = if($UseOCR){"dom+ocr"} else {"dom"}
+@"
+COMMENT validate $Key ($live)
+GOTO /admin/login/
+WAIT SELECTOR input#id_username
+FILL input#id_username admin
+FILL input#id_password Admin!2345
+CLICK input[type=submit]
+WAIT URL CONTAINS /admin/
+GOTO $Url
+WAIT SELECTOR $WaitSelector
+AUTOVALIDATE key=$Key baseline=$baselinePng words_recall=$Recall live_source=$live alert_dir=$AlertsDir min_token_len=$MinTokenLen ignore_numbers=yes ignore_patterns=$IgnorePatterns
+"@ | Set-Content -LiteralPath $flowVal -Encoding UTF8
+
+  $outA = "_otokodlama\out\_{0}_make_baseline.json" -f $Key
+  $outB = "_otokodlama\out\{0}_validate.json" -f $Key
+
+  Write-Host "[run] BASELINE → $Key" -ForegroundColor Cyan
+  python tools\pw_flow.py --steps $flowBase --out $outA | Out-Host
+
+  Write-Host "[run] VALIDATE → $Key ($live)" -ForegroundColor Yellow
+  python tools\pw_flow.py --steps $flowVal  --out $outB | Out-Host
+
+  $j = Get-Content $outB -Raw | ConvertFrom-Json
+  $lastAuto = $j.results | Where-Object { $_.cmd -eq 'AUTOVALIDATE' } | Select-Object -Last 1
+  [pscustomobject]@{
+    key           = $Key
+    ok            = $j.ok
+    recall        = if($lastAuto){ '{0:N2}' -f [double]$lastAuto.recall } else {''}
+    missing_count = if($lastAuto){ $lastAuto.missing_count } else {''}
+    out_json      = $outB
+  }
+}
+
+# ====== TEST SETİ ======
+$jobs = @(
+  @{ Key="equipment_ui_list";   Url="/admin/maintenance/equipment/_direct/";  OCR=$false },
+  @{ Key="calibration_ui_list"; Url="/admin/maintenance/calibration/_direct/";OCR=$false },
+  @{ Key="admin_home_fast";     Url="/admin/";                                OCR=$false }
+  # İstediğin yeni modülü aşağıya sadece Key/Url girerek ekle:
+  # @{ Key="bakim_plan_ui_list"; Url="/admin/maintenance/plan/_direct/"; OCR=$false }
+)
+
+$results = foreach($j in $jobs){
+  if($j.OCR){ New-UiBaselineAndValidate -Key $j.Key -Url $j.Url -UseOCR }
+  else      { New-UiBaselineAndValidate -Key $j.Key -Url $j.Url }
+}
+
+"`n=== SUMMARY ==="
+$results | Format-Table key,ok,recall,missing_count,out_json -AutoSize
+
+if (Test-Path (Join-Path $AlertsDir 'alerts_log.csv')) {
+  "`n=== Alerts (last 10) ==="
+  Import-Csv (Join-Path $AlertsDir 'alerts_log.csv') -Delimiter ';' |
+    Select-Object ts,key,ok,recall,misses,alert_md |
+    Select-Object -Last 10 | Format-Table -AutoSize
+}
+### DOSYA BİTİŞ: run_ui_validate.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_and_guard.ps1
+param(
+  [Parameter(Mandatory=$true)][string]$flow,         # .flow dosyasının tam yolu
+  [Parameter(Mandatory=$true)][string]$outPath,      # JSON çıktı yolu
+  [string]$BaseUrl = "http://127.0.0.1:8010",        # BASE_URL env
+  [string]$ExtraArgs = ""                            # pw_flow.py'ye ham argümanlar ("--timeout 5000" gibi)
+)
+
+$ErrorActionPreference = "Stop"
+
+# Ortam değişkenleri
+$env:BASE_URL = $BaseUrl
+$env:PYTHONUNBUFFERED = "1"
+
+# Çıktı klasörünü garanti et
+$op = Split-Path -Parent $outPath
+if ($op -and -not (Test-Path $op)) { New-Item -ItemType Directory -Force -Path $op | Out-Null }
+
+# Extra argümanları güvenli diziye çevir
+$ea = @()
+if ($ExtraArgs) {
+  # whitespace'e göre böl (ör: "--timeout 5000")
+  $ea = $ExtraArgs -split '\s+'
+}
+
+# Python çağrısı (doğrudan, güvenli)
+Write-Host ("[run_and_guard] python tools\pw_flow.py --steps {0} --out {1} {2}" -f $flow, $outPath, ($ea -join " "))
+& python -u "tools\pw_flow.py" --steps $flow --out $outPath @ea
+$exitCode = $LASTEXITCODE
+
+# Guard tarzı bilgi satırı (izleme kolaylığı için)
+if (Test-Path $outPath) { Write-Host "[guard] wrote: $outPath" }
+
+exit $exitCode
+### DOSYA BİTİŞ: run_and_guard.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_backlog_multi.ps1
+param(
+  [string[]]$Filter = @("*"),
+  [switch]$LinkSmoke,
+  [string]$BaseUrl    = "http://127.0.0.1:8010",
+  [int]   $SmokeDepth = 1,
+  [int]   $SmokeLimit = 150,
+  [string]$ExtraArgs  = ""
+)
+
+if ($Filter -is [string]) {
+  if ($Filter -match ",") { $Filter = $Filter -split "," | ForEach-Object { $_.Trim() } }
+  else { $Filter = @($Filter) }
+}
+elseif ($Filter.Count -eq 1 -and $Filter[0] -match ",") {
+  $Filter = $Filter[0] -split "," | ForEach-Object { $_.Trim() }
+}
+
+Write-Host ("[multi] Filters: {0}" -f ($Filter -join ", ")) -ForegroundColor Cyan
+
+foreach($pat in $Filter){
+  if ([string]::IsNullOrWhiteSpace($pat)) { continue }
+  Write-Host ("[multi] Running pattern: {0}" -f $pat) -ForegroundColor Yellow
+
+  $argList = @(
+    '-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+    '-File','ops\run_backlog.ps1',
+    '-Filter', $pat,
+    '-BaseUrl', $BaseUrl,
+    '-SmokeDepth', $SmokeDepth,
+    '-SmokeLimit', $SmokeLimit,
+    '-ExtraArgs', $ExtraArgs
+  )
+  if ($LinkSmoke.IsPresent) { $argList += '-LinkSmoke' }
+
+  powershell @argList
+}
+### DOSYA BİTİŞ: run_backlog_multi.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_ci_pr_approve.ps1
+param()
+if (-not $env:OZKAN_PAT) {
+  Write-Error "Set OZKAN_PAT (ozkanrepo1 PAT, scopes: repo, read:org)"; exit 1
+}
+$env:GH_TOKEN = $env:OZKAN_PAT
+try {
+  & "$PSScriptRoot\auto_pr.ps1" -WaitForMerge
+} finally {
+  Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
+}
+### DOSYA BİTİŞ: run_ci_pr_approve.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\rebase_auto.ps1
+param(
+   [string]$Branch,
+   [int]$PrNumber = 0
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Abort-StaleOps {
+   git rebase --abort 2>$null | Out-Null
+   git merge  --abort 2>$null | Out-Null
+}
+
+function Solve-Bumper {
+   New-Item -ItemType Directory -Force ".github" | Out-Null
+   "trigger $(Get-Date -Format s)" | Set-Content ".github\pr-bumper.md"
+   git add ".github\pr-bumper.md" | Out-Null
+}
+
+function Get-Conflicts {
+   # Çatışan dosyaları tekil listele
+   (git ls-files -u) -split "`n" |
+     Where-Object { $_ -ne "" } |
+     ForEach-Object { ($_ -split "\s+")[3] } |
+     Sort-Object -Unique
+}
+
+# --- Branch'ı akıllı şekilde çöz ---
+if (-not $Branch) {
+   if ($PrNumber -gt 0) {
+     $Branch = gh pr view $PrNumber --json headRefName --jq .headRefName
+     if (-not $Branch) { throw "PR #$PrNumber bulunamadı/kapalı. -Branch vererek deneyin." }
+   } else {
+     $Branch = gh pr list --state open --limit 1 --json headRefName --jq '.[0].headRefName' 2>$null
+     if (-not $Branch) {
+       $Branch = (git rev-parse --abbrev-ref HEAD)
+       if (-not $Branch -or $Branch -eq 'HEAD') { throw "Açık PR yok ve aktif dal çözülemedi. -Branch ya da -PrNumber verin." }
+     }
+   }
+}
+
+function Rebase-Or-Merge([string]$branch) {
+   git fetch origin | Out-Null
+   git checkout $branch | Out-Null
+
+   # 1) REBASE (editörsüz olsun diye boş mesajla commit atmaya zorlamayacağız; direkt deneyip düşersek merge)
+   git -c core.editor=true -c sequence.editor=true rebase origin/main
+   if ($LASTEXITCODE -eq 0 -and -not (Test-Path ".git\rebase-apply") -and -not (Test-Path ".git\rebase-merge")) {
+     return  # başarılı rebase
+   }
+
+   Write-Warning "Rebase tamamlanamadı → MERGE fallback'a geçiyorum."
+   git rebase --abort 2>$null | Out-Null
+
+   # 2) MERGE (editor açmadan, no-edit ile)
+   git merge --no-edit origin/main
+   if ($LASTEXITCODE -ne 0) {
+     # Bumper'ı tazele
+     Solve-Bumper
+
+     # Kalan bütün çatışmalar --> OURS (mevcut dal)
+     $conf = Get-Conflicts
+     if ($conf) {
+       foreach ($p in $conf) {
+         if ($p -ne ".github/pr-bumper.md") {
+           git checkout --ours -- "$p"
+           git add -- "$p"
+         }
+       }
+     }
+
+     # Her şey eklendiyse commitle
+     git commit --no-edit
+     if ($LASTEXITCODE -ne 0) { throw "Merge commit atılamadı. Kalan çatışmalar olabilir." }
+   }
+}
+
+# --- Çalıştır ---
+Abort-StaleOps
+Rebase-Or-Merge $Branch
+git push --force-with-lease origin $Branch
+
+if ($PrNumber -gt 0) { gh pr merge $PrNumber --squash --auto }
+
+Write-Host "[done] $Branch güncellendi ve push edildi." -ForegroundColor Green
+if ($PrNumber -gt 0) { Write-Host "[note] PR #$PrNumber auto-merge açık; koşullar tamamlanınca birleşir." -ForegroundColor Yellow }
+### DOSYA BİTİŞ: rebase_auto.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\pipeline_local.ps1
+param(
+  [string]$BaseUrl     = "http://127.0.0.1:8010",
+  [string]$JobsCsv     = "ops/ui_jobs.csv",
+  [string]$BaselineDir = "targets\reference",
+  [string]$AlertsDir   = "_otokodlama\alerts",
+  [string]$StateTools  = "ops/state_tools.ps1",
+  [switch]$NoGitPush
+)
+
+$ErrorActionPreference = "Stop"
+
+# 1) AI patch'leri uygula (varsa)
+powershell -ExecutionPolicy Bypass -File "ops/apply_ai_files.ps1" -RepoRoot "." -InboxDir "ai_inbox" -StateTools $StateTools | Out-Host
+
+# 2) UI testlerini koştur + state güncelle
+powershell -ExecutionPolicy Bypass -File "ops/run_suite.ps1" -BaseUrl $BaseUrl -JobsCsv $JobsCsv -BaselineDir $BaselineDir -AlertsDir $AlertsDir -StateTools $StateTools | Out-Host
+
+# 3) Değişiklikleri commit/push
+if ($NoGitPush) {
+  powershell -ExecutionPolicy Bypass -File "ops/git_ops.ps1" -RepoRoot "." -Branch "main" -AddSpec "." -Message "[auto] ai apply + ui validate + state" -NoPush | Out-Host
+} else {
+  powershell -ExecutionPolicy Bypass -File "ops/git_ops.ps1" -RepoRoot "." -Branch "main" -AddSpec "." -Message "[auto] ai apply + ui validate + state" | Out-Host
+}
+
+Write-Host "`n[pipeline] DONE." -ForegroundColor Green
+### DOSYA BİTİŞ: pipeline_local.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\open_pr.ps1
+param(
+  [string]$RepoRoot   = ".",
+  [string]$Branch     = "main",   # PR HEAD (çalıştığınız dal)
+  [string]$BaseBranch = "main",   # PR BASE (hedef dal)
+  [string]$StateTools = "ops/state_tools.ps1"
+)
+
+$ErrorActionPreference = "Stop"
+
+function Show-GitHubErrorBody {
+  param([System.Net.WebException]$Ex)
+  try {
+    $resp = $Ex.Response
+    if ($resp -and $resp.GetResponseStream) {
+      $sr = New-Object IO.StreamReader($resp.GetResponseStream())
+      $body = $sr.ReadToEnd()
+      Write-Warning ("GitHub API error body: " + $body)
+      if ($resp.Headers["WWW-Authenticate"]) {
+        Write-Warning ("WWW-Authenticate: " + $resp.Headers["WWW-Authenticate"])
+      }
+    }
+  } catch { Write-Warning "Error body okunamadı: $($_.Exception.Message)" }
+}
+
+function Get-RepoSlug {
+  param([string]$RepoRoot)
+  Push-Location $RepoRoot
+  try {
+    $url = (& git remote get-url origin 2>$null)
+    if (-not $url) { throw "origin remote bulunamadı." }
+    if ($url -match 'github\.com[:/](.+?)(\.git)?$') { return $Matches[1] }
+    throw "GitHub repo slug çözülemedi: $url"
+  } finally { Pop-Location }
+}
+
+function Load-State {
+  param([string]$StateTools,[string]$RepoRoot)
+  . (Join-Path $RepoRoot $StateTools)
+  return (Get-State)
+}
+
+function Build-PR-Body {
+  param($state)
+  $lines = @()
+  $lines += "### UI Test Özeti"
+  if ($state.tests -and $state.tests.summary) {
+    $lines += ""
+    $lines += "- **Passed**: $($state.tests.summary.passed)"
+    $lines += "- **Failed**: $($state.tests.summary.failed)"
+    $lines += "- **Last Run**: $($state.tests.summary.last_run)"
+  }
+
+  if ($state.tests -and $state.tests.results) {
+    $lines += ""
+    $lines += "| Key | Status | words_recall | missing_count | out_json | screenshot |"
+    $lines += "|-----|--------|--------------|---------------|----------|------------|"
+
+    $keys = @()
+    if ($state.tests.results -is [hashtable]) { $keys = $state.tests.results.Keys }
+    else { $keys = ($state.tests.results.PSObject.Properties | Select-Object -ExpandProperty Name) }
+
+    foreach ($k in $keys) {
+      $it = if ($state.tests.results -is [hashtable]) { $state.tests.results[$k] } else { $state.tests.results.$k }
+      $status = $it.status
+      $recall = ""
+      $misses = ""
+      if ($it.metrics) {
+        if ($it.metrics.PSObject.Properties['words_recall']) { $recall = [string]$it.metrics.words_recall }
+        if ($it.metrics.PSObject.Properties['missing_count']) { $misses = [string]$it.metrics.missing_count }
+      }
+      $outj = ""
+      $shot = ""
+      if ($it.artifacts) {
+        if ($it.artifacts.PSObject.Properties['out_json']) { $outj = [string]$it.artifacts.out_json }
+        if ($it.artifacts.PSObject.Properties['screenshot']) { $shot = [string]$it.artifacts.screenshot }
+      }
+      $lines += "| $k | $status | $recall | $misses | $outj | $shot |"
+    }
+  }
+
+  if ($state.pending_actions -and $state.pending_actions.Count -gt 0) {
+    $lines += ""
+    $lines += "### Pending Actions"
+    foreach ($p in $state.pending_actions) {
+      $lines += "- [$($p.status)] **$($p.type)**: $($p.detail) (due_stage: $($p.due_stage), ts: $($p.ts))"
+    }
+  }
+
+  return ($lines -join "`n")
+}
+
+# ----- MAIN -----
+$repoSlug = Get-RepoSlug -RepoRoot $RepoRoot
+$state    = Load-State -StateTools $StateTools -RepoRoot $RepoRoot
+
+$title = "[auto] UI validate passed → open PR"
+$body  = Build-PR-Body -state $state
+
+# 1) Push edildiğinden emin ol
+Push-Location $RepoRoot
+try { & git push origin $Branch | Out-Null } finally { Pop-Location }
+
+# 2) PR açma: gh (CLI) → yoksa REST → ikisi de yoksa uyarı
+$createdUrl = ""
+$used = ""
+
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+  try {
+    $out = & gh pr create --title $title --body $body --base $BaseBranch --head $Branch 2>&1
+    if ($LASTEXITCODE -eq 0) {
+      $m = ($out | Select-String -Pattern 'https?://github\.com/.+?/pull/\d+' | Select-Object -First 1)
+      if ($m) { $createdUrl = $m.Matches.Value; $used = "gh" }
+    } else {
+      Write-Warning "gh pr create hata verdi: $out"
+    }
+  } catch {
+    Write-Warning "gh pr create çalışmadı: $($_.Exception.Message)"
+  }
+}
+
+if (-not $createdUrl) {
+  $token = $env:GITHUB_TOKEN
+  if ($token) {
+    $bodyObj = @{
+      title = $title
+      head  = $Branch
+      base  = $BaseBranch
+      body  = $body
+    }
+    $json = $bodyObj | ConvertTo-Json -Depth 5
+    $uri  = "https://api.github.com/repos/$repoSlug/pulls"
+
+    $headers = @{
+      "Accept"        = "application/vnd.github+json"
+      "Authorization" = "token $token"
+      "X-GitHub-Api-Version" = "2022-11-28"
+      "User-Agent"    = "ps-open-pr"
+    }
+    try {
+      $resp = Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -Body $json
+      if ($resp.html_url) { $createdUrl = $resp.html_url; $used = "rest" }
+    } catch [System.Net.WebException] {
+      Show-GitHubErrorBody $_.Exception
+      Write-Warning "REST ile PR açma denemesi hata verdi."
+    }
+  } else {
+    Write-Warning "Ne 'gh' komutu başarılı ne de GITHUB_TOKEN tanımlı. PR otomatik açılamadı (pipeline kesilmedi)."
+  }
+}
+
+if ($createdUrl) {
+  Write-Host "[pr] Açıldı ($used) → $createdUrl" -ForegroundColor Green
+  . (Join-Path $RepoRoot $StateTools)
+  Advance-Pipeline -ToStage "await_review" -Hint "PR açıldı: $createdUrl"
+} else {
+  Write-Host "[pr] PR açılamadı; stage değiştirilmedi." -ForegroundColor Yellow
+}
+
+### DOSYA BİTİŞ: open_pr.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\make_prs.ps1
+Rev: 2025-09-30 19:21 r1
+param(
+  [string]$PlanJson = "plan/tasks.json",
+  [switch]$DryRun
+)
+
+$ErrorActionPreference = "Stop"
+
+if (-not (Test-Path $PlanJson)) { throw "Plan yok: $PlanJson" }
+
+# main’i referans al
+git fetch origin | Out-Null
+
+$tasks = Get-Content $PlanJson -Raw | ConvertFrom-Json
+foreach ($t in $tasks) {
+  $branch = $t.branch_name
+  if (-not $branch) { Write-Warning "Branch yok: $($t.id)"; continue }
+
+  # remote’ta var mı?
+  $remote = git ls-remote --heads origin $branch
+  if ($remote) { Write-Host "(skip) zaten var: $branch" -ForegroundColor DarkYellow; continue }
+
+  if (-not $DryRun) {
+    git switch -c $branch origin/main | Out-Null
+
+    New-Item -ItemType Directory -Force ".github" | Out-Null
+    "task: $($t.id) - $($t.title)" | Set-Content -Encoding UTF8 ".github\pr-bumper.md"
+    git add ".github\pr-bumper.md"
+    git commit -m "auto($($t.id)): $($t.title) [bump]" | Out-Null
+    git push -u origin $branch | Out-Null
+  }
+
+  # PR body
+  $ac = ""
+  if ($t.acceptance_criteria) {
+    $ac = "Acceptance Criteria:`n" + ($t.acceptance_criteria | ForEach-Object { "- $_" }) -join "`n"
+  }
+  $body = @"
+Area: `$($t.area)`
+Type: `$($t.type)` | Priority: `$($t.priority)` | Size: `$($t.size)`
+
+$($t.description)
+
+$ac
+"@
+
+  $title = "auto: $($t.id) $($t.title)"
+  $prUrl = gh pr create -t $title -b $body -B main -H $branch
+  if ($LASTEXITCODE -ne 0) { Write-Warning "PR açılamadı: $branch"; continue }
+
+  # etiketler
+  if ($t.labels) {
+    foreach ($lbl in $t.labels) { gh pr edit $prUrl --add-label $lbl | Out-Null }
+  }
+
+  # otomatik merge (koşullar sağlanınca)
+  gh pr merge $prUrl --squash --auto | Out-Null
+
+  Write-Host "[ok] PR hazır: $prUrl" -ForegroundColor Green
+
+  # ana dala geri
+  if (-not $DryRun) {
+    git switch -C main origin/main | Out-Null
+  }
+}
+### DOSYA BİTİŞ: make_prs.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\smoke_links.ps1
+# Rev: 2025-09-28 15:20 r4
+param(
+  [Parameter(Mandatory=$true)][string]$Base,
+  [Parameter(Mandatory=$true)][string]$Start,
+  [Parameter(Mandatory=$true)][string]$Out,
+  [int]$Depth = 1,
+  [int]$Limit = 150,
+  [string]$PathPrefix = "/",
+  [string]$LoginPath = "/admin/login/",
+  [string]$User = "admin",
+  [string]$Pass = "Admin!2345",
+  [int]$Timeout = 20000,
+  [string]$OkRedirectTo = ""   # ör: "/_direct/.*|/admin/.*"
+)
+
+function Join-Url([uri]$baseUri, [string]$url) {
+  if ([string]::IsNullOrWhiteSpace($url)) { return $null }
+  $u = $null
+  if ([System.Uri]::TryCreate($url, [System.UriKind]::Absolute, [ref]$u)) { return $u }
+  return [uri]::new($baseUri, $url)
+}
+
+function InScope([string]$locPath, [string]$prefix) {
+  if ([string]::IsNullOrWhiteSpace($locPath)) { return $false }
+  if ([string]::IsNullOrWhiteSpace($prefix))  { return $true }
+  return $locPath.ToLower().StartsWith($prefix.ToLower())
+}
+
+function DepthOf([string]$path, [string]$prefix) {
+  if (-not $path) { return 0 }
+  $p   = $path
+  $pre = if ($null -ne $prefix) { $prefix } else { "" }
+  $p   = $p.Trim('/')
+  $pre = $pre.Trim('/')
+  if ($pre -and $p.ToLower().StartsWith($pre.ToLower())) {
+    $p = $p.Substring($pre.Length).Trim('/')
+  }
+  if ([string]::IsNullOrWhiteSpace($p)) { return 0 }
+  return ($p.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries).Length)
+}
+
+function ParseLinks([string]$html, [uri]$docUri) {
+  $set = New-Object System.Collections.Generic.HashSet[string]
+  if (-not $html) { return @() }
+  $rx = [regex]'(?isx)
+      <a\b[^>]*?href\s*=\s*["''](?<u>[^"''#>]+)["'']
+    | <link\b[^>]*?href\s*=\s*["''](?<u>[^"''#>]+)["'']
+    | <script\b[^>]*?src\s*=\s*["''](?<u>[^"''#>]+)["'']
+  '
+  foreach ($m in $rx.Matches($html)) {
+    $u = $m.Groups['u'].Value
+    if ([string]::IsNullOrWhiteSpace($u)) { continue }
+    try {
+      $abs = (Join-Url $docUri $u)
+      if ($abs) { [void]$set.Add($abs.AbsolutePath) }
+    } catch {}
+  }
+  # .ToArray() .NET Framework'te extension; 5.1'de garanti değil → düz diziye çevir
+  return @($set)
+}
+
+Add-Type -AssemblyName System.Net.Http
+$handler = New-Object System.Net.Http.HttpClientHandler
+$cookieJar = New-Object System.Net.CookieContainer
+$handler.CookieContainer   = $cookieJar
+$handler.AllowAutoRedirect = $false
+$client  = New-Object System.Net.Http.HttpClient($handler)
+$client.Timeout = [TimeSpan]::FromMilliseconds([Math]::Max(1000, $Timeout))
+$baseUri = [uri]$Base
+
+function Get-Resp([uri]$uri, [string]$method="GET", [string]$body="", [hashtable]$headers=@{}) {
+  $req = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::$method, $uri)
+  foreach ($k in $headers.Keys) { $req.Headers.TryAddWithoutValidation($k, [string]$headers[$k]) | Out-Null }
+  if ($method -eq "POST") {
+    $req.Content = New-Object System.Net.Http.StringContent($body, [System.Text.Encoding]::UTF8, "application/x-www-form-urlencoded")
+  }
+  $resp = $client.SendAsync($req).Result
+  return $resp
+}
+
+function Do-Login {
+  try {
+    $loginUri = Join-Url $baseUri $LoginPath
+    $r1 = Get-Resp $loginUri "GET"
+    $html = $r1.Content.ReadAsStringAsync().Result
+    $token = ""
+    $m = [regex]::Match($html, 'name=["'']csrfmiddlewaretoken["'']\s+value=["'']([^"'']+)["'']', 'IgnoreCase')
+    if ($m.Success) { $token = $m.Groups[1].Value }
+    $body = "username=$([uri]::EscapeDataString($User))&password=$([uri]::EscapeDataString($Pass))"
+    if ($token) { $body += "&csrfmiddlewaretoken=$([uri]::EscapeDataString($token))" }
+    $null = Get-Resp $loginUri "POST" $body @{ "Referer" = $loginUri.AbsoluteUri }
+    return $true
+  } catch {
+    Write-Host "[link-smoke] login hata: $($_.Exception.Message)" -ForegroundColor Yellow
+    return $false
+  }
+}
+
+$null = Do-Login
+
+$queue   = New-Object System.Collections.Generic.Queue[object]
+$visited = New-Object System.Collections.Generic.HashSet[string]
+$bad     = New-Object System.Collections.Generic.List[object]
+$checked = 0
+
+$startUri = Join-Url $baseUri $Start
+$queue.Enqueue([pscustomobject]@{ Uri=$startUri; Depth=0 })
+
+while(($queue.Count -gt 0) -and ($checked -lt $Limit)) {
+  $item = $queue.Dequeue()
+  $u = $item.Uri
+  $d = [int]$item.Depth
+  if (-not $u) { continue }
+
+  $key = $u.AbsolutePath.ToLower()
+  if ($visited.Contains($key)) { continue }
+  [void]$visited.Add($key)
+
+  try {
+    $resp = Get-Resp $u "GET"
+    $status = [int]$resp.StatusCode
+    $locHdr = $resp.Headers.Location
+    $locAbs = $null
+    if ($locHdr) { $locAbs = Join-Url $u $locHdr.ToString() }
+
+    if ($status -ge 300 -and $status -lt 400) {
+      $okRedirect = $false
+      if ($locAbs -and -not [string]::IsNullOrWhiteSpace($OkRedirectTo)) {
+        if ($locAbs.AbsolutePath -match $OkRedirectTo) { $okRedirect = $true }
+      }
+      $inScopeNext = ($locAbs -ne $null) -and (InScope $locAbs.AbsolutePath $PathPrefix)
+      if ($inScopeNext -and -not $okRedirect) {
+        $locStr = if ($locAbs) { $locAbs.AbsoluteUri } else { "" }
+        $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=$status; location=$locStr }) | Out-Null
+      }
+      if ($locAbs -and (InScope $locAbs.AbsolutePath $PathPrefix) -and ($d -lt $Depth)) {
+        $queue.Enqueue([pscustomobject]@{ Uri=$locAbs; Depth=$d })
+      }
+    }
+    elseif ($status -ge 200 -and $status -lt 300) {
+      $ct = $resp.Content.Headers.ContentType
+      if ($ct -and $ct.MediaType -like "text/html") {
+        $html = $resp.Content.ReadAsStringAsync().Result
+        if ((InScope $u.AbsolutePath $PathPrefix) -and ($d -lt $Depth)) {
+          foreach ($p in (ParseLinks $html $u)) {
+            if (InScope $p $PathPrefix) {
+              $depthNext = (DepthOf $p $PathPrefix)
+              if ($depthNext -le $Depth) {
+                $abs = Join-Url $baseUri $p
+                if ($abs -and -not $visited.Contains($abs.AbsolutePath.ToLower())) {
+                  $queue.Enqueue([pscustomobject]@{ Uri=$abs; Depth=$depthNext })
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    else {
+      $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=$status; location="" }) | Out-Null
+    }
+  } catch {
+    $msg = $_.Exception.Message
+    Write-Host "[link-smoke] GET hata: $msg" -ForegroundColor Yellow
+    $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=-1; location=""; error=$msg }) | Out-Null
+  }
+
+  $checked++
+}
+
+$result = [pscustomobject]@{
+  checked      = $checked
+  bad          = $bad.Count
+  bad_list     = $bad
+  visited      = $visited | Sort-Object
+  scope_prefix = $PathPrefix
+  base         = $Base
+  start        = $Start
+  ok_redirect  = $OkRedirectTo
+  depth        = $Depth
+  limit        = $Limit
+}
+$dir = Split-Path -Parent $Out
+if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+$result | ConvertTo-Json -Depth 6 | Out-File -FilePath $Out -Encoding UTF8
+
+if ($bad.Count -gt 0) {
+  Write-Host ("[link-smoke] checked={0} bad={1} scope_prefix={2}" -f $checked, $bad.Count, $PathPrefix) -ForegroundColor Red
+  $i = 0
+  foreach ($b in $bad) {
+    Write-Host ("    {0} {1} {2}" -f $i, $b.status, $b.url)
+    $i++
+  }
+  exit 2
+} else {
+  Write-Host ("[link-smoke] checked={0} bad=0 scope_prefix={1}" -f $checked, $PathPrefix) -ForegroundColor Green
+  Write-Host "[link-smoke] YEŞİL" -ForegroundColor Green
+  exit 0
+}
+### DOSYA BİTİŞ: smoke_links.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\git_ops.ps1
+param(
+  [string]$RepoRoot = ".",
+  [string]$Branch   = "main",
+  [string]$AddSpec  = ".",
+  [string]$Message  = "[auto] apply files + update state",
+  [switch]$NoPush
+)
+
+$ErrorActionPreference = "Stop"
+Set-Location $RepoRoot
+
+$dirty = & git status --porcelain
+if (-not $dirty) { Write-Host "[git] Çalışma alanı temiz; commit/push atlandı." -ForegroundColor Yellow; exit 0 }
+
+& git add $AddSpec
+try { & git commit -m $Message } catch { Write-Host "[git] Commit başarısız: $($_.Exception.Message)" -ForegroundColor Red; exit 2 }
+
+if (-not $NoPush) {
+  try { & git push origin $Branch } catch { Write-Host "[git] Push başarısız: $($_.Exception.Message)" -ForegroundColor Red; exit 3 }
+  Write-Host "[git] Pushed to origin/$Branch" -ForegroundColor Green
+} else {
+  Write-Host "[git] --NoPush seçildi, push atlandı." -ForegroundColor Yellow
+}
+### DOSYA BİTİŞ: git_ops.ps1
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_fix_equip_redirect.py
+# -*- coding: utf-8 -*-
+# core/mw_fix_equip_redirect.py
+from urllib.parse import parse_qsl, urlencode
+from django.utils.deprecation import MiddlewareMixin
+from django.http import HttpResponseRedirect
+
+CANONICAL = "/admin/maintenance/equipment/"
+DIRECT    = "/admin/maintenance/equipment/_direct/"
+
+BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+
+def _filtered_qs(environ_qs: str) -> str:
+    try:
+        pairs = parse_qsl(environ_qs or "", keep_blank_values=True)
+    except Exception:
+        pairs = []
+    pairs = [(k, v) for (k, v) in pairs if k not in BLOCK_KEYS]
+    qs = urlencode(pairs, doseq=True)
+    return ("?" + qs) if qs else ""
+
+class AdminEquipmentRedirectFixMiddleware(MiddlewareMixin):
+    """
+    /admin/maintenance/equipment/ hedefli TÜM istek/yanıtları güvenli _direct listesine çevirir.
+    - process_request: view'e gitmeden önce 302'yle _direct'e yönlendir.
+    - process_response: 301/302 Location header'ı kanonik listeyi gösteriyorsa _direct'e çevir.
+    """
+
+    def process_request(self, request):
+        try:
+            path = request.path
+        except Exception:
+            path = ""
+        if path.endswith(CANONICAL):
+            qs = _filtered_qs(getattr(request.META, "QUERY_STRING", "") or request.META.get("QUERY_STRING",""))
+            return HttpResponseRedirect(DIRECT + qs)
+
+    def process_response(self, request, response):
+        # Yanıt 301/302 ise ve hedef kanonik listeyse, _direct'e çevir
+        try:
+            loc = response["Location"] if hasattr(response, "has_header") and response.has_header("Location") \
+                  else (response.headers.get("Location") if hasattr(response, "headers") else None)
+        except Exception:
+            loc = None
+
+        code = getattr(response, "status_code", 200)
+        if code in (301, 302) and loc:
+            # Sadece path kısmı ile karşılaştır: çoğu zaman relative Location geliyor
+            if str(loc).split("?",1)[0].endswith(CANONICAL):
+                qs = ""
+                try:
+                    # request tarafındaki mevcut QUERY_STRING'i filtreleyip koru
+                    qs = _filtered_qs(request.META.get("QUERY_STRING",""))
+                except Exception:
+                    qs = ""
+                try:
+                    response["Location"] = DIRECT + qs
+                except Exception:
+                    pass
+        return response
+### DOSYA BİTİŞ: mw_fix_equip_redirect.py
+
+### DOSYA BAŞLANGIÇ: .\\ops\auto_pr.ps1
+param(
+  [string]$BaseBranch   = "main",
+  [string]$Reviewer     = "ozkanrepo1",
+  [string]$FeaturePrefix = "feat/auto-",
+  [switch]$WaitForMerge,
+  [int]$WaitTimeoutSec  = 600
+)
+
+$ErrorActionPreference = "Stop"
+
+function Get-RepoSlug {
+  $u = (& git remote get-url origin 2>$null)
+  if (-not $u) { throw "origin remote yok" }
+  if ($u -match 'github\.com[:/](.+?)(?:\.git)?$') { return $Matches[1] }
+  throw "repo slug çözülemedi: $u"
+}
+
+# 0) Hazırlık
+$slug   = Get-RepoSlug
+$owner  = $slug.Split('/')[0]
+$ts     = (Get-Date -Format "yyyyMMdd-HHmmss")
+$branch = "$FeaturePrefix$ts"
+
+# 1) Yeni feature dalı + küçük fark
+git checkout -b $branch | Out-Null
+New-Item -ItemType Directory -Force ".github" | Out-Null
+"trigger $(Get-Date -Format s)" | Set-Content ".github\pr-bumper.md"
+git add ".github\pr-bumper.md"
+git commit -m "chore: auto bump for PR ($branch)" | Out-Null
+
+# 2) Pipeline'ı feature dalına çalıştır (main'e push ETMEZ)
+powershell -ExecutionPolicy Bypass -File "ops\pipeline_local.ps1" `
+  -BaseUrl "http://127.0.0.1:8010" `
+  -Branch  $branch `
+  -BaseBranch $BaseBranch
+
+# 3) Feature dalını push et
+git push -u origin $branch
+
+# 4) PR aç (varsa URL döner)
+$title = "[auto] $branch"
+$body  = "Auto PR"
+$out = & gh pr create --title $title --body $body --base $BaseBranch --head $branch 2>&1
+if ($LASTEXITCODE -ne 0) {
+  $prUrl = ($out | Select-String -Pattern 'https?://github\.com/.+?/pull/\d+' | Select-Object -First 1).Matches.Value
+  if (-not $prUrl) { throw "PR oluşturulamadı: $out" }
+} else {
+  $prUrl = ($out | Select-String -Pattern 'https?://github\.com/.+?/pull/\d+' | Select-Object -First 1).Matches.Value
+}
+Write-Host "[pr] $prUrl" -ForegroundColor Cyan
+
+# 5) PR numarası
+$pr = gh pr list --state open --head $branch --json number --jq '.[0].number'
+
+# 6) Label + reviewer + auto-merge
+gh label create "ui-tests" --color "5319e7" --description "UI pipeline checks" --force 2>$null | Out-Null
+gh pr edit $pr --add-label ui-tests 2>$null | Out-Null
+if ($Reviewer) { gh pr edit $pr --add-reviewer $Reviewer 2>$null | Out-Null }
+
+# GH_TOKEN (ör. ozkanrepo1 PAT) bu oturumda set ise otomatik approve dene
+if ($env:GH_TOKEN) {
+  try { gh pr review $pr --approve | Out-Null } catch {}
+}
+
+gh pr merge $pr --squash --auto
+
+# 7) Bekle & temizlik
+if ($WaitForMerge) {
+  $deadline = (Get-Date).AddSeconds($WaitTimeoutSec)
+  do {
+    Start-Sleep -Seconds 5
+    $state = gh pr view $pr --json state --jq .state
+    if ($state -eq "MERGED") { break }
+  } while ((Get-Date) -lt $deadline)
+
+  if ($state -eq "MERGED") {
+    git checkout $BaseBranch | Out-Null
+    git pull --rebase origin $BaseBranch | Out-Null
+    git branch -D $branch 2>$null | Out-Null
+    git push origin --delete $branch 2>$null | Out-Null
+    Write-Host "[done] PR merged & branches cleaned." -ForegroundColor Green
+  } else {
+    Write-Warning "Merge bekleme süresi aşıldı (hala koşullar tamamlanmamış olabilir)."
+  }
+} else {
+  Write-Host "[note] Auto-merge açık. Koşullar sağlanınca PR kendiliğinden birleşecek." -ForegroundColor Yellow
+}
+### DOSYA BİTİŞ: auto_pr.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\apply_ai_files.ps1
+param(
+  [string]$RepoRoot = ".",
+  [string]$InboxDir = "ai_inbox",
+  [string]$StateTools = "ops/state_tools.ps1",
+  [switch]$DryRun
+)
+
+$ErrorActionPreference = "Stop"
+
+function Ensure-Module {
+  param([string]$Path)
+  if (-not (Test-Path $Path)) { throw "Gerekli script bulunamadı: $Path" }
+  . $Path
+}
+function Normalize-TargetPath {
+  param([string]$InboxFile)
+  $rel = (Resolve-Path -LiteralPath $InboxFile).Path.Substring((Resolve-Path -LiteralPath $InboxDir).Path.Length).TrimStart('\','/')
+  $rel = $rel -replace '^[\\/]+',''
+  if ($rel.ToLower().EndsWith(".txt")) { $rel = $rel.Substring(0, $rel.Length-4) }
+  $rel = $rel -replace '^(root[\\/])',''
+  return $rel
+}
+function New-Directory {
+  param([string]$Path)
+  $dir = Split-Path -Parent $Path
+  if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+}
+
+Ensure-Module -Path (Join-Path $RepoRoot $StateTools)
+
+$inboxFull = Join-Path $RepoRoot $InboxDir
+if (-not (Test-Path $inboxFull)) {
+  Write-Host "[apply] Inbox klasörü yok: $InboxDir (atlandı)" -ForegroundColor Yellow
+  exit 0
+}
+
+$changed = @(); $deleted = @(); $skipped = @()
+$txts = Get-ChildItem $inboxFull -Recurse -File -Filter *.txt
+if (-not $txts) { Write-Host "[apply] Inbox boş." -ForegroundColor Yellow; exit 0 }
+
+foreach ($f in $txts) {
+  $targetRel = Normalize-TargetPath -InboxFile $f.FullName
+  $targetAbs = Join-Path $RepoRoot $targetRel
+  $raw = Get-Content -LiteralPath $f.FullName -Raw
+
+  if ($raw -match '^\s*#\s*DELETE\s*$') {
+    if (Test-Path $targetAbs) {
+      if ($DryRun) { Write-Host "[DRY] DELETE $targetRel" -ForegroundColor Yellow }
+      else { Remove-Item -LiteralPath $targetAbs -Force; $deleted += $targetRel }
+    } else { $skipped += "$targetRel (zaten yok)" }
+    continue
+  }
+
+  if ([string]::IsNullOrWhiteSpace($raw)) { $skipped += "$targetRel (boş içerik/no-op)"; continue }
+
+  if ($DryRun) { Write-Host "[DRY] WRITE $targetRel" -ForegroundColor Cyan }
+  else {
+    if (Test-Path $targetAbs) { Copy-Item -LiteralPath $targetAbs "$targetAbs.bak" -Force -ErrorAction SilentlyContinue }
+    New-Directory -Path $targetAbs
+    [IO.File]::WriteAllText($targetAbs, $raw, [Text.UTF8Encoding]::new($false))
+    $changed += $targetRel
+  }
+}
+
+if (-not $DryRun) {
+  foreach ($p in $changed) { Add-PendingAction -Id ("APPLY-" + [Guid]::NewGuid().ToString("N")) -Type "FILE_WRITE"  -Detail $p -DueStage "" }
+  foreach ($p in $deleted) { Add-PendingAction -Id ("APPLY-" + [Guid]::NewGuid().ToString("N")) -Type "FILE_DELETE" -Detail $p -DueStage "" }
+}
+
+Write-Host "`n=== APPLY SUMMARY ===" -ForegroundColor Green
+"{0,-10} {1}" -f "Changed:", ($changed.Count)
+"{0,-10} {1}" -f "Deleted:", ($deleted.Count)
+"{0,-10} {1}" -f "Skipped:", ($skipped.Count)
+if ($changed) { "`n-- Changed files --"; $changed | ForEach-Object { "  - $_" } }
+if ($deleted) { "`n-- Deleted files --"; $deleted | ForEach-Object { "  - $_" } }
+if ($skipped) { "`n-- Skipped --"; $skipped | ForEach-Object { "  - $_" } }
+### DOSYA BİTİŞ: apply_ai_files.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\_spawn.ps1
+param(
+  [Parameter(Mandatory=$true)][string]$File,
+  [string[]]$Args = @(),
+  [int]$HardTimeoutSec = 300,
+  [int]$HeartbeatSec   = 5
+)
+
+# Argümanları tek stringe dönüştür (içinde boşluk olanları tırnakla)
+function Join-Args([string[]]$arr){
+  $arr | ForEach-Object {
+    if ($_ -match '\s' -and $_ -notmatch '^".*"$') { '"' + $_ + '"' } else { $_ }
+  } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | ForEach-Object { $_ } -join ' '
+}
+
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName               = $File
+$psi.Arguments              = (Join-Args $Args)
+$psi.UseShellExecute        = $false
+$psi.RedirectStandardOutput = $true
+$psi.RedirectStandardError  = $true
+$psi.CreateNoWindow         = $true
+
+$p = New-Object System.Diagnostics.Process
+$p.StartInfo = $psi
+[void]$p.Start()
+
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$lastBeat = 0
+
+while(-not $p.HasExited){
+  while(-not $p.StandardOutput.EndOfStream){
+    $line = $p.StandardOutput.ReadLine()
+    if($line){ Write-Host $line; [Console]::Out.Flush() }
+  }
+  while(-not $p.StandardError.EndOfStream){
+    $eline = $p.StandardError.ReadLine()
+    if($eline){ Write-Host $eline -ForegroundColor DarkYellow; [Console]::Out.Flush() }
+  }
+
+  Start-Sleep -Milliseconds 50  # hızlandırıldı (100 -> 50)
+
+  if($sw.Elapsed.TotalSeconds -ge $HardTimeoutSec){
+    Write-Host "[spawn] HARD TIMEOUT ($HardTimeoutSec s). Killing..." -ForegroundColor Red
+    try { $p.Kill() } catch {}
+    break
+  }
+
+  if([int]$sw.Elapsed.TotalSeconds -ge ($lastBeat + $HeartbeatSec)){
+    Write-Host ("[spawn] heartbeat {0}s" -f [int]$sw.Elapsed.TotalSeconds) -ForegroundColor DarkGray
+    [Console]::Out.Flush()
+    $lastBeat = [int]$sw.Elapsed.TotalSeconds
+  }
+}
+# kuyrukta kalan
+if($p){
+  try{
+    $restOut = $p.StandardOutput.ReadToEnd()
+    if($restOut){ Write-Host $restOut; [Console]::Out.Flush() }
+  }catch{}
+  try{
+    $restErr = $p.StandardError.ReadToEnd()
+    if($restErr){ Write-Host $restErr -ForegroundColor DarkYellow; [Console]::Out.Flush() }
+  }catch{}
+}
+
+exit ($p.ExitCode)
+
+
+
+
+
+
+
+
+
+
+
+### DOSYA BİTİŞ: _spawn.ps1
+
+### DOSYA BAŞLANGIÇ: .\\tools\tasks_from_csv.py
+Rev: 2025-09-30 19:21 r1
+#!/usr/bin/env python3
+import csv, json, re, sys, argparse, pathlib
+
+ALLOWED_TYPES = {"feature","bugfix","refactor","test","chore"}
+ALLOWED_PRI = {"P0","P1","P2","P3"}
+ALLOWED_SIZE = {"XS","S","M","L","XL"}
+
+def slugify(s:str)->str:
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9\-_\sğüşöçıİĞÜŞÖÇ]", "", s, flags=re.IGNORECASE)
+    s = s.replace("ı","i").replace("İ","i")
+    s = s.replace("ç","c").replace("Ç","c")
+    s = s.replace("ğ","g").replace("Ğ","g")
+    s = s.replace("ö","o").replace("Ö","o")
+    s = s.replace("ş","s").replace("Ş","s")
+    s = s.replace("ü","u").replace("Ü","u")
+    s = re.sub(r"\s+","-", s).strip("-")
+    return s
+
+def read_csv(path):
+    with open(path, "r", encoding="utf-8-sig", newline="") as f:
+        rdr = csv.DictReader(f)
+        rows = [ {k.strip(): (v or "").strip() for k,v in row.items()} for row in rdr ]
+    return rows
+
+def validate(rows):
+    errs, warns = [], []
+    ids = set()
+    required = ["id","title","area","type","priority","size","description","acceptance_criteria"]
+    for i,row in enumerate(rows, start=2):  # header + 1-based index
+        miss = [k for k in required if not row.get(k)]
+        if miss:
+            errs.append(f"Satır {i}: Zorunlu alan yok: {', '.join(miss)}")
+        rid = row.get("id","")
+        if rid in ids:
+            errs.append(f"Satır {i}: id tekrarı: {rid}")
+        else:
+            ids.add(rid)
+        if row.get("type") and row["type"] not in ALLOWED_TYPES:
+            errs.append(f"Satır {i}: type geçersiz: {row['type']}")
+        if row.get("priority") and row["priority"] not in ALLOWED_PRI:
+            errs.append(f"Satır {i}: priority geçersiz: {row['priority']}")
+        if row.get("size") and row["size"] not in ALLOWED_SIZE:
+            errs.append(f"Satır {i}: size geçersiz: {row['size']}")
+        if not row.get("acceptance_criteria"):
+            warns.append(f"Satır {i}: acceptance_criteria boş görünüyor")
+    return errs, warns
+
+def transform(rows):
+    tasks = []
+    for r in rows:
+        labels = [s.strip() for s in (r.get("labels","") or "").split(",") if s.strip()]
+        ac = [s.strip() for s in (r.get("acceptance_criteria","") or "").split(";") if s.strip()]
+        branch = f"auto/{r['id']}-{slugify(r['title'])}"
+        tasks.append({
+            "id": r["id"],
+            "title": r["title"],
+            "area": r["area"],
+            "type": r["type"],
+            "priority": r["priority"],
+            "size": r["size"],
+            "labels": labels,
+            "description": r["description"],
+            "acceptance_criteria": ac,
+            "branch_name": branch
+        })
+    return tasks
+
+def write_md(tasks, path):
+    lines = []
+    lines.append("| id | title | type | pri | size | area | labels |")
+    lines.append("|----|-------|------|-----|------|------|--------|")
+    for t in tasks:
+        lines.append(f"| {t['id']} | {t['title']} | {t['type']} | {t['priority']} | {t['size']} | {t['area']} | {', '.join(t['labels'])} |")
+    lines.append("\n---\n")
+    for t in tasks:
+        lines.append(f"## {t['id']} — {t['title']}")
+        lines.append(f"**Area:** `{t['area']}`  |  **Type:** `{t['type']}`  |  **Priority:** `{t['priority']}`  |  **Size:** `{t['size']}`")
+        lines.append("")
+        lines.append(t["description"])
+        lines.append("")
+        if t["acceptance_criteria"]:
+            lines.append("**Acceptance Criteria:**")
+            for a in t["acceptance_criteria"]:
+                lines.append(f"- {a}")
+        lines.append("")
+    pathlib.Path(path).write_text("\n".join(lines), encoding="utf-8")
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("csv", help="input CSV (UTF-8)")
+    ap.add_argument("--out-json", default="plan/tasks.json")
+    ap.add_argument("--out-md", default="plan/tasks.md")
+    args = ap.parse_args()
+
+    rows = read_csv(args.csv)
+    errs, warns = validate(rows)
+    if warns:
+        print("\n".join(f"[WARN] {w}" for w in warns), file=sys.stderr)
+    if errs:
+        print("\n".join(f"[ERR]  {e}" for e in errs), file=sys.stderr)
+        sys.exit(1)
+
+    tasks = transform(rows)
+    pathlib.Path(args.out_json).parent.mkdir(parents=True, exist_ok=True)
+    pathlib.Path(args.out_md).parent.mkdir(parents=True, exist_ok=True)
+    pathlib.Path(args.out_json).write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_md(tasks, args.out_md)
+    print(f"[ok] JSON → {args.out_json}")
+    print(f"[ok] Markdown → {args.out_md}")
+    print(f"[ok] {len(tasks)} görev dönüştürüldü.")
+
+if __name__ == "__main__":
+    main()
+### DOSYA BİTİŞ: tasks_from_csv.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\pw_flow.py
+# -*- coding: utf-8 -*-
+import os, sys, json, time, re, pathlib, io, math, unicodedata, csv, datetime, hashlib
+from typing import Tuple, Dict
+from contextlib import contextmanager
+
+from PIL import Image
+from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout, Error as PWError
+
+BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8010").rstrip("/")
+
+# --- OCR (opsiyonel) ---
+try:
+    import pytesseract
+    _tcmd = os.environ.get("TESSERACT_CMD")
+    if _tcmd and os.path.exists(_tcmd):
+        pytesseract.pytesseract.tesseract_cmd = _tcmd
+    elif os.name == "nt":
+        _cand = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+        if os.path.exists(_cand):
+            pytesseract.pytesseract.tesseract_cmd = _cand
+except Exception:
+    pytesseract = None
+
+def _abs_path(p: str) -> str:
+    p = p.replace("\\", "/")
+    full = (pathlib.Path.cwd() / p).resolve()
+    full.parent.mkdir(parents=True, exist_ok=True)
+    return str(full)
+
+def _resolve_url(arg: str) -> str:
+    if arg.startswith(("http://","https://")): return arg
+    if not arg.startswith("/"): arg = "/" + arg
+    return BASE_URL + arg
+
+def _parse_line(line: str):
+    line = line.strip()
+    if not line or line.startswith("#"): return ("COMMENT", line)
+    sp = line.split(None, 1)
+    return (sp[0].upper(), sp[1] if len(sp)>1 else "")
+
+def _parse_kv(s: str) -> Dict[str,str]:
+    out = {}
+    for part in s.strip().split():
+        if "=" in part:
+            k,v = part.split("=",1); out[k.strip()] = v.strip()
+    return out
+
+def _nowstamp(): return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+def _norm_text(s: str) -> str:
+    s = s.replace("Ä°","i").replace("I","Ä±").lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = re.sub(r"[^a-z0-9ÄŸÃ¼ÅŸÃ¶Ã§Ä±\-\_/]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def _tokenize_for_compare(text: str, min_len=3, ignore_numbers=True, ignore_patterns=None):
+    txt = _norm_text(text)
+    toks = [t for t in re.split(r"\s+", txt) if t]
+    out = []
+    regs = []
+    if ignore_patterns:
+        for pat in ignore_patterns:
+            try: regs.append(re.compile(pat, re.I))
+            except Exception: pass
+    for t in toks:
+        if len(t) < min_len: continue
+        if ignore_numbers and t.isdigit(): continue
+        if any(r.search(t) for r in regs): continue
+        out.append(t)
+    return out
+
+def _ocr_text(img_path: str, lang="tur+eng") -> str:
+    if not pytesseract: return ""
+    try:
+        with Image.open(img_path) as im:
+            return pytesseract.image_to_string(im, lang=lang) or ""
+    except Exception:
+        return ""
+
+def _page_screenshot(page, out_path: str) -> str:
+    path = _abs_path(out_path)
+    page.screenshot(path=path, full_page=False)
+    return path
+
+def _write_alert(key: str, ok: bool, recall: float, misses: list, paths: dict, alert_dir: str, reasons: list) -> str:
+    adir = pathlib.Path(_abs_path(alert_dir)); adir.mkdir(parents=True, exist_ok=True)
+    ts = _nowstamp()
+    md_path = adir / f"{key}-{ts}.md"
+    with open(md_path, "w", encoding="utf-8") as f:
+        f.write(f"# AUTOVALIDATE: {key}\n\n- Zaman: {ts}\n- SonuÃ§: {'OK' if ok else 'FAIL'}\n- Recall: {recall:.3f}\n")
+        if reasons: f.write(f"- Neden: {', '.join(reasons)}\n")
+        f.write("\n## Eksik Kelimeler\n")
+        if misses:
+            for w in sorted(misses)[:200]: f.write(f"- {w}\n")
+        else:
+            f.write("- (yok)\n")
+        f.write("\n## Dosyalar\n")
+        for k,v in paths.items(): f.write(f"- **{k}**: `{v}`\n")
+    csv_path = adir / "alerts_log.csv"
+    header = ["ts","key","ok","recall","misses","alert_md"]
+    row = [ts, key, str(ok), f"{recall:.4f}", str(len(misses)), str(md_path)]
+    write_header = not csv_path.exists()
+    with open(csv_path, "a", encoding="utf-8", newline="") as cf:
+        w = csv.writer(cf, delimiter=";")
+        if write_header: w.writerow(header)
+        w.writerow(row)
+    return str(md_path)
+
+@contextmanager
+def browser_ctx(headless=True, har_path=None):
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=headless)
+        if har_path:
+            context = browser.new_context(record_har_path=_abs_path(har_path), record_har_content="embed")
+        else:
+            context = browser.new_context()
+        page = context.new_page(); page.set_default_timeout(10_000); page.set_default_navigation_timeout(10_000)
+        page.on('popup', lambda p: (p.close() if not p.is_closed() else None))
+        try:
+            yield page, context, browser
+        finally:
+            try: context.close()
+            except: pass
+            try: browser.close()
+            except: pass
+
+def run_flow(steps: list, headless=True, har_path=None):
+    results=[]; ok_all=True
+    with browser_ctx(headless=headless, har_path=har_path) as (page, _ctx, _br):
+        for i, raw in enumerate(steps, start=1):
+            cmd, arg = _parse_line(raw)
+            if cmd == "COMMENT": 
+                results.append({"i": i, "cmd": cmd, "arg": arg, "ok": True, "error": "", "url": page.url if page else ""})
+                continue
+            step_ok=True; err=None
+            # AUTOVAL outputs
+            recall=1.0; ok_words=True; missing=[]; reasons=[]
+
+            try:
+                if cmd == "GOTO":
+                    page.goto(_resolve_url(arg.strip()), wait_until="domcontentloaded")
+
+                elif cmd == "WAIT":
+                    a = arg.strip(); aU=a.upper()
+                    if aU.startswith("SELECTOR "):
+                        sel = a[len("SELECTOR "):].strip()
+                        page.wait_for_selector(sel, state="visible")
+                    elif aU.startswith("URL CONTAINS "):
+                        needle = a[len("URL CONTAINS "):].strip()
+                        deadline = time.time() + 6
+                        while time.time() < deadline:
+                            if needle in page.url: break
+                            time.sleep(0.1)
+                        else: raise PWTimeout(f'URL does not contain "{needle}"')
+                    else:
+                        raise PWError(f"Unsupported WAIT arg: {arg}")
+
+                elif cmd == "FILL":
+                    sp = arg.split(None, 1)
+                    if len(sp) < 2: raise PWError("FILL requires 'selector text'")
+                    sel, txt = sp[0], sp[1]
+                    page.fill(sel, txt)
+
+                elif cmd == "CLICK":
+                    page.click(arg.strip())
+                    try: page.wait_for_load_state("domcontentloaded", timeout=5_000)
+                    except: pass
+                    if page.url.startswith("chrome-error://"):
+                        raise PWError("navigation-error")
+
+                elif cmd == "SCREENSHOT":
+                    page.screenshot(path=_abs_path(arg.strip()), full_page=False)
+
+                elif cmd == "DUMPDOM":
+                    path = _abs_path(arg.strip())
+                    html = page.content()
+                    pathlib.Path(path).write_text(html, encoding="utf-8")
+
+                elif cmd == "AUTOVALIDATE":
+                    kv = _parse_kv(arg)
+                    key = kv.get("key","page")
+                    baseline = _abs_path(kv["baseline"]) if "baseline" in kv else None
+                    words_recall = float(kv.get("words_recall","0.90"))
+                    live_source = kv.get("live_source","dom").lower()  # dom | ocr | dom+ocr
+                    alert_dir = kv.get("alert_dir","_otokodlama/alerts")
+                    min_token_len = int(kv.get("min_token_len","3"))
+                    ignore_numbers = kv.get("ignore_numbers","yes").lower() == "yes"
+                    ignore_patterns = [p for p in (x.strip() for x in kv.get("ignore_patterns","").split(",")) if p]
+
+                    # 1) baseline OCR (opsiyonel)
+                    baseline_text = ""
+                    if baseline and os.path.exists(baseline) and "ocr" in live_source:
+                        baseline_text = _ocr_text(baseline)
+                    elif baseline and os.path.exists(baseline):
+                        # baseline varsa ama OCR yoksa, baseline metni boÅŸ kalsÄ±n; sadece gÃ¶rsel referans gibi davranÄ±rÄ±z
+                        baseline_text = ""
+
+                    # 2) canlÄ± DOM ve/veya OCR
+                    live_texts=[]
+                    if "dom" in live_source:
+                        try: live_texts.append(page.locator("body").inner_text())
+                        except: pass
+
+                    live_shot = f"_otokodlama/alerts/{key}-live-{_nowstamp()}.png"
+                    live_shot_abs = _page_screenshot(page, live_shot)
+
+                    if "ocr" in live_source and pytesseract:
+                        live_texts.append(_ocr_text(live_shot_abs))
+
+                    # 3) kelime recall (baselineâ†’live)
+                    base_tokens = set(_tokenize_for_compare(
+                        baseline_text, min_len=min_token_len, ignore_numbers=ignore_numbers, ignore_patterns=ignore_patterns
+                    ))
+                    live_tokens = set(_tokenize_for_compare(
+                        " ".join(live_texts), min_len=min_token_len, ignore_numbers=ignore_numbers, ignore_patterns=ignore_patterns
+                    ))
+                    inter = base_tokens & live_tokens if base_tokens else set()
+                    recall = (len(inter) / max(1, len(base_tokens))) if base_tokens else 1.0
+                    ok_words = (recall >= words_recall)
+                    missing = sorted(list(base_tokens - live_tokens))
+
+                    if not ok_words:
+                        reasons.append(f"words_recall<{words_recall:.2f} ({recall:.3f})")
+
+                    ok = ok_words
+                    if not ok:
+                        _write_alert(key, ok, recall, missing, {"baseline": baseline or "(yok)", "live_screenshot": live_shot_abs}, alert_dir, reasons)
+                        raise AssertionError("AUTOVALIDATE FAIL: " + ", ".join(reasons))
+
+                else:
+                    raise PWError(f"Unknown cmd: {cmd}")
+
+            except (PWTimeout, PWError, AssertionError) as e:
+                step_ok=False; err=f"{e.__class__.__name__}: {str(e)}"
+                ok_all=False
+
+            rec = {"i": i, "cmd": cmd, "arg": arg, "ok": step_ok, "error": err, "url": page.url if page else "about:blank"}
+            if cmd == "AUTOVALIDATE":
+                rec.update({"recall": float(recall), "ok_words": bool(ok_words), "missing_count": len(missing)})
+            results.append(rec)
+            if not step_ok: break
+    return ok_all, results
+
+def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--steps", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--headful", action="store_true")
+    ap.add_argument("--har", default=None)
+    args = ap.parse_args()
+
+    with open(args.steps, "r", encoding="utf-8-sig") as f:
+        text = f.read()
+    steps = text.splitlines()
+    ok, res = run_flow(steps, headless=(not args.headful), har_path=args.har)
+    out = {"ok": ok, "results": res}
+    pathlib.Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+    print("[PW-FLOW] " + ("PASSED" if ok else "FAILED"))
+    sys.exit(0 if ok else 1)
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+### DOSYA BİTİŞ: pw_flow.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\link_smoke.py
+# -*- coding: utf-8 -*-
+import sys, json, argparse
+from urllib.parse import urljoin, urlsplit, urlunsplit
+from html.parser import HTMLParser
+from collections import deque
+from playwright.sync_api import sync_playwright
+
+class AnchorParser(HTMLParser):
+    def __init__(self): 
+        super().__init__(); self.links=[]
+    def handle_starttag(self, tag, attrs):
+        if tag != "a": return
+        href = None
+        for k,v in attrs:
+            if k == "href": href=v; break
+        if href: self.links.append(href)
+
+def normalize(current, href):
+    if not href: return None
+    h = href.strip()
+    if not h or h[0] == "#" or h.startswith(("mailto:","tel:","javascript:")):
+        return None
+    url = urljoin(current, h)
+    u = urlsplit(url)
+    # fragment'i at
+    return urlunsplit((u.scheme, u.netloc, u.path, u.query, ""))
+
+def in_scope(url, origin, path_prefix):
+    u = urlsplit(url)
+    if f"{u.scheme}://{u.netloc}" != origin: return False
+    if path_prefix and not u.path.startswith(path_prefix): return False
+    return True
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--base", required=True)               # http://127.0.0.1:8010
+    ap.add_argument("--start", required=True)              # /admin/...
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--depth", type=int, default=1)
+    ap.add_argument("--limit", type=int, default=200)
+    ap.add_argument("--path-prefix", default=None)
+    ap.add_argument("--login-path", default="/admin/login/")
+    ap.add_argument("--username", default=None)
+    ap.add_argument("--password", default=None)
+    ap.add_argument("--timeout", type=int, default=20000)
+    args = ap.parse_args()
+
+    base = args.base.rstrip("/")
+    start_url = urljoin(base + "/", args.start)
+    base_u = urlsplit(base)
+    origin = f"{base_u.scheme}://{base_u.netloc}"
+
+    # path prefix => verilmemişse start URL'in klasörü
+    if args.path_prefix:
+        path_prefix = args.path_prefix
+    else:
+        su = urlsplit(start_url)
+        pp = su.path
+        if not pp.endswith("/"): pp = pp.rsplit("/",1)[0] + "/"
+        path_prefix = pp
+
+    results = { "ok": True, "start": start_url, "depth": args.depth,
+                "limit": args.limit, "path_prefix": path_prefix, "checked": [] }
+    seen, q = set(), deque()
+    q.append((start_url,0)); seen.add(start_url)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(base_url=base)
+        page = context.new_page()
+        page.set_default_timeout(args.timeout)
+        page.set_default_navigation_timeout(args.timeout)
+
+        # Admin login (varsa)
+        if args.username and args.password and args.login_path:
+            try:
+                page.goto(args.login_path)
+                page.fill("input#id_username", args.username)
+                page.fill("input#id_password", args.password)
+                page.click("input[type=submit]")
+                page.wait_for_selector("#user-tools a[href$='/logout/']", timeout=args.timeout)
+            except Exception:
+                # login başarısız olsa da devam edip public linkleri tarayabiliriz
+                pass
+
+        rq = context.request
+        count = 0
+        while q and count < args.limit:
+            url, d = q.popleft()
+            status, text = 0, ""
+            try:
+                resp = rq.get(url)
+                status = resp.status
+                ctype = resp.headers.get("content-type","")
+                if "text/html" in ctype:
+                    text = resp.text()
+            except Exception:
+                pass
+
+            results["checked"].append({"url": url, "status": status})
+            if status >= 400 or status == 0:
+                results["ok"] = False
+
+            count += 1
+            if d < args.depth and text:
+                parser = AnchorParser()
+                try: parser.feed(text)
+                except Exception: pass
+                for href in parser.links:
+                    nu = normalize(url, href)
+                    if not nu: continue
+                    if not in_scope(nu, origin, path_prefix): continue
+                    if nu not in seen:
+                        seen.add(nu); q.append((nu, d+1))
+
+        context.close(); browser.close()
+
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+
+    bad = [x for x in results["checked"] if x["status"] >= 400 or x["status"] == 0]
+    print(f"[link-smoke] checked={len(results['checked'])} bad={len(bad)} scope_prefix={path_prefix}")
+    if bad:
+        for b in bad[:10]:
+            print(f"  {b['status']:>3} {b['url']}")
+    sys.exit(0 if results["ok"] else 2)
+
+if __name__ == "__main__":
+    main()
+### DOSYA BİTİŞ: link_smoke.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\_ast_check.py
+import ast, sys
+p = r"tools/pw_flow.py"
+with open(p, "r", encoding="utf-8") as f:
+    src = f.read()
+try:
+    ast.parse(src)
+except SyntaxError as e:
+    print("PY-SYNTAX-ERROR", e.lineno, e.msg)
+    lines = src.splitlines()
+    s = max(0, e.lineno-5); e2 = min(len(lines), e.lineno+5)
+    for i in range(s, e2):
+        print(f"{i+1:4} | {lines[i]}")
+    sys.exit(1)
+else:
+    print("PY-SYNTAX-OK")
+### DOSYA BİTİŞ: _ast_check.py
+
+### DOSYA BAŞLANGIÇ: .\\core\settings_maintenance.py
+# -*- coding: utf-8 -*-
+"""
+core/settings_maintenance.py
+Base settings'i miras alÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±r, 'maintenance' app'ini tekilleÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸tirir ve custom admin urlconf'u tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar.
+"""
+
+from .settings import *  # noqa
+
+
+def _normalize_installed(apps):
+    out = []
+    seen = set()
+    for app in apps:
+        # 'maintenance' veya 'maintenance.apps.MaintenanceConfig' geldiÃƒÆ’Ã¢â‚¬ÂÃƒâ€¦Ã‚Â¸inde
+        # tek bir canonical entry'ye indiriyoruz:
+        if app in ("maintenance", "maintenance.apps.MaintenanceConfig"):
+            key = "maintenance.apps.MaintenanceConfig"
+        else:
+            key = app
+        if key not in seen:
+            seen.add(key)
+            out.append(key)
+    return out
+
+
+# TekilleÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸tir
+INSTALLED_APPS = _normalize_installed(INSTALLED_APPS)
+if "maintenance.apps.MaintenanceConfig" not in INSTALLED_APPS:
+    INSTALLED_APPS.insert(0, "maintenance.apps.MaintenanceConfig")
+
+# Custom admin site URL'leri
+ROOT_URLCONF = "core.urls"
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
+
+
+MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware','core.mw_no_append_admin.NoAppendSlashForAdmin']
+
+SESSION_COOKIE_SECURE = False
+
+CSRF_COOKIE_SECURE = False
+
+# --- AUTO PATCH (admin redirect loop & required middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'core.mw_no_append_admin.NoAppendSlashForAdmin',  # CommonMiddleware yerine admin'de append_slash yok
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (admin redirect loop & required middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (fix admin redirect loop & required middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (fix admin redirect loop & required middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (canonical redirect middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    # Kanonik admin liste isteklerini erken yakala:
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+
+
+### DOSYA BİTİŞ: settings_maintenance.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\ops_admin_crud.py
+# -*- coding: utf-8 -*-
+from django.core.management.base import BaseCommand
+from maintenance.models import Equipment
+
+class Command(BaseCommand):
+    help = "Admin CRUD UI test verisini idempotent hazırlama/temizleme"
+
+    def add_arguments(self, parser):
+        parser.add_argument("--action", choices=["cleanup","ensure","prepare_set"], default="ensure")
+        parser.add_argument("--code", default="EQ-CRUD-UI")
+        parser.add_argument("--name", default="UI CRUD Cihazi 1")
+
+    def handle(self, *args, **opts):
+        action = opts["action"]
+        code   = opts["code"]
+        name   = opts["name"]
+
+        if action == "cleanup":
+            n, _ = Equipment.objects.filter(code=code).delete()
+            self.stdout.write(f"[cleanup] code={code} deleted={n>0}")
+            return
+
+        if action == "ensure":
+            obj, created = Equipment.objects.get_or_create(code=code, defaults={"name": name})
+            if not created and obj.name != name:
+                obj.name = name
+                obj.save()
+            self.stdout.write(f"[ensure] code={code} id={getattr(obj,'id',None)} created={created}")
+            return
+
+        if action == "prepare_set":
+            for c, n in [
+                ("EQ-CHANGE-001", "Change Baseline Cihazi"),
+                ("EQ-DELETE-001", "Delete Confirm Cihazi"),
+                ("EQ-SEARCH-001", "Arama Test 1"),
+                ("EQ-SEARCH-002", "Arama Test 2"),
+                ("EQ-SEARCH-003", "Arama Test 3"),
+            ]:
+                Equipment.objects.get_or_create(code=c, defaults={"name": n})
+            self.stdout.write("[prepare_set] ok")
+### DOSYA BİTİŞ: ops_admin_crud.py
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_admin_canonical.py
+# -*- coding: utf-8 -*-
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+from django.http import HttpResponseRedirect
+
+BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+
+class AdminEquipmentCanonicalRedirectMiddleware:
+    """
+    /admin/maintenance/equipment/ GET isteklerini, URL resolver'a gitmeden önce
+    sterilize query ile /admin/maintenance/equipment/_direct/ adresine 302 yapar.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Sadece kanonik liste yolu ve GET
+        if request.method == "GET" and request.path == "/admin/maintenance/equipment/":
+            u = urlsplit(request.get_full_path())
+            qs = [(k, v) for (k, v) in parse_qsl(u.query, keep_blank_values=True) if k not in BLOCK_KEYS]
+            new_qs = urlencode(qs)
+            target = urlunsplit((u.scheme, u.netloc, "/admin/maintenance/equipment/_direct/", new_qs, u.fragment))
+            return HttpResponseRedirect(target)
+        return self.get_response(request)
+### DOSYA BİTİŞ: mw_admin_canonical.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\patch_equipment_admin_v2.py
+# -*- coding: utf-8 -*-
+import re, pathlib
+
+root = pathlib.Path(__file__).resolve().parents[1]
+adm_path = root / "maintenance" / "admin.py"
+
+s = adm_path.read_text(encoding="utf-8").splitlines()
+
+def has_line(rx):
+    return any(re.search(rx, ln) for ln in s)
+
+# A) @admin.register(Equipment, ...) dekoratörünü temizle (sadece satırı kaldır)
+out = []
+skip_next_blank = False
+for ln in s:
+    if re.match(r'\s*@\s*admin\.register\(\s*Equipment', ln):
+        # dekoratör satırını atla
+        skip_next_blank = False
+        continue
+    # opsiyonel: hemen altındaki boş satırı olduğu gibi bırakabiliriz; zararı yok
+    out.append(ln)
+s = out
+
+# B) AlreadyRegistered importu ekle
+txt = "\n".join(s)
+if "from django.contrib.admin.sites import AlreadyRegistered" not in txt:
+    inserted = False
+    for i, ln in enumerate(s):
+        if re.match(r'\s*from\s+django\.contrib\s+import\s+admin\b', ln):
+            s.insert(i+1, 'from django.contrib.admin.sites import AlreadyRegistered')
+            inserted = True
+            break
+    if not inserted:
+        # yoksa başa ekleyelim (admin importu da garanti edelim)
+        if not any(re.match(r'\s*from\s+django\.contrib\s+import\s+admin\b', x) for x in s):
+            s.insert(0, 'from django.contrib import admin')
+        s.insert(1, 'from django.contrib.admin.sites import AlreadyRegistered')
+
+# C) EquipmentAdmin sınıfına get_preserved_filters ekle (redirect döngüsünü keser)
+txt = "\n".join(s)
+has_method = "def get_preserved_filters(self, request):" in txt
+
+# Sınıf tanımı satırını bul
+class_idx = None
+class_rx = re.compile(r'^\s*class\s+EquipmentAdmin\s*\(\s*admin\.ModelAdmin\s*\)\s*:\s*$', re.M)
+for i, ln in enumerate(s):
+    if class_rx.match(ln):
+        class_idx = i
+        break
+
+if class_idx is not None and not has_method:
+    indent = re.match(r'^(\s*)', s[class_idx]).group(1) + "    "
+    method_block = [
+        indent + "def get_preserved_filters(self, request):",
+        indent + "    # avoid redirect loop originating from preserved_filters",
+        indent + '    return ""',
+        ""
+    ]
+    # Sınıf gövdesinin hemen başına enjekte et (docstring varsa üstüne gelmesi sorun değil)
+    s[class_idx+1:class_idx+1] = method_block
+
+elif class_idx is None:
+    # Sınıf hiç yoksa minimal sınıf ekle
+    s += [
+        "",
+        "class EquipmentAdmin(admin.ModelAdmin):",
+        "    def get_preserved_filters(self, request):",
+        '        return ""',
+        ""
+    ]
+
+# D) admin_site ile güvenli register (idempotent)
+txt = "\n".join(s)
+if not re.search(r'admin_site\.register\(\s*Equipment', txt):
+    s += [
+        "try:",
+        "    admin_site.register(Equipment, EquipmentAdmin)",
+        "except AlreadyRegistered:",
+        "    pass",
+        ""
+    ]
+
+adm_path.write_text("\n".join(s), encoding="utf-8")
+print("[patch v2] maintenance/admin.py ok")
+### DOSYA BİTİŞ: patch_equipment_admin_v2.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\patch_equipment_admin.py
+# -*- coding: utf-8 -*-
+import io, re, sys, pathlib
+
+root = pathlib.Path(__file__).resolve().parents[1]
+adm_path = root / "maintenance" / "admin.py"
+
+text = adm_path.read_text(encoding="utf-8")
+
+# 1) AlreadyRegistered importunu ekle
+if "from django.contrib.admin.sites import AlreadyRegistered" not in text:
+    # "from django.contrib import admin" satırının hemen altına ekle
+    pat = r'(from\s+django\.contrib\s+import\s+admin[^\n]*\n)'
+    if re.search(pat, text):
+        text = re.sub(pat, r"\1from django.contrib.admin.sites import AlreadyRegistered\n", text, count=1)
+    else:
+        text = "from django.contrib import admin\nfrom django.contrib.admin.sites import AlreadyRegistered\n" + text
+
+# 2) EquipmentAdmin sınıfına get_preserved_filters ekle (yoksa)
+cls_pat = r'(?ms)^\s*class\s+EquipmentAdmin\s*\(\s*admin\.ModelAdmin\s*\)\s*:\s*(?P<body>.*?)(?=^\s*class\s|\Z)'
+m = re.search(cls_pat, text)
+if m:
+    body = m.group("body")
+    if "def get_preserved_filters(" not in body:
+        # sınıf gövdesinin başına yöntem ekle
+        insert = "    def get_preserved_filters(self, request):\n        # Admin preserved_filters yeniden yönlendirme döngüsünü engelle\n        return \"\"\n\n"
+        start, end = m.span("body")
+        text = text[:start] + insert + text[start:]
+else:
+    # Yoksa minimal bir tanım ekleyelim (olası ama pek beklemiyoruz)
+    text += "\n\nclass EquipmentAdmin(admin.ModelAdmin):\n    def get_preserved_filters(self, request):\n        return \"\"\n"
+
+# 3) @admin.register(Equipment, ...) dekoratörünü kaldır (çift kayıtı engelle)
+text = re.sub(r'(?ms)^\s*@\s*admin\.register\(\s*Equipment[^)]*\)\s*\n', '', text)
+
+# 4) admin_site ile güvenli register (idempotent)
+if re.search(r'admin_site\.register\(\s*Equipment', text) is None:
+    text += ("\ntry:\n"
+             "    admin_site.register(Equipment, EquipmentAdmin)\n"
+             "except AlreadyRegistered:\n"
+             "    pass\n")
+
+adm_path.write_text(text, encoding="utf-8")
+print("[patch] maintenance/admin.py ok")
+### DOSYA BİTİŞ: patch_equipment_admin.py
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_no_append_admin.py
+# -*- coding: utf-8 -*-
+from django.middleware.common import CommonMiddleware
+
+class NoAppendSlashForAdmin(CommonMiddleware):
+    """
+    Admin altındaki URL'lerde CommonMiddleware'in APPEND_SLASH yönlendirmesini devre dışı bırakır.
+    Diğer tüm yollar için standart davranış korunur.
+    """
+    def process_request(self, request):
+        p = request.path
+        # admin altına giriyorsa bu middleware append_slash yapmasın
+        if p.startswith("/admin/"):
+            return None
+        # diğer tüm yollar: standart davranış
+        return super().process_request(request)
+### DOSYA BİTİŞ: mw_no_append_admin.py
+
