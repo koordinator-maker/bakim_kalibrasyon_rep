@@ -1,11 +1,81 @@
 {
   "stats": {
-    "total": 0,
-    "passed": 0,
-    "failed": 0,
+    "total": 5,
+    "passed": 2,
+    "failed": 3,
     "skipped": 0,
-    "startTime": "2025-10-04T18:09:55.171Z",
-    "endTime": "2025-10-04T18:09:55.172Z"
+    "startTime": "2025-10-04T18:41:01.292Z",
+    "endTime": "2025-10-04T18:41:25.832Z"
   },
-  "tests": []
+  "tests": [
+    {
+      "title": "login state -> storage/user.json",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\_setup.spec.js",
+        "line": 10,
+        "column": 6
+      },
+      "project": "setup",
+      "status": "passed",
+      "duration_ms": 605,
+      "error": null
+    },
+    {
+      "title": "E101 - Equipment Listesi SayfasÄ±nÄ± GÃ¶rÃ¼ntÃ¼leme",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs",
+        "line": 325,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 880,
+      "error": null
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna EriÅŸim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs",
+        "line": 325,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 6090,
+      "error": {
+        "message": "Error: Hiçbir aday görünür değil: button[name='_save'], input[name='_save'], button[type='submit'], input[type='submit'], input[type='submit'][value*='Kaydet'], button:has-text('Kaydet'), div.submit-row, form[action*='/add/'], form[method='post'], #content-main form, #content form, main form, form",
+        "stack": "Error: Hiçbir aday görünür değil: button[name='_save'], input[name='_save'], button[type='submit'], input[type='submit'], input[type='submit'][value*='Kaydet'], button:has-text('Kaydet'), div.submit-row, form[action*='/add/'], form[method='post'], #content-main form, #content form, main form, form\n    at tryNext (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs:183:13)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs:370:9"
+      }
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna EriÅŸim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs",
+        "line": 325,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 6116,
+      "error": {
+        "message": "Error: Hiçbir aday görünür değil: button[name='_save'], input[name='_save'], button[type='submit'], input[type='submit'], input[type='submit'][value*='Kaydet'], button:has-text('Kaydet'), div.submit-row, form[action*='/add/'], form[method='post'], #content-main form, #content form, main form, form",
+        "stack": "Error: Hiçbir aday görünür değil: button[name='_save'], input[name='_save'], button[type='submit'], input[type='submit'], input[type='submit'][value*='Kaydet'], button:has-text('Kaydet'), div.submit-row, form[action*='/add/'], form[method='post'], #content-main form, #content form, main form, form\n    at tryNext (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs:183:13)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs:370:9"
+      }
+    },
+    {
+      "title": "E102 - Equipment Ekleme Formuna EriÅŸim",
+      "location": {
+        "file": "C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs",
+        "line": 325,
+        "column": 3
+      },
+      "project": "chromium",
+      "status": "failed",
+      "duration_ms": 6126,
+      "error": {
+        "message": "Error: Hiçbir aday görünür değil: button[name='_save'], input[name='_save'], button[type='submit'], input[type='submit'], input[type='submit'][value*='Kaydet'], button:has-text('Kaydet'), div.submit-row, form[action*='/add/'], form[method='post'], #content-main form, #content form, main form, form",
+        "stack": "Error: Hiçbir aday görünür değil: button[name='_save'], input[name='_save'], button[type='submit'], input[type='submit'], input[type='submit'][value*='Kaydet'], button:has-text('Kaydet'), div.submit-row, form[action*='/add/'], form[method='post'], #content-main form, #content form, main form, form\n    at tryNext (C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs:183:13)\n    at C:\\dev\\bakim_kalibrasyon\\tests\\tasks.spec.cjs:370:9"
+      }
+    }
+  ]
 }
