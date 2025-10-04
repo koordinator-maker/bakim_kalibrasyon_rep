@@ -4,7 +4,8 @@
     "description":  "Bakım ve Kalibrasyon Uygulaması Uçtan Uca Testleri",
     "main":  "index.js",
     "scripts":  {
-                    "test":  "playwright test --reporter=line,./reporters/custom_json_reporter.js --output=targets/artifacts"
+                    "test":  "playwright test --reporter=line,./reporters/custom_json_reporter.js --output=targets/artifacts",
+                    "test:tasks":  "playwright test tests/tasks.spec.cjs --reporter=line,./reporters/custom_json_reporter.js --output=targets/artifacts"
                 },
     "keywords":  [
                      "playwright",
