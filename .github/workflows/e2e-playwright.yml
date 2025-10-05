@@ -1,98 +1,67 @@
 name: E2E – Django + Playwright
 on:
-  push:
-  pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: e2e-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
+  push: { branches: [ "ci/e2e", "main" ] }
+  pull_request: {}
+permissions: { contents: read }
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    env:
+      CI: "true"
+      BASE_URL: "http://127.0.0.1:8010"
+      DJANGO_SETTINGS_MODULE: "core.settings"
+      PYTHONUNBUFFERED: "1"
+      E2E_USER: ${{ secrets.E2E_USER }}
+      E2E_PASS: ${{ secrets.E2E_PASS }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - uses: actions/cache@v4
         with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
       - name: Install Python deps
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Install Node deps
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Install Node deps & Chromium
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm i; fi
-
-      - name: Install Playwright browsers + OS deps
-        run: npx playwright install --with-deps
-
-      - name: Migrate DB & seed admin
-        env:
-          DJANGO_SETTINGS_MODULE: core.settings_maintenance
+          if [ -f package.json ]; then npm ci; else npm init -y && npm i -D @playwright/test; fi
+          npx playwright install --with-deps chromium
+      - name: Django migrate & create superuser
         run: |
           python manage.py migrate --noinput
-          python - <<'PY'
-          import os, django
-          os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-          django.setup()
+          python manage.py shell <<'PY'
           from django.contrib.auth import get_user_model
-          U = get_user_model()
-          u, _ = U.objects.get_or_create(
-              username="admin",
-              defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True}
+          U=get_user_model()
+          u,created=U.objects.get_or_create(
+            username="${{ env.E2E_USER }}",
+            defaults={"is_superuser":True,"is_staff":True,"email":"e2e@example.com"}
           )
-          u.is_staff = True; u.is_superuser = True
-          u.set_password("admin123!"); u.save()
-          print("Admin OK:", u.username)
+          if created: u.set_password("${{ env.E2E_PASS }}"); u.save()
           PY
-
-      - name: Start Django dev server
-        env:
-          DJANGO_SETTINGS_MODULE: core.settings_maintenance
-          ALLOW_EQUIPMENT_ADD: "1"
+      - name: Start server & wait
         run: |
-          python manage.py runserver 127.0.0.1:8010 --noreload &
-          for i in {1..60}; do
-            curl -sSf http://127.0.0.1:8010/admin/ >/dev/null && break
-            sleep 1
-          done
-
-      - name: Run Playwright tests (headless)
-        env:
-          BASE_URL: http://127.0.0.1:8010
-          E2E_USER: admin
-          E2E_PASS: admin123!
-        run: npx playwright test --reporter=html
-
-      - name: Upload HTML report
+          python manage.py runserver 0.0.0.0:8010 > runserver.log 2>&1 &
+          python - <<'PY'
+          import socket,time,sys
+          for _ in range(90):
+            try: socket.create_connection(("127.0.0.1",8010),1).close(); sys.exit(0)
+            except OSError: time.sleep(1)
+          sys.exit("server did not start")
+          PY
+      - name: Run Playwright
+        run: npx playwright test --project=chromium --reporter=html
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: playwright-report
-          retention-days: 7
-
-      - name: Upload traces & screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: test-results
-          retention-days: 7
+          name: e2e-ubuntu-artifacts
+          path: |
+            playwright-report
+            test-results
+            runserver.log
