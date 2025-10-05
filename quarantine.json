@@ -2,6 +2,6 @@
   "EQP-003.spec.js - Ekipman Ekleme formunda Üretici Firma alanının varlığı": 21,
   "_setup.spec.js - login state üret ve storage/user.json kaydet": 33,
   "_setup.spec.js - login state create and save to storage/user.json": 54,
-  "_setup.spec.js - login state -> storage/user.json": 12,
-  "tasks.spec.cjs - E102 - Equipment Ekleme Formuna EriÅŸim": 39
+  "_setup.spec.js - login state -> storage/user.json": 16,
+  "tasks.spec.cjs - E102 - Equipment Ekleme Formuna EriÅŸim": 42
 }

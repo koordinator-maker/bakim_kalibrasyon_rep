@@ -1,46 +1,33 @@
-﻿ /* override storage for setup only */
- try { require('@playwright/test').test.use({ storageState: undefined }); } catch {}
-// tests/_setup.spec.js
-import { test as setup, expect } from "@playwright/test";
-import fs from "fs";
-import path from "path";
+import { test, expect } from '@playwright/test';
 
-const authFile = path.join(process.cwd(), "storage", "user.json");
+// Ayarlar (ENV varsa onları kullan)
+const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
+const USER = process.env.E2E_USER || 'admin';
+const PASS = process.env.E2E_PASS || 'admin123!';
 
-setup("login state -> storage/user.json", async ({ page, context }) => {
-  const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
-  const USER = process.env.ADMIN_USER || "hp";
-  const PASS = process.env.ADMIN_PASS || "A1234";
+// Zor durumlar için zaman aşımı biraz geniş
+test.setTimeout(30000);
 
-  // 1) Önce admin köke git (login veya dashboard'a düşer)
-  await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+test('login state -> storage/user.json', async ({ page, context }) => {
+  // /admin/ -> zaten login ise admin index, değilse login sayfasına yönlendirir
+  await page.goto(`${BASE}/admin/`, { waitUntil: 'domcontentloaded' });
 
-  // 2) Login sayfasında mıyız? Basit ve tema-bağımsız tespit
-  const loginMarker = page.locator("form[action*='login'], input[name='username'], #id_username").first();
-  const isLogin = await loginMarker.isVisible().catch(() => false);
+  const userInput = page.locator('#id_username');
+  const passInput = page.locator('#id_password');
 
-  if (isLogin) {
-    // 3) Giriş yap
-    const userInput = page.locator('input[name="username"], #id_username').first();
-    const passInput = page.locator('input[name="password"], #id_password').first();
-    await userInput.fill(USER, { timeout: 5000 });
-    await passInput.fill(PASS, { timeout: 5000 });
+  // Login formu görünüyor mu?
+  const onLogin = (await userInput.count()) > 0;
 
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 15000 }),
-      page.locator('input[type="submit"], button[type="submit"]').click(),
-    ]);
+  if (onLogin) {
+    await userInput.fill(USER);
+    await passInput.fill(PASS);
+    await page.click('input[type="submit"]');
+    await expect(page).toHaveURL(/\/admin\/?$/);
+  } else {
+    // Zaten giriş yapmış durumda
+    await expect(page).toHaveURL(/\/admin\/?$/);
   }
 
-  // 4) Başarı ölçütü: login URL'inde olmamak ve login formunun DOM'da olmaması
-  await expect(page).not.toHaveURL(/\/admin\/login\/?/);
-  await expect(page.locator("form[action*='login'], input[name='username'], #id_username")).toHaveCount(0, { timeout: 3000 });
-
-  // 5) Session kaydet
-  await context.storageState({ path: authFile });
-  if (!fs.existsSync(authFile)) throw new Error("storage/user.json yazılamadı");
-  console.log(`[SETUP SUCCESS] Saved: ${authFile} — URL: ${page.url()}`);
+  await context.storageState({ path: 'storage/user.json' });
+  console.log(`[SETUP SUCCESS] Saved: storage/user.json — URL: ${await page.url()}`);
 });
-
-
-
