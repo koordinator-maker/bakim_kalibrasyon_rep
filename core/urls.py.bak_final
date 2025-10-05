@@ -1,0 +1,13 @@
+from django.contrib import admin
+from django.urls import path
+from django.urls import clear_url_caches
+
+# 1) Admin registry'yi kesin yükle
+admin.autodiscover()
+
+# 2) URL cache'lerini temizle ki yeni admin URL'leri görünür olsun
+clear_url_caches()
+
+urlpatterns = [
+    path('admin/', admin.site.urls),  # namespace = 'admin' / app_name = 'admin'
+]
