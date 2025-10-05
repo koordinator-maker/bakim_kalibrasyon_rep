@@ -56,3 +56,4 @@
 {"id":"_setup.spec.js - login state -> storage/user.json","status":"failed","error":"TimeoutError: page.fill: Timeout 5000ms exceeded.","timestamp":"2025-10-05T17:33:05.736Z"}
 {"id":"_setup.spec.js - login state -> storage/user.json","status":"failed","error":"TimeoutError: page.fill: Timeout 5000ms exceeded.","timestamp":"2025-10-05T17:33:13.413Z"}
 {"id":"_setup.spec.js - login state -> storage/user.json","status":"timedOut","error":"\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m","timestamp":"2025-10-05T17:53:48.631Z"}
+{"id":"_setup.spec.js - login state -> storage/user.json","status":"timedOut","error":"\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m","timestamp":"2025-10-05T18:59:13.261Z"}

@@ -1,0 +1,50 @@
+﻿[
+    {
+        "Flow":  "equipment_ui_create",
+        "Pass":  true,
+        "FirstFailStep":  "",
+        "Cmd":  "",
+        "Reason":  "passed",
+        "ErrorSnippet":  "",
+        "Url":  "http://127.0.0.1:8010/admin/login/?next=/admin/maintenance/equipment/_direct/",
+        "Recall":  "",
+        "VisualSim":  "",
+        "OkWords":  "",
+        "OkVisual":  "",
+        "OkSelects":  "",
+        "MissingCount":  "",
+        "Log":  "C:\\dev\\bakim_kalibrasyon\\_otokodlama\\out\\equipment_ui_create.log"
+    },
+    {
+        "Flow":  "equipment_ui_delete",
+        "Pass":  true,
+        "FirstFailStep":  "",
+        "Cmd":  "",
+        "Reason":  "passed",
+        "ErrorSnippet":  "",
+        "Url":  "http://127.0.0.1:8010/admin/login/?next=/admin/maintenance/equipment/_direct/",
+        "Recall":  "",
+        "VisualSim":  "",
+        "OkWords":  "",
+        "OkVisual":  "",
+        "OkSelects":  "",
+        "MissingCount":  "",
+        "Log":  "C:\\dev\\bakim_kalibrasyon\\_otokodlama\\out\\equipment_ui_delete.log"
+    },
+    {
+        "Flow":  "equipment_ui_update",
+        "Pass":  true,
+        "FirstFailStep":  "",
+        "Cmd":  "",
+        "Reason":  "passed",
+        "ErrorSnippet":  "",
+        "Url":  "http://127.0.0.1:8010/admin/login/?next=/admin/maintenance/equipment/_direct/",
+        "Recall":  "",
+        "VisualSim":  "",
+        "OkWords":  "",
+        "OkVisual":  "",
+        "OkSelects":  "",
+        "MissingCount":  "",
+        "Log":  "C:\\dev\\bakim_kalibrasyon\\_otokodlama\\out\\equipment_ui_update.log"
+    }
+]
