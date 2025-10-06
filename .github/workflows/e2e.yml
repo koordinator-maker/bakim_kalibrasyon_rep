@@ -1,0 +1,62 @@
+﻿name: E2E UI
+
+on:
+  push:
+    branches: [ "ci/e2e-i18n-setup-fixes", "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_URL: http://127.0.0.1:8010
+      ADMIN_USER: admin
+      ADMIN_PASS: admin123!
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: |
+          npm ci
+          npx playwright install --with-deps
+        shell: pwsh
+
+      - name: Run tests (json + html)
+        run: |
+          npx playwright test --project=chromium --reporter=json=_otokodlama/out/pw.json,html || true
+        shell: pwsh
+
+      - name: Upload Playwright HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload AI queue (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai_queue
+          path: ai_queue
+          if-no-files-found: ignore
+
+      - name: Install gh
+        uses: cli/cli-action@v2
+
+      - name: Set PR number
+        if: ${{ github.event_name == 'pull_request' }}
+        run: echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+        shell: pwsh
+
+      - name: Post PR comment (summary)
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pwsh -File tools/post_pr_summary.ps1
