@@ -1,20 +1,26 @@
 ﻿# tools/post_pr_summary.ps1
-# Rev: r5 — .last-run.json okuyucu (gh opsiyonel)
+# Rev: r6 — missing stats guard
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
-# 1) Kaynak: Playwright özet dosyası
 $report = "test-results/.last-run.json"
 if (-not (Test-Path $report)) {
   Write-Host "No summary at $report"
   exit 0
 }
 
-# 2) Oku
 $json = Get-Content $report -Raw | ConvertFrom-Json
 
-# Beklenen alanlar: status, stats: { expected, skipped, unexpected, flaky, duration }
+# ---- Guard: stats yoksa nazikçe çık ----
+if (-not ($json.PSObject.Properties.Name -contains 'stats')) {
+  Write-Host "Summary has no 'stats' (run probably failed before reporting)."
+  [IO.File]::WriteAllText("_otokodlama/out/last_pr_summary.md",
+    "## 🔴 E2E Sonuç Özeti`n- Rapor oluşamadı (global setup veya erken hata).`n> HTML rapor yoksa test koştuktan sonra tekrar deneyin.",
+    [Text.UTF8Encoding]::new($false))
+  exit 0
+}
+
 $expected   = [int]$json.stats.expected
 $skipped    = [int]$json.stats.skipped
 $unexpected = [int]$json.stats.unexpected
@@ -22,9 +28,9 @@ $flaky      = [int]$json.stats.flaky
 $durationMs = [double]$json.stats.duration
 $total      = $expected + $skipped + $unexpected + $flaky
 $passed     = $expected
-$failed     = $unexpected # (flaky genelde ayrı sayılır; istersen ekleyebilirsin)
+$failed     = $unexpected
 
-$mins = [Math]::Round(($durationMs/60000), 2)
+$mins  = [Math]::Round(($durationMs/60000), 2)
 $badge = if ($failed -gt 0) { "🔴" } else { "🟢" }
 
 $body = @"
@@ -35,7 +41,6 @@ $body = @"
 > HTML rapor: Actions → Artifacts → **playwright-report**
 "@
 
-# 3) GH Actions PR ise yorum bırak; değilse konsola + md
 $inCI = [bool]$env:GITHUB_ACTIONS
 $prNumber = $env:PR_NUMBER
 
