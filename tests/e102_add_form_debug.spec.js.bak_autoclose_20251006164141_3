@@ -38,4 +38,3 @@ if (/\/admin\/login\//.test(page.url())) {
 }
 });
 });
-});

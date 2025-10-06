@@ -2,11 +2,11 @@ import { test, expect } from '@playwright/test';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
 test.use({ storageState: 'storage/user.json' });
-test.setTimeout(30000);
+test.setTimeout(20000);
 
-test('E102 - Equipment Ekleme Formuna EriÃƒâ€¦Ã…Â¸im (debug)', async ({ page }) => {
-  const addURL = `${BASE}/admin/maintenance/equipment/add/`;
-  const resp = await page.goto(addURL, { waitUntil: 'domcontentloaded' });
+test('E102 - Equipment Ekleme Formuna EriÃƒâ€¦Ã…Â¸im', async ({ page }) => {
+  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
+
   
   /* ensure logged in (fallback) */
 if (/\/admin\/login\//.test(page.url())) {
@@ -36,6 +36,3 @@ if (/\/admin\/login\//.test(page.url())) {
   }
   await page.waitForLoadState('domcontentloaded').catch(()=>{});
 }
-});
-});
-});
