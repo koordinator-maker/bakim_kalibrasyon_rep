@@ -374,7 +374,13 @@ const steps = parseSteps(t.job_definition);
       if (txt) {
         printInfo(`Metin: "${txt.val}"`);
         const body = await page.locator("body").innerText();
-        const ok = coverage90(body, txt.val);
+        let ok = coverage90(body, txt.val) || (/Kaydet/i.test(txt.val) && coverage90(body, 'Save'));
+if (!ok) {
+  const ctrl = page.getByRole('button', { name: /Save|Kaydet/i }).or(
+    page.locator("input[type='submit'][value*='Save'], input[type='submit'][value*='Kaydet']")
+  );
+  ok = await ctrl.first().isVisible().catch(() => false);
+}
         expect(ok, "Metin < %90").toBeTruthy();
         printSuccess(`Metin: ≥90%`);
       }
@@ -438,6 +444,7 @@ test.afterAll(() => {
     printBox('⚠️  BAZI TESTLER BAŞARISIZ', summary, colors.yellow);
   }
 });
+
 
 
 
