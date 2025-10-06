@@ -21,3 +21,5 @@ _otokodlama/**
 test-results/
 .playwright/
 storage/user.json
+test-results/
+tests/.auth/
