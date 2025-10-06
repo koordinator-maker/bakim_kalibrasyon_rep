@@ -1,76 +1,81 @@
+/**
+ * Rev: 2025-10-06 12:40 r1
+ * E103 — Equipment Kaydetme (stabil form algılama + auto-login)
+ */
 import { test, expect } from '@playwright/test';
-
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
-test.use({ storageState: 'storage/user.json' });
-test.setTimeout(45000);
+import fs from 'fs';
 
 test('E103 - Equipment Kaydetme (dinamik doldurma)', async ({ page }) => {
-  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
+  const BASE = (process.env.BASE_URL || 'http://127.0.0.1:8010').replace(/\/$/, '');
+  const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+  const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123!';
 
-  // Gerekirse listeden "Add" ile içeri gir
-  if (!/\/add\/?$/.test(page.url())) {
-    const addLink = page.locator('a.addlink, .object-tools a[href$="/add/"]');
-    if (await addLink.count()) {
-      await addLink.first().click();
-      await page.waitForLoadState('domcontentloaded');
+  async function loginIfNeeded() {
+    await page.goto(`${BASE}/admin/`, { waitUntil: 'domcontentloaded' });
+    if (/\/admin\/login\//.test(page.url())) {
+      await page.fill('#id_username', ADMIN_USER);
+      await page.fill('#id_password', ADMIN_PASS);
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        page.locator('input[type="submit"],button[type="submit"]').first().click()
+      ]);
     }
   }
 
-  const form = page.locator('form:has(input[name="_save"])').first();
-  await expect(form).toBeVisible();
+  await loginIfNeeded();
+
+  // ADD formuna git ve gerçekten 'add' sayfasında olduğunu garanti et
+  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
+  if (!/\/add\/?$/.test(page.url())) {
+    const addLink = page.locator('a.addlink, .object-tools a[href$="/add/"]').first();
+    if (await addLink.isVisible().catch(()=>false)) {
+      await Promise.all([ page.waitForLoadState('domcontentloaded'), addLink.click() ]);
+    }
+  }
+
+  // Formu bulurken alternatifler kullan
+  let form = page.locator('form:has(input[name="_save"])').first();
+  if (!(await form.count())) {
+    form = page.locator('form[action*="/add/"]').first();
+  }
+  await expect(form, 'ADD formu görünür değil').toBeVisible();
 
   const ts = Date.now().toString();
+  const nameValue = 'AUTO-NAME-' + ts;
 
-  // Metin alanları (required)
-  for (const sel of [
-    'input[required][type="text"]',
-    'input[required]:not([type])',
-    'textarea[required]'
-  ]) {
-    const inputs = form.locator(sel);
-    const n = await inputs.count();
-    for (let i = 0; i < n; i++) {
-      const el = inputs.nth(i);
-      const name = (await el.getAttribute('name')) || `text${i}`;
-      const val = name.toLowerCase().includes('serial') ? `SN-${ts}` : `AUTO-${name}-${ts}`;
-      await el.fill(val);
+  // İsim alanı için stabil seçiciler
+  const nameSel = ['input[name="name"]', '#id_name',
+                   'input[type="text"][name], input:not([type])[name]'];
+  let filled = false;
+  for (const sel of nameSel) {
+    const f = form.locator(sel).first();
+    if (await f.isVisible().catch(()=>false)) {
+      await f.fill(nameValue);
+      filled = true;
+      break;
     }
   }
-
-  // Number
-  const nums = form.locator('input[required][type="number"]');
-  for (let i = 0; i < await nums.count(); i++) {
-    await nums.nth(i).fill('0');
+  if (!filled) {
+    const fallback = form.locator('input[type="text"], input:not([type]), textarea').first();
+    if (await fallback.isVisible().catch(()=>false)) {
+      await fallback.fill(nameValue);
+      filled = true;
+    }
   }
-
-  // Tarih (HTML5 date)
-  const today = new Date().toISOString().slice(0,10);
-  const dates = form.locator('input[required][type="date"]');
-  for (let i = 0; i < await dates.count(); i++) {
-    await dates.nth(i).fill(today);
-  }
-
-  // Select (first non-empty option)
-  const selects = form.locator('select[required]');
-  for (let i = 0; i < await selects.count(); i++) {
-    const sel = selects.nth(i);
-    // index:1 genelde ilk geçerli seçenek
-    await sel.selectOption({ index: 1 }).catch(()=>{});
-  }
+  expect(filled, 'Name-like alan bulunamadı').toBeTruthy();
 
   // Kaydet
-  await form.locator('input[name="_save"]').click();
+  const save = form.locator('input[name="_save"]').first();
+  if (await save.isVisible().catch(()=>false)) {
+    await Promise.all([ page.waitForLoadState('domcontentloaded'), save.click() ]);
+  } else {
+    const submitAlt = form.locator('button[type="submit"], input[type="submit"]').first();
+    await Promise.all([ page.waitForLoadState('domcontentloaded'), submitAlt.click() ]);
+  }
 
-  // Başarı doğrulama: /change/ URL'i veya başarı mesajı
-  const urlOk = page.waitForURL(/\/equipment\/\d+\/change\/$/, { timeout: 8000 }).catch(()=>null);
-  const msgOk = page.locator('ul.messagelist li.success, .success').first();
-  await Promise.race([
-    urlOk,
-    msgOk.waitFor({ state: 'visible', timeout: 8000 }).catch(()=>null)
-  ]);
+  // Başarı sonrası en azından changelist bekleyelim
+  await expect(page).toHaveURL(new RegExp('/admin/maintenance/equipment/?$'));
 
-  // En az biri doğrulansın
-  const inChange = /\/equipment\/\d+\/change\/$/.test(page.url());
-  const hasMsg = await msgOk.isVisible().catch(()=>false);
-  expect(inChange || hasMsg, 'Kayıt sonrası change sayfası veya başarı mesajı beklenirdi.').toBeTruthy();
+  // Artefakt (tanılama için)
+  try { fs.writeFileSync('test-results/e103_add_page.html', await page.content()); } catch {}
 });
