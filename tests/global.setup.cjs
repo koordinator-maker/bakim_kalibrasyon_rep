@@ -28,8 +28,18 @@ module.exports = async function globalSetup() {
   const loggedIn = !/\/admin\/login\//.test(page.url());
   console.log("[setup] after login url:", page.url(), "loggedIn:", loggedIn);
   if (!loggedIn) {
-    await browser.close();
-    throw new Error("globalSetup: Login başarısız. ADMIN_USER/ADMIN_PASS ve yetkileri kontrol edin.");
+    
+// --- DEBUG: drop evidence when login fails ---
+await page.screenshot({
+  path: require("path").resolve(__dirname, "login_fail.png"),
+  fullPage: true
+}).catch(() => {});
+require("fs").writeFileSync(
+  require("path").resolve(__dirname, "login_fail.html"),
+  await page.content()
+);
+await browser.close();
+    throw new Error("globalSetup: Login baÅŸarÄ±sÄ±z. ADMIN_USER/ADMIN_PASS ve yetkileri kontrol edin.");
   }
 
   await context.storageState({ path: STATE });
