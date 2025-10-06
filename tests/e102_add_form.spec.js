@@ -8,7 +8,6 @@ test('E102 - Equipment Ekleme Formuna EriÃƒâ€¦Ã…Â¸im', async ({ page 
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
 
   
-  ;await (async () => {
   /* ensure logged in (fallback) */
 if (/\/admin\/login\//.test(page.url())) {
   const uVal = process.env.ADMIN_USER ?? "admin";

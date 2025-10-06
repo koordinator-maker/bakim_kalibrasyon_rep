@@ -7,7 +7,6 @@ test.setTimeout(45000);
 async function goToAdd(page) {
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
   
-  ;await (async () => {
   /* ensure logged in (fallback) */
 if (/\/admin\/login\//.test(page.url())) {
   const uVal = process.env.ADMIN_USER ?? "admin";

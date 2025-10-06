@@ -286,7 +286,6 @@ async function openAddSmart_v2(page, url){
   // 1) Direkt /add/
   await page.goto(url, { waitUntil: "load" });
   
-  ;await (async () => {
   /* ensure logged in (fallback) */
 if (/\/admin\/login\//.test(page.url())) {
   const uVal = process.env.ADMIN_USER ?? "admin";
