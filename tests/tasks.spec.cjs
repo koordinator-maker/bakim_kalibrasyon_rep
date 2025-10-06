@@ -22,46 +22,46 @@ function beep() {
 
 function printBox(title, content, color = colors.cyan) {
   const width = 80;
-  const border = '═'.repeat(width);
-  console.log(`\n${color}╔${border}╗${colors.reset}`);
-  console.log(`${color}║${title.padEnd(width)}║${colors.reset}`);
-  console.log(`${color}╠${border}╣${colors.reset}`);
+  const border = 'Ã¢â€¢Â'.repeat(width);
+  console.log(`\n${color}Ã¢â€¢â€${border}Ã¢â€¢â€”${colors.reset}`);
+  console.log(`${color}Ã¢â€¢â€˜${title.padEnd(width)}Ã¢â€¢â€˜${colors.reset}`);
+  console.log(`${color}Ã¢â€¢Â ${border}Ã¢â€¢Â£${colors.reset}`);
   content.forEach(line => {
-    console.log(`${color}║${colors.reset} ${line.padEnd(width-2)} ${color}║${colors.reset}`);
+    console.log(`${color}Ã¢â€¢â€˜${colors.reset} ${line.padEnd(width-2)} ${color}Ã¢â€¢â€˜${colors.reset}`);
   });
-  console.log(`${color}╚${border}╝${colors.reset}\n`);
+  console.log(`${color}Ã¢â€¢Å¡${border}Ã¢â€¢Â${colors.reset}\n`);
 }
 
 function printTestHeader(testId, title) {
-  console.log(`\n${colors.bright}${colors.blue}${'▶'.repeat(40)}${colors.reset}`);
-  console.log(`${colors.bright}${colors.blue}▶▶▶ TEST: ${testId} - ${title}${colors.reset}`);
-  console.log(`${colors.bright}${colors.blue}${'▶'.repeat(40)}${colors.reset}\n`);
+  console.log(`\n${colors.bright}${colors.blue}${'Ã¢â€“Â¶'.repeat(40)}${colors.reset}`);
+  console.log(`${colors.bright}${colors.blue}Ã¢â€“Â¶Ã¢â€“Â¶Ã¢â€“Â¶ TEST: ${testId} - ${title}${colors.reset}`);
+  console.log(`${colors.bright}${colors.blue}${'Ã¢â€“Â¶'.repeat(40)}${colors.reset}\n`);
 }
 
-function printSuccess(m) { console.log(`${colors.green}✅ ${m}${colors.reset}`); }
-function printWarning(m) { console.log(`${colors.yellow}⚠️  ${m}${colors.reset}`); }
-function printError(m) { console.log(`${colors.red}❌ ${m}${colors.reset}`); }
-function printInfo(m) { console.log(`${colors.cyan}ℹ️  ${m}${colors.reset}`); }
+function printSuccess(m) { console.log(`${colors.green}Ã¢Å“â€¦ ${m}${colors.reset}`); }
+function printWarning(m) { console.log(`${colors.yellow}Ã¢Å¡Â Ã¯Â¸Â  ${m}${colors.reset}`); }
+function printError(m) { console.log(`${colors.red}Ã¢ÂÅ’ ${m}${colors.reset}`); }
+function printInfo(m) { console.log(`${colors.cyan}Ã¢â€Â¹Ã¯Â¸Â  ${m}${colors.reset}`); }
 
 function printTaskRequirements(steps, designRef, threshold) {
   const width = 80;
-  const border = '═'.repeat(width);
-  console.log(`${colors.cyan}╔${border}╗${colors.reset}`);
-  console.log(`${colors.cyan}║ ${colors.bright}İSTENENLER${colors.reset}${' '.repeat(width - 13)}${colors.cyan}║${colors.reset}`);
-  console.log(`${colors.cyan}╠${border}╣${colors.reset}`);
+  const border = 'Ã¢â€¢Â'.repeat(width);
+  console.log(`${colors.cyan}Ã¢â€¢â€${border}Ã¢â€¢â€”${colors.reset}`);
+  console.log(`${colors.cyan}Ã¢â€¢â€˜ ${colors.bright}Ã„Â°STENENLER${colors.reset}${' '.repeat(width - 13)}${colors.cyan}Ã¢â€¢â€˜${colors.reset}`);
+  console.log(`${colors.cyan}Ã¢â€¢Â ${border}Ã¢â€¢Â£${colors.reset}`);
   
   steps.forEach(step => {
     const cmd = step.cmd.toUpperCase().padEnd(6);
     const line = `${colors.bright}${cmd}${colors.reset}: ${step.val}`;
     const plain = `${cmd}: ${step.val}`;
-    console.log(`${colors.cyan}║ ${colors.reset}${line}${' '.repeat(Math.max(0, width - plain.length - 1))}${colors.cyan}║${colors.reset}`);
+    console.log(`${colors.cyan}Ã¢â€¢â€˜ ${colors.reset}${line}${' '.repeat(Math.max(0, width - plain.length - 1))}${colors.cyan}Ã¢â€¢â€˜${colors.reset}`);
   });
 
   const vis = !designRef || designRef.toUpperCase() === "N/A" 
-    ? `VISUAL: Atlandı` 
+    ? `VISUAL: AtlandÃ„Â±` 
     : `VISUAL: ${designRef}`;
-  console.log(`${colors.cyan}║ ${colors.reset}${vis}${' '.repeat(Math.max(0, width - vis.length - 1))}${colors.cyan}║${colors.reset}`);
-  console.log(`${colors.cyan}╚${border}╝${colors.reset}\n`);
+  console.log(`${colors.cyan}Ã¢â€¢â€˜ ${colors.reset}${vis}${' '.repeat(Math.max(0, width - vis.length - 1))}${colors.cyan}Ã¢â€¢â€˜${colors.reset}`);
+  console.log(`${colors.cyan}Ã¢â€¢Å¡${border}Ã¢â€¢Â${colors.reset}\n`);
 }
 
 const stats = {
@@ -73,7 +73,7 @@ const stats = {
 };
 
 const cycleNumber = parseInt(process.env.TEST_CYCLE || '1', 10);
-printInfo(`Test Döngüsü: ${cycleNumber}`);
+printInfo(`Test DÃƒÂ¶ngÃƒÂ¼sÃƒÂ¼: ${cycleNumber}`);
 
 test.use({ storageState: "storage/user.json" });
 
@@ -92,7 +92,7 @@ function loadTasks() {
   
   if (fs.existsSync(rootJson)) return readJsonNoBOM(rootJson);
   if (fs.existsSync(buildJson)) return readJsonNoBOM(buildJson);
-  throw new Error("tasks.json bulunamadı");
+  throw new Error("tasks.json bulunamadÃ„Â±");
 }
 
 function parseSteps(jobDef) {
@@ -180,7 +180,7 @@ function waitVisibleAny(page, id, expr, timeout) {
   return (async function tryNext(index) {
     if (index >= candidates.length) {
       await saveArtifacts(id, page, "notfound");
-      throw new Error(`Hiçbir aday görünür değil: ${candidates.join(", ")}`);
+      throw new Error(`HiÃƒÂ§bir aday gÃƒÂ¶rÃƒÂ¼nÃƒÂ¼r deÃ„Å¸il: ${candidates.join(", ")}`);
     }
     
     const sel = candidates[index];
@@ -211,7 +211,7 @@ function visualCompare(page, designRefPath, threshold, id) {
   ensurePixelLibs();
   
   if (!PNG || !pixelmatch) {
-    printWarning(`[VISUAL] ${id}: kütüphaneler eksik`);
+    printWarning(`[VISUAL] ${id}: kÃƒÂ¼tÃƒÂ¼phaneler eksik`);
     return Promise.resolve();
   }
   
@@ -252,17 +252,17 @@ function visualCompare(page, designRefPath, threshold, id) {
 
 const tasks = loadTasks();
 if (!Array.isArray(tasks) || tasks.length === 0) {
-  throw new Error("tasks.json boş");
+  throw new Error("tasks.json boÃ…Å¸");
 }
 
 stats.total = tasks.length;
 
 test.beforeAll(() => {
-  printBox('🚀 TEST BAŞLANGICI', [
-    `Görev: ${stats.total}`,
-    `Döngü: ${cycleNumber}`,
+  printBox('ÄŸÅ¸Å¡â‚¬ TEST BAÃ…ÂLANGICI', [
+    `GÃƒÂ¶rev: ${stats.total}`,
+    `DÃƒÂ¶ngÃƒÂ¼: ${cycleNumber}`,
     `Base: ${BASE}`,
-    `Ses: ${BEEP_ENABLED ? 'AÇIK' : 'KAPALI'}`,
+    `Ses: ${BEEP_ENABLED ? 'AÃƒâ€¡IK' : 'KAPALI'}`,
     `Zaman: ${new Date().toLocaleString('tr-TR')}`,
   ], colors.magenta);
 });
@@ -279,7 +279,7 @@ async function looksLikeLogin(page){
     if (await page.locator(m).count() > 0) return true;
   }
   const body = (await page.locator("body").innerText()).toLowerCase();
-  return body.includes("login") || body.includes("giriş");
+  return body.includes("login") || body.includes("giriÃ…Å¸");
 }
 
 async function openAddSmart_v2(page, url){
@@ -291,28 +291,34 @@ if (/\/admin\/login\//.test(page.url())) {
   const uVal = process.env.ADMIN_USER ?? "admin";
   const pVal = process.env.ADMIN_PASS ?? "admin";
 
-  // id/name/placeholder/label çoklu strateji
-  let u = page.locator("#id_username, input[name=\\"username\\"], input[name=\\"email\\"], input#id_user, input[name=\\"user\\"]").first();
-  const uByPh = page.getByPlaceholder(/kullanıcı adı|kullanici adi|email|e-?posta|username/i).first();
-  const uByLb = page.getByLabel(/kullanıcı adı|kullanici adi|username|email|e-?posta/i).first();
+  let u = page.locator('#id_username, input[name="username"], input[name="email"], input#id_user, input[name="user"]').first();
+  const uByPh = page.getByPlaceholder(/kullanÄ±cÄ± adÄ±|kullanici adi|email|e-?posta|username/i).first();
+  const uByLb = page.getByLabel(/kullanÄ±cÄ± adÄ±|kullanici adi|username|email|e-?posta/i).first();
   if (!(await u.isVisible().catch(()=>false))) u = (await uByPh.isVisible().catch(()=>false)) ? uByPh : uByLb;
 
-  let p = page.locator("#id_password, input[name=\\"password\\"], input[type=\\"password\\"]").first();
-  const pByPh = page.getByPlaceholder(/parola|şifre|sifre|password/i).first();
-  const pByLb = page.getByLabel(/parola|şifre|sifre|password/i).first();
+  let p = page.locator('#id_password, input[name="password"], input[type="password"]').first();
+  const pByPh = page.getByPlaceholder(/parola|ÅŸifre|sifre|password/i).first();
+  const pByLb = page.getByLabel(/parola|ÅŸifre|sifre|password/i).first();
   if (!(await p.isVisible().catch(()=>false))) p = (await pByPh.isVisible().catch(()=>false)) ? pByPh : pByLb;
 
   try { await u.fill(uVal, { timeout: 10000 }); } catch {}
   try { await p.fill(pVal, { timeout: 10000 }); } catch {}
 
-  const btn = page.getByRole("button", { name: /log in|giriş|oturum|sign in|submit|login/i }).first();
+  const btn = page.getByRole("button", { name: /log in|giriÅŸ|oturum|sign in|submit|login/i }).first();
   if (await btn.isVisible().catch(()=>false)) { await btn.click(); }
   else {
-    const submit = page.locator("input[type=\\"submit\\"], button[type=\\"submit\\"]").first();
+    const submit = page.locator('input[type="submit"], button[type="submit"]').first();
     if (await submit.isVisible().catch(()=>false)) { await submit.click(); }
     else { await p.press("Enter").catch(()=>{}); }
   }
   await page.waitForLoadState("domcontentloaded").catch(()=>{});
+  // login sonrası hâlâ add sayfasında değilsek, zorla dön
+  try {
+    const base = (process.env.BASE_URL || "").replace(/\/$/, "");
+    if (base && !/\/admin\/maintenance\/equipment\/add\/?$/.test(page.url())) {
+      await page.goto(base + "/admin/maintenance/equipment/add/", { waitUntil: "domcontentloaded" });
+    }
+  } catch {}
 }
 // --- end ensure logged in ---
 '.Trim()
@@ -323,7 +329,7 @@ $testFiles = @(
   '.\tests\e104_create_and_delete_equipment.spec.js'
 ) | Where-Object { Test-Path $_ }
 
-# page.goto("/admin/maintenance/equipment/add/") sonrasına enjekte et
+# page.goto("/admin/maintenance/equipment/add/") sonrasÃ„Â±na enjekte et
 $gotoPat = 'await\s+page\.goto\([^;]+/admin/maintenance/equipment/add/[^;]*\)\s*;'
 
 foreach ($f in $testFiles) {
@@ -334,10 +340,10 @@ foreach ($f in $testFiles) {
       [IO.File]::WriteAllText($f, $new, [Text.UTF8Encoding]::new($false))
       Write-Host "[OK] Login fallback enjekte edildi:" $f
     } else {
-      Write-Host "[SKIP] Goto bulunamadı:" $f
+      Write-Host "[SKIP] Goto bulunamadÃ„Â±:" $f
     }
   } else {
-    Write-Host "[SKIP] Desen eşleşmedi:" $f
+    Write-Host "[SKIP] Desen eÃ…Å¸leÃ…Å¸medi:" $f
   }
 }
 
@@ -348,13 +354,13 @@ Set-Location C:\dev\bakim_kalibrasyon
 "maintenance\models.py","maintenance\admin.py","maintenance\forms.py" | ForEach-Object {
   if (Test-Path $_) {
     Write-Host "`n### Scanning $_"
-    Select-String -Path $_ -Pattern 'manufacturer|üretici|uretici' -CaseSensitive:$false | ForEach-Object { $_.Line }
+    Select-String -Path $_ -Pattern 'manufacturer|ÃƒÂ¼retici|uretici' -CaseSensitive:$false | ForEach-Object { $_.Line }
   }
 }
 
-# 2) Örnek patch içeriği (manuel eklemek için hızlı şablon DOSYA YAZMAZ, sadece çıktı verir)
+# 2) Ãƒâ€“rnek patch iÃƒÂ§eriÃ„Å¸i (manuel eklemek iÃƒÂ§in hÃ„Â±zlÃ„Â± Ã…Å¸ablon DOSYA YAZMAZ, sadece ÃƒÂ§Ã„Â±ktÃ„Â± verir)
 $adminPatch = @'
-# maintenance/admin.py içinde EquipmentAdmin:
+# maintenance/admin.py iÃƒÂ§inde EquipmentAdmin:
 # class EquipmentAdmin(admin.ModelAdmin):
 #     fields = ("name", "serial_number", "manufacturer", ...)
 #     # veya fieldsets ile ilgili gruba ekleyin
@@ -426,16 +432,16 @@ for (const t of tasks){
   // --- /inject ---
 const steps = parseSteps(t.job_definition);
     printTaskRequirements(steps, t.design_ref, t.visual_threshold);
-    printInfo(`Adım: ${steps.length}`);
+    printInfo(`AdÃ„Â±m: ${steps.length}`);
     
     try {
       const open = steps.find(s => s.cmd === "open");
       if (open) {
         const url = open.val.startsWith("http") ? open.val : BASE + open.val;
-        printInfo(`Açılıyor: ${url}`);
+        printInfo(`AÃƒÂ§Ã„Â±lÃ„Â±yor: ${url}`);
         await page.goto(url, { waitUntil: "load" });
         await page.waitForLoadState("networkidle");
-        printSuccess(`Yüklendi: ${page.url()}`);
+        printSuccess(`YÃƒÂ¼klendi: ${page.url()}`);
       }
       
       for (const s of steps.filter(s => s.cmd === "expect")) {
@@ -455,7 +461,7 @@ if (!ok) {
   ok = await ctrl.first().isVisible().catch(() => false);
 }
         expect(ok, "Metin < %90").toBeTruthy();
-        printSuccess(`Metin: ≥90%`);
+        printSuccess(`Metin: Ã¢â€°Â¥90%`);
       }
       
       if (t.design_ref) {
@@ -470,7 +476,7 @@ if (!ok) {
         duration: Date.now() - start, 
         cycle: cycleNumber 
       });
-      printSuccess(`BAŞARILI: ${t.id}`);
+      printSuccess(`BAÃ…ÂARILI: ${t.id}`);
       
     } catch (error) {
       await saveArtifacts(t.id, page, 'failed');
@@ -483,7 +489,7 @@ if (!ok) {
         duration: Date.now() - start, 
         cycle: cycleNumber 
       });
-      printError(`BAŞARISIZ: ${t.id}`);
+      printError(`BAÃ…ÂARISIZ: ${t.id}`);
       printError(`Hata: ${error.message}`);
       throw error;
     }
@@ -494,27 +500,27 @@ test.afterAll(() => {
   const duration = ((Date.now() - stats.startTime) / 1000).toFixed(2);
   const rate = ((stats.passed / stats.total) * 100).toFixed(2);
   
-  const qr = ['ID | Başlık | Durum'];
+  const qr = ['ID | BaÃ…Å¸lÃ„Â±k | Durum'];
   stats.testResults.forEach(r => {
     const c = r.status === 'PASSED' ? colors.green : colors.red;
     qr.push(`${r.id} | ${r.title} | ${c}${r.status}${colors.reset}`);
   });
   
-  printBox('📄 SONUÇLAR', qr, colors.yellow);
+  printBox('ÄŸÅ¸â€œâ€ SONUÃƒâ€¡LAR', qr, colors.yellow);
   
   const summary = [
     `Toplam: ${stats.total}`, 
-    `Döngü: ${cycleNumber}`,
-    `Başarılı: ${colors.green}${stats.passed}${colors.reset}`,
-    `Başarısız: ${colors.red}${stats.failed}${colors.reset}`,
+    `DÃƒÂ¶ngÃƒÂ¼: ${cycleNumber}`,
+    `BaÃ…Å¸arÃ„Â±lÃ„Â±: ${colors.green}${stats.passed}${colors.reset}`,
+    `BaÃ…Å¸arÃ„Â±sÃ„Â±z: ${colors.red}${stats.failed}${colors.reset}`,
     `Oran: ${rate}%`,
-    `Süre: ${duration}s`,
+    `SÃƒÂ¼re: ${duration}s`,
   ];
   
   if (stats.failed === 0) {
-    printBox('✅ TÜM TESTLER BAŞARILI!', summary, colors.green);
+    printBox('Ã¢Å“â€¦ TÃƒÅ“M TESTLER BAÃ…ÂARILI!', summary, colors.green);
   } else {
-    printBox('⚠️  BAZI TESTLER BAŞARISIZ', summary, colors.yellow);
+    printBox('Ã¢Å¡Â Ã¯Â¸Â  BAZI TESTLER BAÃ…ÂARISIZ', summary, colors.yellow);
   }
 });
 
