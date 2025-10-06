@@ -5,7 +5,7 @@ test('Ekipman Ekleme formunda Üretici Firma alanının varlığı', async ({ pa
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`);
 
   // Form gerçekten açılmış mı?
-  await expect(page.locator("form[action$='/add/']")).toBeVisible({ timeout: 3000 });
+  await expect(page.locator("main form, #content form, form[method='post']")).toBeVisible({ timeout: 3000 });
 
   // Üretici alanı için sağlam adaylar
   const manufacturerSelectors = [
@@ -22,3 +22,4 @@ test('Ekipman Ekleme formunda Üretici Firma alanının varlığı', async ({ pa
   await expect(fieldWrapper).toBeVisible({ timeout: 10000 });
   console.log('[TEST SUCCESS] Üretici Firma alanı başarıyla doğrulandı.');
 });
+

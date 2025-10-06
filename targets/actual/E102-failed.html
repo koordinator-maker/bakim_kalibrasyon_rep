@@ -1,199 +1,348 @@
-<!DOCTYPE html><html lang="en"><head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <title>Page not found at /admin/maintenance/equipment/</title>
-  <meta name="robots" content="NONE,NOARCHIVE">
-  <style>
-    html * { padding:0; margin:0; }
-    body * { padding:10px 20px; }
-    body * * { padding:0; }
-    body { font-family: sans-serif; background:#eee; color:#000; }
-    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }
-    h1 { font-weight:normal; margin-bottom:.4em; }
-    h1 small { font-size:60%; color:#666; font-weight:normal; }
-    table { border:none; border-collapse: collapse; width:100%; }
-    td, th { vertical-align:top; padding:2px 3px; }
-    th { width:12em; text-align:right; color:#666; padding-right:.5em; }
-    #info { background:#f6f6f6; }
-    #info ol { margin: 0.5em 4em; }
-    #info ol li { font-family: monospace; }
-    #summary { background: #ffc; }
-    #explanation { background:#eee; border-bottom: 0px none; }
-    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }
-  </style>
+<!DOCTYPE html><html lang="en-us" dir="ltr" data-theme="auto"><head>
+<title>Add equipment | Django site admin</title>
+<link rel="stylesheet" href="/static/admin/css/base.css">
+
+  <link rel="stylesheet" href="/static/admin/css/dark_mode.css">
+  <script src="/static/admin/js/theme.js"></script>
+
+
+  <link rel="stylesheet" href="/static/admin/css/nav_sidebar.css">
+  <script src="/static/admin/js/nav_sidebar.js" defer=""></script>
+
+<link rel="stylesheet" href="/static/admin/css/forms.css">
+
+
+<script src="/admin/jsi18n/"></script>
+<script src="/static/admin/js/vendor/jquery/jquery.js"></script>
+<script src="/static/admin/js/jquery.init.js"></script>
+<script src="/static/admin/js/core.js"></script>
+<script src="/static/admin/js/admin/RelatedObjectLookups.js"></script>
+<script src="/static/admin/js/actions.js"></script>
+<script src="/static/admin/js/urlify.js"></script>
+<script src="/static/admin/js/prepopulate.js"></script>
+<script src="/static/admin/js/vendor/xregexp/xregexp.js"></script>
+
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/admin/css/responsive.css">
+    
+
+<meta name="robots" content="NONE,NOARCHIVE">
 </head>
-<body>
-  <header id="summary">
-    <h1>Page not found <small>(404)</small></h1>
-    
-    <table class="meta">
-      <tbody><tr>
-        <th scope="row">Request Method:</th>
-        <td>GET</td>
-      </tr>
-      <tr>
-        <th scope="row">Request URL:</th>
-        <td>http://127.0.0.1:8010/admin/maintenance/equipment/</td>
-      </tr>
-      
-      <tr>
-        <th scope="row">Raised by:</th>
-        <td>django.contrib.admin.sites.catch_all_view</td>
-      </tr>
-      
-    </tbody></table>
-  </header>
 
-  <main id="info">
-    
-      <p>
-      Using the URLconf defined in <code>core.urls</code>,
-      Django tried these URL patterns, in this order:
-      </p>
-      <ol>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                
-                [name='index']
-              </code>
-            
-          </li>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                login/
-                [name='login']
-              </code>
-            
-          </li>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                logout/
-                [name='logout']
-              </code>
-            
-          </li>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                password_change/
-                [name='password_change']
-              </code>
-            
-          </li>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                password_change/done/
-                [name='password_change_done']
-              </code>
-            
-          </li>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                autocomplete/
-                [name='autocomplete']
-              </code>
-            
-          </li>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                jsi18n/
-                [name='jsi18n']
-              </code>
-            
-          </li>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                r/&lt;path:content_type_id&gt;/&lt;path:object_id&gt;/
-                [name='view_on_site']
-              </code>
-            
-          </li>
-        
-          <li>
-            
-              <code>
-                admin/
-                
-              </code>
-            
-              <code>
-                (?P&lt;url&gt;.*)$
-                
-              </code>
-            
-          </li>
-        
-      </ol>
-      <p>
-        
-          The current path, <code>admin/maintenance/equipment/</code>,
-        
-        matched the last one.
-      </p>
-    
-  </main>
+<body class=" app-maintenance model-equipment change-form" data-admin-utc-offset="0">
+<a href="#content-start" class="skip-to-content-link">Skip to main content</a>
+<!-- Container -->
+<div id="container">
 
-  <footer id="explanation">
-    <p>
-      You’re seeing this error because you have <code>DEBUG = True</code> in
-      your Django settings file. Change that to <code>False</code>, and Django
-      will display a standard 404 page.
-    </p>
-  </footer>
+    
+    <!-- Header -->
+    
+      <header id="header">
+        <div id="branding">
+        
+<div id="site-name"><a href="/admin/">Django administration</a></div>
+
+
+        </div>
+        
+        
+        <div id="user-tools">
+            
+                Welcome,
+                <strong>admin</strong>.
+            
+            
+                
+                    <a href="/">View site</a> /
+                
+                
+                    
+                    
+                
+                
+                <a href="/admin/password_change/">Change password</a> /
+                
+                <form id="logout-form" method="post" action="/admin/logout/">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="rzU7jfhnR9voAheYHeMx3I5IdnfNHNClBe8USZip64vhqyNQMWVwvyO0cuuDoFKg" style="">
+                    <button type="submit">Log out</button>
+                </form>
+                
+
+
+
+<button class="theme-toggle">
+  <span class="visually-hidden theme-label-when-auto">Toggle theme (current theme: auto)</span>
+  <span class="visually-hidden theme-label-when-light">Toggle theme (current theme: light)</span>
+  <span class="visually-hidden theme-label-when-dark">Toggle theme (current theme: dark)</span>
+  <svg aria-hidden="true" class="theme-icon-when-auto">
+    <use xlink:href="#icon-auto"></use>
+  </svg>
+  <svg aria-hidden="true" class="theme-icon-when-dark">
+    <use xlink:href="#icon-moon"></use>
+  </svg>
+  <svg aria-hidden="true" class="theme-icon-when-light">
+    <use xlink:href="#icon-sun"></use>
+  </svg>
+</button>
+
+            
+        </div>
+        
+        
+        
+      </header>
+    
+    <!-- END Header -->
+    
+      <nav aria-label="Breadcrumbs">
+        
+<div class="breadcrumbs">
+<a href="/admin/">Home</a>
+› <a href="/admin/maintenance/">Bakım Modülü</a>
+› <a href="/admin/maintenance/equipment/">Equipments</a>
+› Add equipment
+</div>
+
+      </nav>
+    
+    
+
+    <div class="main shifted" id="main">
+      
+        
+          
+
+
+
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="Toggle navigation"></button>
+<nav class="sticky" id="nav-sidebar" aria-label="Sidebar" aria-expanded="true">
+  <input type="search" id="nav-filter" placeholder="Start typing to filter…" aria-label="Filter navigation items" style="">
+  
+
+
+
+
+
+  
+    <div class="app-auth module">
+      <table>
+        <caption>
+          <a href="/admin/auth/" class="section" title="Models in the Authentication and Authorization application">Authentication and Authorization</a>
+        </caption>
+        <thead class="visually-hidden">
+          <tr>
+            <th scope="col">Model name</th>
+            <th scope="col">Add link</th>
+            <th scope="col">Change or view list link</th>
+          </tr>
+        </thead>
+        
+          
+            <tbody><tr class="model-group">
+              <th scope="row" id="auth-group">
+                
+                  <a href="/admin/auth/group/">Groups</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/auth/group/add/" class="addlink" aria-describedby="auth-group">Add</a></td>
+              
+
+              
+            </tr>
+          
+        
+          
+            <tr class="model-user">
+              <th scope="row" id="auth-user">
+                
+                  <a href="/admin/auth/user/">Users</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/auth/user/add/" class="addlink" aria-describedby="auth-user">Add</a></td>
+              
+
+              
+            </tr>
+          
+        
+      </tbody></table>
+    </div>
+  
+    <div class="app-maintenance module current-app">
+      <table>
+        <caption>
+          <a href="/admin/maintenance/" class="section" title="Models in the Bakım Modülü application">Bakım Modülü</a>
+        </caption>
+        <thead class="visually-hidden">
+          <tr>
+            <th scope="col">Model name</th>
+            <th scope="col">Add link</th>
+            <th scope="col">Change or view list link</th>
+          </tr>
+        </thead>
+        
+          
+            <tbody><tr class="model-equipment current-model">
+              <th scope="row" id="maintenance-equipment">
+                
+                  <a href="/admin/maintenance/equipment/" aria-current="page">Equipments</a>
+                
+              </th>
+
+              
+                <td><a href="/admin/maintenance/equipment/add/" class="addlink" aria-describedby="maintenance-equipment">Add</a></td>
+              
+
+              
+            </tr>
+          
+        
+      </tbody></table>
+    </div>
+  
+
+
+</nav>
+
+        
+      
+      <main id="content-start" class="content" tabindex="-1">
+        
+          
+        
+        <!-- Content -->
+        <div id="content" class="colM">
+          
+          <h1>Add equipment</h1>
+          
+          <div id="content-main">
+
+
+
+<form method="post" id="equipment_form" novalidate=""><input type="hidden" name="csrfmiddlewaretoken" value="rzU7jfhnR9voAheYHeMx3I5IdnfNHNClBe8USZip64vhqyNQMWVwvyO0cuuDoFKg" style="">
+<div>
+
+
+
+
+
+
+
+  
+
+
+<fieldset class="module aligned ">
+    
+    
+    
+        <div class="form-row field-name">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label class="required" for="id_name">Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±:</label>
+                                
+                                    <input type="text" name="name" class="vTextField" maxlength="200" required="" id="id_name" style="">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+        <div class="form-row field-serial_number">
+            
+            
+                <div>
+                    
+                        <div class="flex-container">
+                            
+                                <label for="id_serial_number">Serial number:</label>
+                                
+                                    <input type="text" name="serial_number" class="vTextField" maxlength="120" id="id_serial_number" style="">
+                                
+                            
+                        </div>
+                    
+                </div>
+            
+            
+        </div>
+    
+    
+</fieldset>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="submit-row">
+
+<input type="submit" value="Save" class="default" name="_save" style="">
+
+<input type="submit" value="Save and add another" name="_addanother" style="">
+<input type="submit" value="Save and continue editing" name="_continue" style="">
+
+
+
+</div>
+
+
+
+    <script id="django-admin-form-add-constants" src="/static/admin/js/change_form.js" data-model-name="equipment" async="">
+    </script>
+
+
+
+
+
+
+
+<script id="django-admin-prepopulated-fields-constants" src="/static/admin/js/prepopulate_init.js" data-prepopulated-fields="[]">
+</script>
+
+
+</div>
+</form></div>
+
+          
+          <br class="clear">
+        </div>
+        <!-- END Content -->
+      </main>
+    </div>
+    <footer id="footer"></footer>
+</div>
+<!-- END Container -->
+
+<!-- SVGs -->
+<svg xmlns="http://www.w3.org/2000/svg" class="base-svgs">
+  <symbol viewBox="0 0 24 24" width="1.5rem" height="1.5rem" id="icon-auto"><path d="M0 0h24v24H0z" fill="currentColor"></path><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2V4a8 8 0 1 0 0 16z"></path></symbol>
+  <symbol viewBox="0 0 24 24" width="1.5rem" height="1.5rem" id="icon-moon"><path d="M0 0h24v24H0z" fill="currentColor"></path><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"></path></symbol>
+  <symbol viewBox="0 0 24 24" width="1.5rem" height="1.5rem" id="icon-sun"><path d="M0 0h24v24H0z" fill="currentColor"></path><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"></path></symbol>
+</svg>
+<!-- END SVGs -->
+
 
 
 </body></html>
