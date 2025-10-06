@@ -24,3 +24,4 @@ test('Ekipman Ekleme formunda Üretici Firma alanının varlığı', async ({ pa
 });
 
 
+
