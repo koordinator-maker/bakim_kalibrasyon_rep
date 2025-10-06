@@ -1,4 +1,104 @@
-﻿### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\check_admin_urls.py
+﻿### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.test import Client
+
+c = Client()
+
+# 1) login sayfasına yönlendirme var mı?
+r = c.get("/admin/")
+print("GET /admin/ ->", r.status_code)  # 302 beklenir (login'e)
+
+# 2) admin kullanıcısı ile giriş
+resp = c.post("/admin/login/?next=/admin/", {
+    "username":"admin", "password":"admin123!",
+    "this_is_the_login_form":1, "next":"/admin/"
+}, follow=True)
+print("login final status:", resp.status_code)
+
+# 3) artık changelist/add kaç dönüyor?
+r1 = c.get("/admin/maintenance/equipment/")
+r2 = c.get("/admin/maintenance/equipment/add/")
+print("CL status:", r1.status_code)   # 200 beklenir
+print("ADD status:", r2.status_code)  # 200 beklenir
+### DOSYA BİTİŞ: admin_auth_probe.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_reverse_check.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.urls import reverse, NoReverseMatch
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+from maintenance.models import Equipment
+
+print("Registered in default admin site:", Equipment in admin.site._registry)
+
+name_changelist = admin_urlname(Equipment._meta, "changelist")   # ör: "maintenance_equipment_changelist"
+name_add        = admin_urlname(Equipment._meta, "add")          # ör: "maintenance_equipment_add"
+print("Names ->", name_changelist, ",", name_add)
+
+try:
+    print("Reverse CL :", reverse(f"admin:{name_changelist}"))
+    print("Reverse ADD:", reverse(f"admin:{name_add}"))
+except NoReverseMatch as e:
+    print("NoReverseMatch:", e)
+### DOSYA BİTİŞ: admin_reverse_check.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\admin_reverse_check.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.urls import reverse, NoReverseMatch
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+from maintenance.models import Equipment
+
+print("Registered in default admin site:", Equipment in admin.site._registry)
+
+name_changelist = admin_urlname(Equipment._meta, "changelist")   # ör: "maintenance_equipment_changelist"
+name_add        = admin_urlname(Equipment._meta, "add")          # ör: "maintenance_equipment_add"
+print("Names ->", name_changelist, ",", name_add)
+
+try:
+    print("Reverse CL :", reverse(f"admin:{name_changelist}"))
+    print("Reverse ADD:", reverse(f"admin:{name_add}"))
+except NoReverseMatch as e:
+    print("NoReverseMatch:", e)
+### DOSYA BİTİŞ: admin_reverse_check.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\admin_reverse_check.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.urls import reverse, NoReverseMatch
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+from maintenance.models import Equipment
+
+print("Registered in default admin site:", Equipment in admin.site._registry)
+
+name_changelist = admin_urlname(Equipment._meta, "changelist")   # ör: "maintenance_equipment_changelist"
+name_add        = admin_urlname(Equipment._meta, "add")          # ör: "maintenance_equipment_add"
+print("Names ->", name_changelist, ",", name_add)
+
+try:
+    print("Reverse CL :", reverse(f"admin:{name_changelist}"))
+    print("Reverse ADD:", reverse(f"admin:{name_add}"))
+except NoReverseMatch as e:
+    print("NoReverseMatch:", e)
+### DOSYA BİTİŞ: admin_reverse_check.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\check_admin_urls.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -12,6 +112,19 @@ print("ADD:", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model
 ### DOSYA BİTİŞ: check_admin_urls.py
 
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\check_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.contrib import admin
+from django.urls import reverse
+from maintenance.models import Equipment
+print("Registered:", Equipment in admin.site._registry)
+print("CL :", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_changelist"))
+print("ADD:", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_add"))
+### DOSYA BİTİŞ: check_admin_urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\check_admin_urls.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -69,20 +182,6 @@ u.save()
 print("ok ->", u.username, u.is_superuser, u.is_staff)
 ### DOSYA BİTİŞ: ensure_superuser.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\resolve_admin_urls.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-from django.urls import resolve, Resolver404
-for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipment/add/"]:
-    try:
-        m = resolve(p)
-        print(p, "-> OK:", m.func.__module__)
-    except Resolver404:
-        print(p, "-> 404 (pattern yok)")
-### DOSYA BİTİŞ: resolve_admin_urls.py
-
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\resolve_admin_urls.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
@@ -111,23 +210,19 @@ for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipmen
         print(p, "-> 404 (pattern yok)")
 ### DOSYA BİTİŞ: resolve_admin_urls.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\diag_dupes.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\resolve_admin_urls.py
 import os, sys, django
-ROOT = os.path.abspath(".")
-if ROOT not in sys.path: sys.path.insert(0, ROOT)
+sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
 django.setup()
-
-from django.db.models import Count
-from maintenance.models import Equipment
-
-dupes = (Equipment.objects
-         .values("serial_number")
-         .annotate(c=Count("id"))
-         .filter(c__gt=1))
-print("Kalan duplike sayısı:", dupes.count())
-print(list(dupes[:20]))
-### DOSYA BİTİŞ: diag_dupes.py
+from django.urls import resolve, Resolver404
+for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipment/add/"]:
+    try:
+        m = resolve(p)
+        print(p, "-> OK:", m.func.__module__)
+    except Resolver404:
+        print(p, "-> 404 (pattern yok)")
+### DOSYA BİTİŞ: resolve_admin_urls.py
 
 ### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\diag_dupes.py
 import os, sys, django
@@ -164,6 +259,79 @@ dupes = (Equipment.objects
 print("Kalan duplike sayısı:", dupes.count())
 print(list(dupes[:20]))
 ### DOSYA BİTİŞ: diag_dupes.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\diag_dupes.py
+import os, sys, django
+ROOT = os.path.abspath(".")
+if ROOT not in sys.path: sys.path.insert(0, ROOT)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db.models import Count
+from maintenance.models import Equipment
+
+dupes = (Equipment.objects
+         .values("serial_number")
+         .annotate(c=Count("id"))
+         .filter(c__gt=1))
+print("Kalan duplike sayısı:", dupes.count())
+print(list(dupes[:20]))
+### DOSYA BİTİŞ: diag_dupes.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\fix_serial_dupes_runner.py
+import os, sys, django
+
+# --- PROJE KÖKÜNÜ sys.path'E EKLE ---
+HERE = os.path.abspath(os.path.dirname(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db import transaction
+from maintenance.models import Equipment
+
+MAX_LEN = 120
+SUFFIX_DUP = "__DUP__{id}"
+SUFFIX_EMPTY = "__EMPTY__{id}"
+
+def safe_unique_value(original: str, suffix: str) -> str:
+    room = MAX_LEN - len(suffix)
+    base = (original or "")[:room] if room > 0 else ""
+    return (base + suffix)[:MAX_LEN]
+
+# 1) Duplikeleri grupla (case-insensitive). Boş/whitespace -> özel anahtar.
+by_norm = {}
+for e in Equipment.objects.all().order_by("id"):
+    raw = e.serial_number
+    s = (raw or "")
+    norm = s.strip().lower()
+    key = norm if norm != "" else "__EMPTY__"
+    by_norm.setdefault(key, []).append((e.id, s))
+
+dupe_groups = {k:v for k,v in by_norm.items() if len(v) > 1}
+print("Duplike grup sayısı:", len(dupe_groups))
+
+changed = 0
+with transaction.atomic():
+    for key, rows in dupe_groups.items():
+        keeper_id, keeper_val = rows[0]  # ilk kaydı koru
+        for (pk, val) in rows[1:]:
+            if key == "__EMPTY__":
+                new_val = safe_unique_value("", SUFFIX_EMPTY.format(id=pk))
+            else:
+                new_val = safe_unique_value(val, SUFFIX_DUP.format(id=pk))
+            # ekstra güvenlik: yine çakışırsa hafif varyasyon
+            q = Equipment.objects.filter(serial_number=new_val).exclude(pk=pk)
+            if q.exists():
+                new_val = safe_unique_value(val, (SUFFIX_DUP.format(id=pk) + "_X"))
+            Equipment.objects.filter(pk=pk).update(serial_number=new_val)
+            changed += 1
+
+print("Güncellenen kayıt:", changed)
+### DOSYA BİTİŞ: fix_serial_dupes_runner.py
 
 ### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\fix_serial_dupes_runner.py
 import os, sys, django
@@ -275,62 +443,7 @@ with transaction.atomic():
 print("Güncellenen kayıt:", changed)
 ### DOSYA BİTİŞ: fix_serial_dupes_runner.py
 
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\fix_serial_dupes_runner.py
-import os, sys, django
-
-# --- PROJE KÖKÜNÜ sys.path'E EKLE ---
-HERE = os.path.abspath(os.path.dirname(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, ".."))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.db import transaction
-from maintenance.models import Equipment
-
-MAX_LEN = 120
-SUFFIX_DUP = "__DUP__{id}"
-SUFFIX_EMPTY = "__EMPTY__{id}"
-
-def safe_unique_value(original: str, suffix: str) -> str:
-    room = MAX_LEN - len(suffix)
-    base = (original or "")[:room] if room > 0 else ""
-    return (base + suffix)[:MAX_LEN]
-
-# 1) Duplikeleri grupla (case-insensitive). Boş/whitespace -> özel anahtar.
-by_norm = {}
-for e in Equipment.objects.all().order_by("id"):
-    raw = e.serial_number
-    s = (raw or "")
-    norm = s.strip().lower()
-    key = norm if norm != "" else "__EMPTY__"
-    by_norm.setdefault(key, []).append((e.id, s))
-
-dupe_groups = {k:v for k,v in by_norm.items() if len(v) > 1}
-print("Duplike grup sayısı:", len(dupe_groups))
-
-changed = 0
-with transaction.atomic():
-    for key, rows in dupe_groups.items():
-        keeper_id, keeper_val = rows[0]  # ilk kaydı koru
-        for (pk, val) in rows[1:]:
-            if key == "__EMPTY__":
-                new_val = safe_unique_value("", SUFFIX_EMPTY.format(id=pk))
-            else:
-                new_val = safe_unique_value(val, SUFFIX_DUP.format(id=pk))
-            # ekstra güvenlik: yine çakışırsa hafif varyasyon
-            q = Equipment.objects.filter(serial_number=new_val).exclude(pk=pk)
-            if q.exists():
-                new_val = safe_unique_value(val, (SUFFIX_DUP.format(id=pk) + "_X"))
-            Equipment.objects.filter(pk=pk).update(serial_number=new_val)
-            changed += 1
-
-print("Güncellenen kayıt:", changed)
-### DOSYA BİTİŞ: fix_serial_dupes_runner.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\dedupe_serials.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\dedupe_serials.py
 from django.db import transaction
 from maintenance.models import Equipment
 
@@ -355,7 +468,7 @@ with transaction.atomic():
 print("Deduped:", len(dupe_ids), "records set to NULL")
 ### DOSYA BİTİŞ: dedupe_serials.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\dedupe_serials.py
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\dedupe_serials.py
 from django.db import transaction
 from maintenance.models import Equipment
 
@@ -456,32 +569,7 @@ class Migration(migrations.Migration):
     ]
 ### DOSYA BİTİŞ: 0009_alter_equipment_options_remove_equipment_department_and_more.py
 
-### DOSYA BAŞLANGIÇ: .\\maintenance\models.py
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-
-class Department(models.Model):
-    """Departman modelini tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
-    name = models.CharField(_("Departman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=100, unique=True)
-    
-    class Meta:
-        verbose_name = _("Departman")
-        verbose_name_plural = _("Departmanlar")
-
-    def __str__(self):
-        return self.name
-
-class Equipment(models.Model):
-    """BakÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±m ve kalibrasyon takibi yapÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±lacak ekipmanlarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
-    
-    # Zorunlu alanlar
-    name = models.CharField(_("Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=200)
-    
-    # DÃƒÆ’Ã†â€™Ãƒâ€¦Ã¢â‚¬Å“ZELTÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°LDÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°: unique=True kÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±sÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±tlamasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±, gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ hatasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±nÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶nlemek iÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§in kaldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±ldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±.
-    serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)
-### DOSYA BİTİŞ: models.py
-
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-192504\maintenance\models.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-192603\maintenance\models.py
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -531,7 +619,7 @@ class Equipment(models.Model):
     serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)
 ### DOSYA BİTİŞ: models.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-192603\maintenance\models.py
+### DOSYA BAŞLANGIÇ: .\\maintenance\models.py
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -557,6 +645,31 @@ class Equipment(models.Model):
 ### DOSYA BİTİŞ: models.py
 
 ### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\maintenance\models.py
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class Department(models.Model):
+    """Departman modelini tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    name = models.CharField(_("Departman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=100, unique=True)
+    
+    class Meta:
+        verbose_name = _("Departman")
+        verbose_name_plural = _("Departmanlar")
+
+    def __str__(self):
+        return self.name
+
+class Equipment(models.Model):
+    """BakÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±m ve kalibrasyon takibi yapÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±lacak ekipmanlarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    
+    # Zorunlu alanlar
+    name = models.CharField(_("Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=200)
+    
+    # DÃƒÆ’Ã†â€™Ãƒâ€¦Ã¢â‚¬Å“ZELTÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°LDÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°: unique=True kÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±sÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±tlamasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±, gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ hatasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±nÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶nlemek iÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§in kaldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±ldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±.
+    serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)
+### DOSYA BİTİŞ: models.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-192504\maintenance\models.py
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -730,7 +843,7 @@ Read-Host "Kapatmak için Enter'a bas"
 exit $code
 ### DOSYA BİTİŞ: run_fix_and_test_pause.ps1
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\scripts\fix_e102_addform.ps1
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\scripts\fix_e102_addform.ps1
 [CmdletBinding(SupportsShouldProcess)]
 param(
   [string]$RepoRoot = $(git rev-parse --show-toplevel),
@@ -894,7 +1007,7 @@ $env:BASE_URL = $BaseUrl
 # not: çıkış kodunu script dışından yönetelim (ayrı wrapper ile). Burada sadece hazırla.
 ### DOSYA BİTİŞ: fix_e102_addform.ps1
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\scripts\fix_e102_addform.ps1
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\scripts\fix_e102_addform.ps1
 [CmdletBinding(SupportsShouldProcess)]
 param(
   [string]$RepoRoot = $(git rev-parse --show-toplevel),
@@ -1221,84 +1334,6 @@ $env:BASE_URL = $BaseUrl
 
 # not: çıkış kodunu script dışından yönetelim (ayrı wrapper ile). Burada sadece hazırla.
 ### DOSYA BİTİŞ: fix_e102_addform.ps1
-
-### DOSYA BAŞLANGIÇ: .\\core\mw_fix_equip_redirect.py
-# -*- coding: utf-8 -*-
-# core/mw_fix_equip_redirect.py
-from urllib.parse import parse_qsl, urlencode
-from django.utils.deprecation import MiddlewareMixin
-from django.http import HttpResponseRedirect
-
-CANONICAL = "/admin/maintenance/equipment/"
-DIRECT    = "/admin/maintenance/equipment/_direct/"
-
-BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
-
-def _filtered_qs(environ_qs: str) -> str:
-    try:
-        pairs = parse_qsl(environ_qs or "", keep_blank_values=True)
-    except Exception:
-        pairs = []
-    pairs = [(k, v) for (k, v) in pairs if k not in BLOCK_KEYS]
-    qs = urlencode(pairs, doseq=True)
-    return ("?" + qs) if qs else ""
-
-class AdminEquipmentRedirectFixMiddleware(MiddlewareMixin):
-    """
-    /admin/maintenance/equipment/ hedefli TÃœM istek/yanÄ±tlarÄ± gÃ¼venli _direct listesine Ã§evirir.
-    - process_request: view'e gitmeden Ã¶nce 302'yle _direct'e yÃ¶nlendir.
-    - process_response: 301/302 Location header'Ä± kanonik listeyi gÃ¶steriyorsa _direct'e Ã§evir.
-    """
-
-    def process_request(self, request):
-        try:
-            path = request.path
-        except Exception:
-            path = ""
-        if path.endswith(CANONICAL):
-            qs = _filtered_qs(getattr(request.META, "QUERY_STRING", "") or request.META.get("QUERY_STRING",""))
-            
-# /add/ yolu admin add view iÃƒÂ§in bypass
-try:
-    path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
-except Exception:
-    path = request.path
-if path.endswith("/add/"):
-    return None
-
-# /add/ yolu admin add view iÃ§in bypass
-try:
-    path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
-except Exception:
-    path = request.path
-if path.endswith("/add/"):
-    return None
-return HttpResponseRedirect(DIRECT + qs)
-
-    def process_response(self, request, response):
-        # YanÄ±t 301/302 ise ve hedef kanonik listeyse, _direct'e Ã§evir
-        try:
-            loc = response["Location"] if hasattr(response, "has_header") and response.has_header("Location") \
-                  else (response.headers.get("Location") if hasattr(response, "headers") else None)
-        except Exception:
-            loc = None
-
-        code = getattr(response, "status_code", 200)
-        if code in (301, 302) and loc:
-            # Sadece path kÄ±smÄ± ile karÅŸÄ±laÅŸtÄ±r: Ã§oÄŸu zaman relative Location geliyor
-            if str(loc).split("?",1)[0].endswith(CANONICAL):
-                qs = ""
-                try:
-                    # request tarafÄ±ndaki mevcut QUERY_STRING'i filtreleyip koru
-                    qs = _filtered_qs(request.META.get("QUERY_STRING",""))
-                except Exception:
-                    qs = ""
-                try:
-                    response["Location"] = DIRECT + qs
-                except Exception:
-                    pass
-        return response
-### DOSYA BİTİŞ: mw_fix_equip_redirect.py
 
 ### DOSYA BAŞLANGIÇ: .\\core\settings.py
 # REV: 1.2 | 2025-09-25 | Hash: a7864e49 | ParÃ§a: 1/1
@@ -2627,346 +2662,4 @@ test('test', async ({ page }) => {
   await page.goto('about:blank');
 });
 ### DOSYA BİTİŞ: EQP-002.spec.js
-
-### DOSYA BAŞLANGIÇ: .\\reporters\custom_json_reporter.js
-const fs = require("fs");
-const path = require("path");
-
-class CustomJsonReporter {
-  constructor(options = {}) {
-    this.options = options;
-    this.results = {
-      stats: { total: 0, passed: 0, failed: 0, skipped: 0, startTime: null, endTime: null },
-      tests: []
-    };
-    // Varsayılan çıktı yolu: targets/artifacts/results.json
-    this.outFile = (options.outputFile && String(options.outputFile)) || "targets/artifacts/results.json";
-  }
-
-  onBegin(config, suite) {
-    this.results.stats.startTime = new Date().toISOString();
-    // Çıktı klasörünü garanti et
-    const outDir = path.dirname(this.outFile);
-    fs.mkdirSync(outDir, { recursive: true });
-  }
-
-  onTestEnd(test, result) {
-    this.results.stats.total += 1;
-    const status = result.status;
-    if (status === "passed") this.results.stats.passed += 1;
-    else if (status === "skipped") this.results.stats.skipped += 1;
-    else this.results.stats.failed += 1;
-
-    this.results.tests.push({
-      title: test.title,
-      location: test.location,
-      project: test.parent?.project()?.name || null,
-      status,
-      duration_ms: result.duration,
-      error: result.error ? {
-        message: result.error.message,
-        stack: result.error.stack
-      } : null,
-    });
-  }
-
-  async onEnd() {
-    this.results.stats.endTime = new Date().toISOString();
-    fs.writeFileSync(this.outFile, JSON.stringify(this.results, null, 2), "utf-8");
-    // Konsola kısa bir özet de basalım
-    const s = this.results.stats;
-    console.log(`[custom-json] total=${s.total} passed=${s.passed} failed=${s.failed} skipped=${s.skipped}`);
-    console.log(`[custom-json] file=${this.outFile}`);
-  }
-}
-
-module.exports = CustomJsonReporter;
-### DOSYA BİTİŞ: custom_json_reporter.js
-
-### DOSYA BAŞLANGIÇ: .\\example.spec.js
-// Dosya: example.spec.js
-// Bu dosya, Playwright'ın doğru çalıştığını ve raporlayıcıyı tetiklediğini doğrulamak için eklenmiştir.
-
-const { test, expect } = require('@playwright/test');
-
-test('example basic test', async ({ page }) => {
-  // Basit bir sayfaya gitmeyi dener
-  await page.goto('https://playwright.dev/');
-  
-  // Başlıkta 'Playwright' kelimesinin geçtiğini doğrular
-  await expect(page).toHaveTitle(/Playwright/);
-  
-  // 'Get started' bağlantısını bulur ve tıklar
-  await page.getByRole('link', { name: 'Get started' }).click();
-  
-  // URL'nin /docs/intro ile bittiğini doğrular (navigasyon başarılı)
-  await expect(page).toHaveURL(/.*intro/);
-});
-### DOSYA BİTİŞ: example.spec.js
-
-### DOSYA BAŞLANGIÇ: .\\ops\run_suite.ps1
-# Dosya: ops\run_suite.ps1
-
-# -------------------------------------------------------------
-# 1. PARAMETRELER (PS Betiğin ilk satırı olmalıdır)
-# -------------------------------------------------------------
-param(
-  [string]$ExtraArgs = ""
-)
-
-
-# -------------------------------------------------------------
-# 2. TÜM FONKSİYON TANIMLARI
-# -------------------------------------------------------------
-
-function Invoke-TestResultProcessing {
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$ResultsDir,
-        
-        [Parameter(Mandatory=$true)]
-        [string]$AIQueuePath
-    )
-
-    $FailedTests = @()
-    $AIFailQueue = @()
-
-    # AI Kuyruğu dizinini hazırla
-    $AIDir = Split-Path -Parent $AIQueuePath
-    if (-not (Test-Path $AIDir)) { New-Item -ItemType Directory -Path $AIDir -Force | Out-Null }
-    
-    # Tüm JSON sonuç dosyalarını oku
-    $ResultFiles = Get-ChildItem -Path $ResultsDir -Filter "*.json" -ErrorAction SilentlyContinue
-
-    if (-not $ResultFiles) { return $true }
-
-    foreach ($File in $ResultFiles) {
-        try {
-            $Content = Get-Content $File.FullName -Raw -Encoding UTF8
-            $Result = $Content | ConvertFrom-Json -ErrorAction Stop
-        } catch {
-            continue
-        }
-
-        # Başarısız Test Kontrolü
-        if (-not $Result.ok) {
-            $TestID = $File.BaseName
-            $FailedTests += $TestID
-            
-            # AI Kuyruğu Yapılandırması (failed_tests.jsonl)
-            $AIRecord = [PSCustomObject]@{
-                test_id         = $TestID
-                reason          = $Result.reason
-                duration        = $Result.duration
-                metrics         = $Result.metrics
-                timestamp       = (Get-Date).ToString("o")
-            }
-            $AIFailQueue += ($AIRecord | ConvertTo-Json -Depth 5 -Compress)
-        }
-    }
-
-    # AI Kuyruğu Dosyasına Yazma (JSONL formatı)
-    $AIFailQueue | Out-File -FilePath $AIQueuePath -Encoding UTF8 -Force
-    
-    # Başarılı say
-    return ($FailedTests.Count -eq 0)
-}
-
-
-# -------------------------------------------------------------
-# 3. ANA ÇALIŞTIRMA MANTIĞI
-# -------------------------------------------------------------
-
-# 3.1 Karantina Listesini Oku ve Filtreyi Hazırla
-$QuarantineFile = "reporters\quarantine.json"
-if (Test-Path $QuarantineFile) {
-    try {
-        $QuarantineData = (Get-Content $QuarantineFile -Raw -Encoding UTF8) | ConvertFrom-Json
-        $QuarantinedIDs = $QuarantineData.punted | Where-Object { $_.count -ge 3 } | Select-Object -ExpandProperty id
-        
-        if ($QuarantinedIDs.Count -gt 0) {
-            Write-Host ("# {0} test karantinada. Bu testler atlanacak." -f $QuarantinedIDs.Count) -ForegroundColor DarkYellow
-            $QuarantineRegex = $QuarantinedIDs -join '|'
-            $ExtraArgs += " --grep-invert '($QuarantineRegex)'"
-        }
-    } catch {
-        Write-Host "[WARN] Karantina dosyası ($QuarantineFile) okunamadı/bozuk. Atlandı." -ForegroundColor Red
-    }
-}
-
-
-# 3.2 Temizlik ve Hazırlık
-if (Test-Path "targets\results") { Remove-Item "targets\results\*.json" -Force }
-if (Test-Path "ai_queue\failed_tests.jsonl") { Remove-Item "ai_queue\failed_tests.jsonl" -Force }
-Write-Host "[START] Uçtan Uca Testler Başlatılıyor..." -ForegroundColor Green
-
-
-# 3.3 Playwright'ı Çalıştırma
-$PlaywrightSuccess = $true
-try {
-    # Playwright'ı çalıştır
-    $PlaywrightOutput = & npm run test --silent -- "$ExtraArgs" 2>&1
-    
-    if ($LASTEXITCODE -ne 0) {
-        throw "Playwright Hata Kodu: $LASTEXITCODE"
-    }
-
-} catch {
-    # Hata yakalama ve loglama
-    $Global:PlaywrightError = $_.Exception.Message
-    $ErrorPath = "targets\playwright_error.log"
-    $Global:PlaywrightError | Out-File -FilePath $ErrorPath -Encoding UTF8 -Force
-    
-    Write-Host "[HATA] Playwright ÇALIŞMADI! Detaylar $ErrorPath içinde." -ForegroundColor Red
-    $PlaywrightSuccess = $false
-}
-
-
-# 3.4 Test Sonuçlarını İşleme
-$TestsPassed = Invoke-TestResultProcessing `
-    -ResultsDir "targets/results" `
-    -AIQueuePath "ai_queue/failed_tests.jsonl"
-
-
-# 3.5 Çıkış Kodu ve Terminali Açık Tutma Mantığı
-if (-not $PlaywrightSuccess) {
-    # Playwright komutunun kendisi başarısız olursa buraya düşeriz
-    Write-Host ""
-    Write-Host ">>> KRİTİK HATA: Terminal kapanmasını engelliyoruz. <<<" -ForegroundColor Red
-    Write-Host "Playwright'ın neden çalışmadığını anlamak için LÜTFEN targets\playwright_error.log dosyasının içeriğini paylaşın." -ForegroundColor Yellow
-    
-    # EN SON ÇIKARAK KAPATMAYI ENGELLEYELİM. BU SATIR SİZ ENTER'A BASANA KADAR TERMİNALİ TUTACAK.
-    Read-Host -Prompt "Hata Kaydını Paylaşmak İçin Enter'a Basın (Kapatmayacaktır)" | Out-Null
-    # Normalde burada "exit 2" olurdu, ancak terminalin kapanmasını engellemek için SİLİNDİ.
-
-} elseif (-not $TestsPassed) {
-    # Testler çalıştı ama bazıları başarısız oldu
-    Write-Host "[PIPELINE] Bazı testler başarısız oldu. AI Kuyruğu Hazırlandı." -ForegroundColor Magenta
-    exit 2
-
-} else {
-    # Her şey başarılı
-    Write-Host "[PIPELINE] Tüm zorunlu testler başarılı!" -ForegroundColor Green
-    exit 0
-}
-### DOSYA BİTİŞ: run_suite.ps1
-
-### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0008_department_remove_calibrationrecord_asset_and_more.py
-# Generated by Django 5.2.6 on 2025-10-03 13:59
-
-import django.db.models.deletion
-from django.db import migrations, models
-
-
-class Migration(migrations.Migration):
-
-    dependencies = [
-        ('maintenance', '0007_alter_equipment_manufacturer_and_more'),
-    ]
-
-    operations = [
-        migrations.CreateModel(
-            name='Department',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True, verbose_name='Departman Adı')),
-            ],
-            options={
-                'verbose_name': 'Departman',
-                'verbose_name_plural': 'Departmanlar',
-            },
-        ),
-        migrations.RemoveField(
-            model_name='calibrationrecord',
-            name='asset',
-        ),
-        migrations.RemoveField(
-            model_name='maintenancechecklistitem',
-            name='equipment',
-        ),
-        migrations.RemoveField(
-            model_name='maintenanceorder',
-            name='equipment',
-        ),
-        migrations.RemoveField(
-            model_name='sparepart',
-            name='equipment',
-        ),
-        migrations.AlterModelOptions(
-            name='equipment',
-            options={'ordering': ['name'], 'verbose_name': 'Ekipman', 'verbose_name_plural': 'Ekipmanlar'},
-        ),
-        migrations.RemoveField(
-            model_name='equipment',
-            name='area',
-        ),
-        migrations.RemoveField(
-            model_name='equipment',
-            name='code',
-        ),
-        migrations.RemoveField(
-            model_name='equipment',
-            name='criticality',
-        ),
-        migrations.RemoveField(
-            model_name='equipment',
-            name='discipline',
-        ),
-        migrations.RemoveField(
-            model_name='equipment',
-            name='is_active',
-        ),
-        migrations.RemoveField(
-            model_name='equipment',
-            name='manufacturer',
-        ),
-        migrations.AddField(
-            model_name='equipment',
-            name='inventory_code',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='Envanter Kodu'),
-        ),
-        migrations.AddField(
-            model_name='equipment',
-            name='location',
-            field=models.CharField(default='Genel Merkez', max_length=100, verbose_name='Konum'),
-            preserve_default=False,
-        ),
-        migrations.AddField(
-            model_name='equipment',
-            name='purchase_date',
-            field=models.DateField(blank=True, null=True, verbose_name='Satın Alma Tarihi'),
-        ),
-        migrations.AddField(
-            model_name='equipment',
-            name='serial_number',
-            field=models.CharField(default='Genel Merkez1', max_length=100, verbose_name='Seri Numarası'),
-            preserve_default=False,
-        ),
-        migrations.AlterField(
-            model_name='equipment',
-            name='name',
-            field=models.CharField(max_length=200, verbose_name='Ekipman Adı'),
-        ),
-        migrations.AddField(
-            model_name='equipment',
-            name='department',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='maintenance.department', verbose_name='Departman'),
-        ),
-        migrations.DeleteModel(
-            name='CalibrationAsset',
-        ),
-        migrations.DeleteModel(
-            name='CalibrationRecord',
-        ),
-        migrations.DeleteModel(
-            name='MaintenanceChecklistItem',
-        ),
-        migrations.DeleteModel(
-            name='MaintenanceOrder',
-        ),
-        migrations.DeleteModel(
-            name='SparePart',
-        ),
-    ]
-### DOSYA BİTİŞ: 0008_department_remove_calibrationrecord_asset_and_more.py
 

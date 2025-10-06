@@ -1,5 +1,4 @@
 ﻿import { test, expect } from '@playwright/test';
-import fs from 'fs';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
 
@@ -12,6 +11,7 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
     const uVal = process.env.ADMIN_USER ?? "admin";
     const pVal = process.env.ADMIN_PASS ?? "admin";
 
+    // id/name/placeholder/label çoklu strateji
     let u = page.locator('#id_username, input[name="username"], input[name="email"], input#id_user, input[name="user"]').first();
     const uByPh = page.getByPlaceholder(/kullanıcı adı|kullanici adi|email|e-?posta|username/i).first();
     const uByLb = page.getByLabel(/kullanıcı adı|kullanici adi|username|email|e-?posta/i).first();
@@ -33,8 +33,6 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
       else { await p.press('Enter').catch(()=>{}); }
     }
     await page.waitForLoadState('domcontentloaded').catch(()=>{});
-    // Login sonrası add sayfasına tekrar sabitle
-    await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
   }
   /* end ensure logged in (fallback) */
 
@@ -49,44 +47,26 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
   console.log('E104 labels:', labels);
   console.log('E104 placeholders:', placeholders);
 
-  // Yardımcı: ilk görünür & düzenlenebilir alanı seç
-  async function pickVisibleEditable(...locs) {
-    for (const l of locs) {
-      if (await l.count().catch(()=>0)) {
-        if ((await l.isVisible().catch(()=>false)) && (await l.isEditable().catch(()=>false))) return l;
-      }
-    }
-    return null;
-  }
-
-  // İsim benzeri alan adayları
+  // İsim benzeri bir alanı bul ve doldur (çoklu aday)
   const name = `PW-AUTO-${Date.now()}`;
-  const likelyByAttr = form.locator(
-    '[id*="name" i], [name*="name" i], [aria-label*="name" i], [placeholder*="name" i], ' +
-    '[id*="title" i], [name*="title" i], [aria-label*="title" i], [placeholder*="title" i]'
-  ).first();
-
-  const genericText = form.locator(
-    'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([name="csrfmiddlewaretoken"]), textarea'
-  );
-
-  let target = await pickVisibleEditable(
+  const candidates = [
     page.getByLabel(/Ekipman Ad[ıi]|Equipment Name|Name|Başlık|Title/i).first(),
     page.getByPlaceholder(/Ekipman|Ad[ıi]|Name|Başlık|Title/i).first(),
     form.locator('#id_name').first(),
     form.locator('[name="name"]').first(),
-    likelyByAttr,
-    genericText.first()
-  );
+    form.locator('[name*="name" i]').first(),
+    form.locator('[id*="name" i]').first(),
+    form.locator('[name*="title" i]').first(),
+    form.locator('input[type="text"]').first(),
+    form.locator('input:not([type])').first(),
+    form.locator('textarea').first()
+  ];
 
-  if (!target) {
-    // Debug dump
-    try {
-      await page.screenshot({ path: 'test-results/e104_add_page.png', fullPage: true });
-      fs.writeFileSync('test-results/e104_add_page.html', await page.content());
-    } catch {}
-    throw new Error('E104: Name-like alan bulunamadı');
+  let target = null;
+  for (const c of candidates) {
+    if (await c.count().catch(()=>0)) { target = c; break; }
   }
+  if (!target) throw new Error('E104: Name-like alan bulunamadı');
 
   await target.scrollIntoViewIfNeeded().catch(()=>{});
   await target.fill(name);
@@ -113,6 +93,7 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
   // Change sayfasında değilsek listeye dön ve satırı aç
   if (!/\/change\/$/.test(page.url())) {
     await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByText(name)).toBeVisible({ timeout: 8000 });
     await page.getByRole('link', { name: new RegExp(name) }).first().click().catch(()=>{});
   }
 

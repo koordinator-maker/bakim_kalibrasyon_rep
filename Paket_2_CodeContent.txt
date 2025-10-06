@@ -1,4 +1,73 @@
-﻿### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_final.py
+﻿### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_final2.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib.auth import get_user_model
+from django.test import Client
+from maintenance.models import Equipment
+
+# superuser garanti
+U = get_user_model()
+u, _ = U.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True; u.set_password("admin123!"); u.save()
+
+c = Client()
+print("GET /admin/ ->", c.get("/admin/").status_code)
+c.post("/admin/login/?next=/admin/", {
+    "username":"admin","password":"admin123!",
+    "this_is_the_login_form":1,"next":"/admin/"
+}, follow=True)
+
+cl = f"/admin/{Equipment._meta.app_label}/{Equipment._meta.model_name}/"
+ad = f"/admin/{Equipment._meta.app_label}/{Equipment._meta.model_name}/add/"
+print("CL:", c.get(cl).status_code, cl)
+print("AD:", c.get(ad).status_code, ad)
+### DOSYA BİTİŞ: admin_smoke_final2.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\maintenance\admin.py
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "serial_number")
+    search_fields = ("name", "serial_number")
+### DOSYA BİTİŞ: admin.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\maintenance\admin.py
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "serial_number")
+    search_fields = ("name", "serial_number")
+### DOSYA BİTİŞ: admin.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-192504\maintenance\admin.py
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "serial_number")
+    search_fields = ("name", "serial_number")
+### DOSYA BİTİŞ: admin.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-192603\maintenance\admin.py
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "serial_number")
+    search_fields = ("name", "serial_number")
+### DOSYA BİTİŞ: admin.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_final.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -187,7 +256,7 @@ print("CL  status:", c.get(cl_path).status_code, cl_path)
 print("ADD status:", c.get(add_path).status_code, add_path)
 ### DOSYA BİTİŞ: admin_smoke_final.py
 
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_fixed.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\admin_smoke_fixed.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -283,7 +352,7 @@ print("CL  status:", c.get("/admin/maintenance/equipment/").status_code)
 print("ADD status:", c.get("/admin/maintenance/equipment/add/").status_code)
 ### DOSYA BİTİŞ: admin_smoke_fixed.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\admin_smoke_fixed.py
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_fixed.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -547,7 +616,7 @@ print("reverse(changelist) ->", reverse(nm_cl))
 print("reverse(add)        ->", reverse(nm_add))
 ### DOSYA BİTİŞ: admin_namespace_probe.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\admin_namespace_probe.py
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_namespace_probe.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -571,7 +640,7 @@ print("reverse(changelist) ->", reverse(nm_cl))
 print("reverse(add)        ->", reverse(nm_add))
 ### DOSYA BİTİŞ: admin_namespace_probe.py
 
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_namespace_probe.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\admin_namespace_probe.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -615,26 +684,6 @@ r1 = c.get("/admin/maintenance/equipment/"); print("CL status:", r1.status_code)
 r2 = c.get("/admin/maintenance/equipment/add/"); print("ADD status:", r2.status_code)  # 200
 ### DOSYA BİTİŞ: admin_auth_probe_ok.py
 
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe_ok.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.test import Client
-c = Client()
-r = c.get("/admin/"); print("GET /admin/ ->", r.status_code)  # 302 beklenir
-
-resp = c.post("/admin/login/?next=/admin/", {
-    "username":"admin","password":"admin123!",
-    "this_is_the_login_form":1,"next":"/admin/"
-}, follow=True)
-print("login final status:", resp.status_code)
-
-r1 = c.get("/admin/maintenance/equipment/"); print("CL status:", r1.status_code)  # 200
-r2 = c.get("/admin/maintenance/equipment/add/"); print("ADD status:", r2.status_code)  # 200
-### DOSYA BİTİŞ: admin_auth_probe_ok.py
-
 ### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\admin_auth_probe_ok.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
@@ -655,7 +704,27 @@ r1 = c.get("/admin/maintenance/equipment/"); print("CL status:", r1.status_code)
 r2 = c.get("/admin/maintenance/equipment/add/"); print("ADD status:", r2.status_code)  # 200
 ### DOSYA BİTİŞ: admin_auth_probe_ok.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\dump_admin_names.py
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe_ok.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.test import Client
+c = Client()
+r = c.get("/admin/"); print("GET /admin/ ->", r.status_code)  # 302 beklenir
+
+resp = c.post("/admin/login/?next=/admin/", {
+    "username":"admin","password":"admin123!",
+    "this_is_the_login_form":1,"next":"/admin/"
+}, follow=True)
+print("login final status:", resp.status_code)
+
+r1 = c.get("/admin/maintenance/equipment/"); print("CL status:", r1.status_code)  # 200
+r2 = c.get("/admin/maintenance/equipment/add/"); print("ADD status:", r2.status_code)  # 200
+### DOSYA BİTİŞ: admin_auth_probe_ok.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\dump_admin_names.py
 import os, sys, django
 from itertools import islice
 sys.path.insert(0, os.getcwd())
@@ -688,7 +757,7 @@ print("reverse(cl):", reverse(nm_cl))
 print("reverse(add):", reverse(nm_add))
 ### DOSYA BİTİŞ: dump_admin_names.py
 
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\dump_admin_names.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\dump_admin_names.py
 import os, sys, django
 from itertools import islice
 sys.path.insert(0, os.getcwd())
@@ -754,17 +823,6 @@ print("reverse(cl):", reverse(nm_cl))
 print("reverse(add):", reverse(nm_add))
 ### DOSYA BİTİŞ: dump_admin_names.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\check_admin_tuple.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.contrib import admin
-tpl = admin.site.urls  # (urlpatterns, app_name, namespace)
-print("app_name:", tpl[1], "| namespace:", tpl[2])
-### DOSYA BİTİŞ: check_admin_tuple.py
-
 ### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\check_admin_tuple.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
@@ -787,7 +845,18 @@ tpl = admin.site.urls  # (urlpatterns, app_name, namespace)
 print("app_name:", tpl[1], "| namespace:", tpl[2])
 ### DOSYA BİTİŞ: check_admin_tuple.py
 
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe_after_reset.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\check_admin_tuple.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+tpl = admin.site.urls  # (urlpatterns, app_name, namespace)
+print("app_name:", tpl[1], "| namespace:", tpl[2])
+### DOSYA BİTİŞ: check_admin_tuple.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\admin_auth_probe_after_reset.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -841,7 +910,7 @@ print("CL status:", r1.status_code)
 print("ADD status:", r2.status_code)
 ### DOSYA BİTİŞ: admin_auth_probe_after_reset.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\admin_auth_probe_after_reset.py
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe_after_reset.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -955,18 +1024,6 @@ print("status:", r.status_code)
 print((r.content[:800]).decode("utf-8","ignore"))
 ### DOSYA BİTİŞ: probe_admin_500.py
 
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\probe_admin_500.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-from django.test import Client
-c = Client()
-r = c.get("/admin/")
-print("status:", r.status_code)
-print((r.content[:800]).decode("utf-8","ignore"))
-### DOSYA BİTİŞ: probe_admin_500.py
-
 ### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\probe_admin_500.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
@@ -979,7 +1036,19 @@ print("status:", r.status_code)
 print((r.content[:800]).decode("utf-8","ignore"))
 ### DOSYA BİTİŞ: probe_admin_500.py
 
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\probe_admin_500.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.test import Client
+c = Client()
+r = c.get("/admin/")
+print("status:", r.status_code)
+print((r.content[:800]).decode("utf-8","ignore"))
+### DOSYA BİTİŞ: probe_admin_500.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\admin_auth_probe.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -1034,117 +1103,4 @@ r2 = c.get("/admin/maintenance/equipment/add/")
 print("CL status:", r1.status_code)   # 200 beklenir
 print("ADD status:", r2.status_code)  # 200 beklenir
 ### DOSYA BİTİŞ: admin_auth_probe.py
-
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\admin_auth_probe.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.test import Client
-
-c = Client()
-
-# 1) login sayfasına yönlendirme var mı?
-r = c.get("/admin/")
-print("GET /admin/ ->", r.status_code)  # 302 beklenir (login'e)
-
-# 2) admin kullanıcısı ile giriş
-resp = c.post("/admin/login/?next=/admin/", {
-    "username":"admin", "password":"admin123!",
-    "this_is_the_login_form":1, "next":"/admin/"
-}, follow=True)
-print("login final status:", resp.status_code)
-
-# 3) artık changelist/add kaç dönüyor?
-r1 = c.get("/admin/maintenance/equipment/")
-r2 = c.get("/admin/maintenance/equipment/add/")
-print("CL status:", r1.status_code)   # 200 beklenir
-print("ADD status:", r2.status_code)  # 200 beklenir
-### DOSYA BİTİŞ: admin_auth_probe.py
-
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\admin_reverse_check.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.contrib import admin
-from django.urls import reverse, NoReverseMatch
-from django.contrib.admin.templatetags.admin_urls import admin_urlname
-from maintenance.models import Equipment
-
-print("Registered in default admin site:", Equipment in admin.site._registry)
-
-name_changelist = admin_urlname(Equipment._meta, "changelist")   # ör: "maintenance_equipment_changelist"
-name_add        = admin_urlname(Equipment._meta, "add")          # ör: "maintenance_equipment_add"
-print("Names ->", name_changelist, ",", name_add)
-
-try:
-    print("Reverse CL :", reverse(f"admin:{name_changelist}"))
-    print("Reverse ADD:", reverse(f"admin:{name_add}"))
-except NoReverseMatch as e:
-    print("NoReverseMatch:", e)
-### DOSYA BİTİŞ: admin_reverse_check.py
-
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\admin_reverse_check.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.contrib import admin
-from django.urls import reverse, NoReverseMatch
-from django.contrib.admin.templatetags.admin_urls import admin_urlname
-from maintenance.models import Equipment
-
-print("Registered in default admin site:", Equipment in admin.site._registry)
-
-name_changelist = admin_urlname(Equipment._meta, "changelist")   # ör: "maintenance_equipment_changelist"
-name_add        = admin_urlname(Equipment._meta, "add")          # ör: "maintenance_equipment_add"
-print("Names ->", name_changelist, ",", name_add)
-
-try:
-    print("Reverse CL :", reverse(f"admin:{name_changelist}"))
-    print("Reverse ADD:", reverse(f"admin:{name_add}"))
-except NoReverseMatch as e:
-    print("NoReverseMatch:", e)
-### DOSYA BİTİŞ: admin_reverse_check.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_reverse_check.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.contrib import admin
-from django.urls import reverse, NoReverseMatch
-from django.contrib.admin.templatetags.admin_urls import admin_urlname
-from maintenance.models import Equipment
-
-print("Registered in default admin site:", Equipment in admin.site._registry)
-
-name_changelist = admin_urlname(Equipment._meta, "changelist")   # ör: "maintenance_equipment_changelist"
-name_add        = admin_urlname(Equipment._meta, "add")          # ör: "maintenance_equipment_add"
-print("Names ->", name_changelist, ",", name_add)
-
-try:
-    print("Reverse CL :", reverse(f"admin:{name_changelist}"))
-    print("Reverse ADD:", reverse(f"admin:{name_add}"))
-except NoReverseMatch as e:
-    print("NoReverseMatch:", e)
-### DOSYA BİTİŞ: admin_reverse_check.py
-
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\check_admin_urls.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-from django.contrib import admin
-from django.urls import reverse
-from maintenance.models import Equipment
-print("Registered:", Equipment in admin.site._registry)
-print("CL :", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_changelist"))
-print("ADD:", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_add"))
-### DOSYA BİTİŞ: check_admin_urls.py
 
