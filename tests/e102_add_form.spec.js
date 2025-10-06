@@ -36,4 +36,5 @@ if (/\/admin\/login\//.test(page.url())) {
   }
   await page.waitForLoadState('domcontentloaded').catch(()=>{});
 }
+/* end ensure logged in (fallback) */
 });
