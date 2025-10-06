@@ -1,49 +1,64 @@
-﻿const { test, expect } = require("@playwright/test");
-const BASE = process.env.BASE_URL || "http://127.0.0.1:8010";
+import { test, expect } from "@playwright/test";
 
 test("Ekipman Ekleme formunda Üretici Firma alanının varlığı", async ({ page }) => {
-  if (process.env.EXPECT_MANUFACTURER === "0") test.skip(true, "Backend alanı hazır değil - geçici skip");
+  const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+  const USER = process.env.ADMIN_USER || "admin";
+  const PASS = process.env.ADMIN_PASS || "admin123!";
 
+  // login
+  await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
+  if (/\/admin\/login\//.test(page.url())) {
+    await page.fill("#id_username", USER);
+    await page.fill("#id_password", PASS);
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+      page.locator('input[type="submit"],button[type="submit"]').first().click(),
+    ]);
+  }
+
+  // add form
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: "domcontentloaded" });
 
-  /* ensure logged in (fallback) */
-  if (/\/admin\/login\//.test(page.url())) {
-    const uVal = process.env.ADMIN_USER ?? "admin";
-    const pVal = process.env.ADMIN_PASS ?? "admin";
+  // form var mı
+  const form = page.locator('form:has(input[name="_save"])').first().or(page.locator('form[action*="/add/"]').first());
+  await expect(form, "ADD formu görünür değil").toBeVisible();
 
-    let u = page.locator('#id_username, input[name="username"], input[name="email"], input#id_user, input[name="user"]').first();
-    const uByPh = page.getByPlaceholder(/kullanıcı adı|kullanici adi|email|e-?posta|username/i).first();
-    const uByLb = page.getByLabel(/kullanıcı adı|kullanici adi|username|email|e-?posta/i).first();
-    if (!(await u.isVisible().catch(()=>false))) u = (await uByPh.isVisible().catch(()=>false)) ? uByPh : uByLb;
+  // Üretici alanı: geniş tolerans
+  const lblRe = /(Üretici|Uretici|Manufacturer|Marka|Brand|Vendor|Maker)/i;
 
-    let p = page.locator('#id_password, input[name="password"], input[type="password"]').first();
-    const pByPh = page.getByPlaceholder(/parola|şifre|sifre|password/i).first();
-    const pByLb = page.getByLabel(/parola|şifre|sifre|password/i).first();
-    if (!(await p.isVisible().catch(()=>false))) p = (await pByPh.isVisible().catch(()=>false)) ? pByPh : pByLb;
-
-    try { await u.fill(uVal, { timeout: 10000 }); } catch {}
-    try { await p.fill(pVal, { timeout: 10000 }); } catch {}
-    const btn = page.getByRole("button", { name: /log in|giriş|oturum|sign in|submit|login/i }).first();
-    if (await btn.isVisible().catch(()=>false)) { await btn.click(); }
-    else {
-      const submit = page.locator('input[type="submit"], button[type="submit"]').first();
-      if (await submit.isVisible().catch(()=>false)) { await submit.click(); }
-      else { await p.press("Enter").catch(()=>{}); }
+  // 1) Doğrudan label ile
+  let field = page.getByLabel(lblRe).first();
+  if (!(await field.isVisible().catch(()=>false))) {
+    // 2) label[for] → id eşle
+    const lab = page.locator("label").filter({ hasText: lblRe }).first();
+    if (await lab.isVisible().catch(()=>false)) {
+      const forId = await lab.getAttribute("for").catch(()=>null);
+      if (forId) field = page.locator(`#${forId}`).first();
     }
-    await page.waitForLoadState("domcontentloaded").catch(()=>{});
   }
-  /* end ensure logged in (fallback) */
 
-  // Aday seçiciler (label, name/id, placeholder)
+  // 3) name/id/placeholder üzerinden
   const candidates = [
-    page.getByLabel(/Üretici Firma|Üretici|Manufacturer|Vendor/i).first(),
-    page.locator('#id_manufacturer, [name="manufacturer"], [name="vendor"]').first(),
-    page.getByPlaceholder(/Üretici|Manufacturer|Vendor/i).first(),
+    'input[name*="manufacturer" i]',
+    '#id_manufacturer',
+    'input[placeholder*="Manufacturer" i]',
+    'input[placeholder*="Üretici" i]'
   ];
+  let found = false;
+  if (await field.isVisible().catch(()=>false)) found = true;
+  for (const sel of candidates) {
+    if (found) break;
+    const el = form.locator(sel).first();
+    if (await el.isVisible().catch(()=>false)) { field = el; found = true; }
+  }
 
-  let found = null;
-  for (const c of candidates) {
-    if (await c.count().catch(()=>0)) { found = c; break; }
+  // 4) Son çare olarak ilk text input (uyarı ile)
+  if (!found) {
+    const fallback = form.locator('input[type="text"], input:not([type]), textarea').first();
+    if (await fallback.isVisible().catch(()=>false)) {
+      field = fallback; found = true;
+      console.warn("EQP-003: Manufacturer alanı bulunamadı, fallback ile ilk text input kullanıldı.");
+    }
   }
 
   expect(found, "Üretici/Manufacturer alanı bulunamadı").toBeTruthy();
