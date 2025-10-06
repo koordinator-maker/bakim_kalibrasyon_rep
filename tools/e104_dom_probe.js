@@ -3,8 +3,11 @@ const fs = require("fs");
 const path = require("path");
 
 (async () => {
-  const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+  const BASE   = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
   const headed = process.env.PW_HEADED === "1";
+  const USER   = process.env.ADMIN_USER || "admin";
+  const PASS   = process.env.ADMIN_PASS || "admin123!";
+
   const outDir = path.resolve("_otokodlama","out");
   const trDir  = path.resolve("test-results");
   fs.mkdirSync(outDir, { recursive: true });
@@ -14,9 +17,22 @@ const path = require("path");
   const context = await browser.newContext({ storageState: "storage/user.json" });
   const page = await context.newPage();
 
-  // ADD formuna git ve 'add' sayfasında olduğumuzu garanti et
+  // Hedef ADD sayfası
   const target = `${BASE}/admin/maintenance/equipment/add/`;
   await page.goto(target, { waitUntil: "domcontentloaded" });
+
+  // ⛳ Eğer login sayfasına yönlendiysek otomatik giriş yap ve tekrar hedefe git
+  if (/\/admin\/login\//.test(page.url())) {
+    await page.locator('#id_username').fill(USER);
+    await page.locator('#id_password').fill(PASS);
+    await Promise.all([
+      page.waitForLoadState('domcontentloaded'),
+      page.locator('input[type="submit"],button[type="submit"]').first().click()
+    ]);
+    await page.goto(target, { waitUntil: "domcontentloaded" });
+  }
+
+  // Add sayfasında değilsek üstteki "Add" linkiyle içeri gir
   if (!/\/add\/?$/.test(page.url())) {
     const addLink = page.locator('a.addlink, .object-tools a[href$="/add/"]');
     if (await addLink.count()) {
@@ -25,7 +41,7 @@ const path = require("path");
     }
   }
 
-  // _save butonu olan formu baz al
+  // _save butonlu form
   const form = page.locator('form:has(input[name="_save"])').first();
   const formVisible = await form.isVisible().catch(() => false);
 
