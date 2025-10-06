@@ -1,129 +1,121 @@
-﻿import { test, expect } from '@playwright/test';
+/**
+ * Rev: 2025-10-06 12:28 r1
+ * E104 — Equipment oluştur & sil (stabil seçiciler, auto-login fallback)
+ */
+import { test, expect } from '@playwright/test';
 import fs from 'fs';
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
-
 test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
-  // Add formuna git
+  const BASE = (process.env.BASE_URL || 'http://127.0.0.1:8010').replace(/\/$/, '');
+  const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+  const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123!';
+
+  async function loginIfNeeded() {
+    await page.goto(`${BASE}/admin/`, { waitUntil: 'domcontentloaded' });
+    if (/\/admin\/login\//.test(page.url())) {
+      await page.fill('#id_username', ADMIN_USER);
+      await page.fill('#id_password', ADMIN_PASS);
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        page.locator('input[type="submit"],button[type="submit"]').first().click()
+      ]);
+    }
+  }
+
+  // 0) Login garantile
+  await loginIfNeeded();
+
+  // 1) ADD formuna git
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
 
-  /* ensure logged in (fallback) */
-  if (/\/admin\/login\//.test(page.url())) {
-    const uVal = process.env.ADMIN_USER ?? "admin";
-    const pVal = process.env.ADMIN_PASS ?? "admin";
-
-    let u = page.locator('#id_username, input[name="username"], input[name="email"], input#id_user, input[name="user"]').first();
-    const uByPh = page.getByPlaceholder(/kullanıcı adı|kullanici adi|email|e-?posta|username/i).first();
-    const uByLb = page.getByLabel(/kullanıcı adı|kullanici adi|username|email|e-?posta/i).first();
-    if (!(await u.isVisible().catch(()=>false))) u = (await uByPh.isVisible().catch(()=>false)) ? uByPh : uByLb;
-
-    let p = page.locator('#id_password, input[name="password"], input[type="password"]').first();
-    const pByPh = page.getByPlaceholder(/parola|şifre|sifre|password/i).first();
-    const pByLb = page.getByLabel(/parola|şifre|sifre|password/i).first();
-    if (!(await p.isVisible().catch(()=>false))) p = (await pByPh.isVisible().catch(()=>false)) ? pByPh : pByLb;
-
-    try { await u.fill(uVal, { timeout: 10000 }); } catch {}
-    try { await p.fill(pVal, { timeout: 10000 }); } catch {}
-
-    const btn = page.getByRole('button', { name: /log in|giriş|oturum|sign in|submit|login/i }).first();
-    if (await btn.isVisible().catch(()=>false)) { await btn.click(); }
-    else {
-      const submit = page.locator('input[type="submit"], button[type="submit"]').first();
-      if (await submit.isVisible().catch(()=>false)) { await submit.click(); }
-      else { await p.press('Enter').catch(()=>{}); }
-    }
-    await page.waitForLoadState('domcontentloaded').catch(()=>{});
-    // Login sonrası add sayfasına tekrar sabitle
-    await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
-  }
-  /* end ensure logged in (fallback) */
-
-  // Form görünür olmalı
-  await expect(page).toHaveURL(/\/admin\/maintenance\/equipment\/add\/.*/);
-  const form = page.locator('form').first();
+  // 2) Kaydet butonlu formu bekle
+  const form = page.locator('form:has(input[name="_save"])').first();
   await expect(form).toBeVisible();
 
-  // Tanılama (log)
-  const labels = await form.locator('label').allInnerTexts().catch(()=>[]);
-  const placeholders = await form.locator('input::placeholder').allTextContents().catch(()=>[]);
-  console.log('E104 labels:', labels);
-  console.log('E104 placeholders:', placeholders);
-
-  // Yardımcı: ilk görünür & düzenlenebilir alanı seç
-  async function pickVisibleEditable(...locs) {
-    for (const l of locs) {
-      if (await l.count().catch(()=>0)) {
-        if ((await l.isVisible().catch(()=>false)) && (await l.isEditable().catch(()=>false))) return l;
-      }
+  // 3) İsim alanını kesin doldur (probe çıktısına göre)
+  const ts = Date.now().toString();
+  const nameValue = 'AUTO-NAME-' + ts;
+  const nameSelectors = ['input[name="name"]', '#id_name'];
+  let filledName = false;
+  for (const sel of nameSelectors) {
+    const f = form.locator(sel).first();
+    if (await f.isVisible().catch(()=>false)) {
+      await f.fill(nameValue);
+      filledName = true;
+      break;
     }
-    return null;
+  }
+  if (!filledName) {
+    // Son çare: ilk görünür text input/textarea
+    const cand = form.locator('input[type="text"], input:not([type]), textarea').first();
+    if (await cand.isVisible().catch(()=>false)) {
+      await cand.fill(nameValue);
+      filledName = true;
+    }
+  }
+  expect(filledName, 'Name-like alan bulunamadı').toBeTruthy();
+
+  // 4) Kaydet
+  const save = form.locator('input[name="_save"]').first();
+  if (await save.isVisible().catch(()=>false)) {
+    await Promise.all([ page.waitForLoadState('domcontentloaded'), save.click() ]);
+  } else {
+    const submitAlt = form.locator('button[type="submit"], input[type="submit"]').first();
+    await Promise.all([ page.waitForLoadState('domcontentloaded'), submitAlt.click() ]);
   }
 
-  // İsim benzeri alan adayları
-  const name = `PW-AUTO-${Date.now()}`;
-  const likelyByAttr = form.locator(
-    '[id*="name" i], [name*="name" i], [aria-label*="name" i], [placeholder*="name" i], ' +
-    '[id*="title" i], [name*="title" i], [aria-label*="title" i], [placeholder*="title" i]'
-  ).first();
-
-  const genericText = form.locator(
-    'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([name="csrfmiddlewaretoken"]), textarea'
-  );
-
-  let target = await pickVisibleEditable(
-    page.getByLabel(/Ekipman Ad[ıi]|Equipment Name|Name|Başlık|Title/i).first(),
-    page.getByPlaceholder(/Ekipman|Ad[ıi]|Name|Başlık|Title/i).first(),
-    form.locator('#id_name').first(),
-    form.locator('[name="name"]').first(),
-    likelyByAttr,
-    genericText.first()
-  );
-
-  if (!target) {
-    // Debug dump
-    try {
-      await page.screenshot({ path: 'test-results/e104_add_page.png', fullPage: true });
-      fs.writeFileSync('test-results/e104_add_page.html', await page.content());
-    } catch {}
-    throw new Error('E104: Name-like alan bulunamadı');
+  // 5) Change sayfasına ulaştığımızı garanti et
+  let onChange = /\/change\/?$/.test(page.url());
+  if (!onChange) {
+    const msgChange = page.locator('ul.messagelist a[href*="/change/"]').first();
+    if (await msgChange.isVisible().catch(()=>false)) {
+      await Promise.all([ page.waitForLoadState('domcontentloaded'), msgChange.click() ]);
+      onChange = /\/change\/?$/.test(page.url());
+    }
   }
-
-  await target.scrollIntoViewIfNeeded().catch(()=>{});
-  await target.fill(name);
-
-  // KAYDET – form kapsamı içinde sağlam seçimler
-  const saveCands = [
-    form.locator('.submit-row input[name="_save"]').first(),
-    form.getByRole('button', { name: /^save$|^kaydet$/i }).first(),
-    form.locator('input[type="submit"]').first(),
-    form.locator('button[type="submit"]').first()
-  ];
-  let saved = false;
-  for (const s of saveCands) {
-    if (await s.count().catch(()=>0)) { await s.click(); saved = true; break; }
-  }
-  if (!saved) { await target.press('Enter').catch(()=>{}); }
-
-  // Kaydet sonrası: change sayfası veya success mesajı
-  await Promise.race([
-    page.waitForURL(/\/change\/$/, { timeout: 10000 }).catch(()=>{}),
-    page.waitForSelector('.messagelist .success, .messages .success, #container .success', { timeout: 10000 }).catch(()=>{})
-  ]);
-
-  // Change sayfasında değilsek listeye dön ve satırı aç
-  if (!/\/change\/$/.test(page.url())) {
+  if (!onChange) {
     await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
-    await page.getByRole('link', { name: new RegExp(name) }).first().click().catch(()=>{});
+    const rowLink = page.getByRole('row', { name: new RegExp(nameValue) }).locator('a').first();
+    if (await rowLink.isVisible().catch(()=>false)) {
+      await Promise.all([ page.waitForLoadState('domcontentloaded'), rowLink.click() ]);
+      onChange = /\/change\/?$/.test(page.url());
+    }
   }
+  expect(onChange, 'Change sayfasına ulaşılamadı').toBeTruthy();
 
-  // SİL
-  const delLink = page.locator('a.deletelink, .object-tools a[href$="/delete/"]').first();
-  if (await delLink.count()) {
-    await delLink.click();
-    const confirm = page.getByRole('button', { name: /yes|evet|eminim|ok/i }).first()
-      .or(page.locator('input[type="submit"]')).first();
-    await confirm.click().catch(()=>{});
-    await page.waitForURL(/\/admin\/maintenance\/equipment\/$/, { timeout: 10000 }).catch(()=>{});
-    await expect(page.getByText(name)).toHaveCount(0);
+  // 6) Delete linkine git
+  const deleteCandidates = [
+    'a.deletelink',
+    '.object-tools a.deletelink',
+    'a#delete',
+    'a:has-text("Delete")',
+    'a:has-text("Sil")',
+    'button:has-text("Delete")',
+    'button:has-text("Sil")'
+  ];
+  let clickedDelete = false;
+  for (const sel of deleteCandidates) {
+    const el = page.locator(sel).first();
+    if (await el.isVisible().catch(()=>false)) {
+      await Promise.all([ page.waitForLoadState('domcontentloaded'), el.click() ]);
+      clickedDelete = true;
+      break;
+    }
   }
+  expect(clickedDelete, 'Delete linki bulunamadı').toBeTruthy();
+
+  // 7) Onay formu (Django kalıbı)
+  const confirmForm = page.locator('#content form:has(input[name="post"])').first()
+                       .or(page.locator('form[action$="/delete/"]').first());
+  await expect(confirmForm).toBeVisible();
+
+  const confirmBtn = confirmForm.locator('input[type="submit"], button[type="submit"]').first();
+  await Promise.all([ page.waitForLoadState('domcontentloaded'), confirmBtn.click() ]);
+
+  // 8) Changelist ve/veya başarı mesajı
+  await expect(page).toHaveURL(new RegExp('/admin/maintenance/equipment/?$'));
+  await page.locator('.messagelist').textContent().catch(()=>{});
+  
+  // Artefakt: hata anında DOM’u bırakmak için
+  try { fs.writeFileSync('test-results/e104_add_page.html', await page.content()); } catch {}
 });
