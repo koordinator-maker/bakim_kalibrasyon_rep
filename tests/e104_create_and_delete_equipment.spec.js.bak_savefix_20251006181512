@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
 
@@ -45,23 +45,11 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
   await nameField.fill(name);
 
   // Kaydet
-    // Save strictly inside the admin form (avoid header "Log out")
-  const form = page.locator('form').first();
+  const saveBtn = page.getByRole('button', { name: /kaydet|save/i }).first()
+    .or(page.locator('input[type="submit"], button[type="submit"]').first());
+  await saveBtn.click();
 
-  // 1) Django admin'de tipik: input[name="_save"]
-  const savePrimary = form.locator('.submit-row input[name="_save"]').first();
-  if (await savePrimary.count()) {
-    await savePrimary.click();
-  } else {
-    // 2) Erişilebilir ad ile (tam "Save"/"Kaydet"), form kapsamı içinde
-    const saveByRole = form.getByRole('button', { name: /^save$|^kaydet$/i }).first();
-    if (await saveByRole.count()) {
-      await saveByRole.click();
-    } else {
-      // 3) Son çare: .submit-row içindeki ilk submit
-      await form.locator('.submit-row >> input[type="submit"]').first().click();
-    }
-  }// Liste sayfasında göründüğünü doğrula
+  // Liste sayfasında göründüğünü doğrula
   await expect(page.getByText(name)).toBeVisible({ timeout: 5000 });
 
   // Silme akışı (detay sayfasına veya listeden)
