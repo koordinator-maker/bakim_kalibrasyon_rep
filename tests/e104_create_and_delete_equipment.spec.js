@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
 test.use({ storageState: 'storage/user.json' });
@@ -38,7 +38,7 @@ async function ensureOnChangePage(page, ts, primaryText) {
   return false;
 }
 
-test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
+test('E104 - Equipment oluÅŸtur ve sil (temizlik)', async ({ page }) => {
   await goToAdd(page);
 
   const form = page.locator('form:has(input[name="_save"])').first();
@@ -73,17 +73,17 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
   await form.locator('input[name="_save"]').click();
 
   const onChange = await ensureOnChangePage(page, ts, primaryText);
-  expect(onChange, 'Kayıt sonrası change sayfasına ulaşılamadı.').toBeTruthy();
+  expect(onChange, 'KayÄ±t sonrasÄ± change sayfasÄ±na ulaÅŸÄ±lamadÄ±.').toBeTruthy();
 
-  // Silme sayfasına git
+  // Silme sayfasÄ±na git
   const deleteURL = page.url().replace(/change\/?$/, 'delete/');
   await page.goto(deleteURL, { waitUntil: 'domcontentloaded' });
 
-  // YALNIZCA silme onay formu (içinde name="post" bulunur)
+  // YALNIZCA silme onay formu (iÃ§inde name="post" bulunur)
   const delForm = page.locator('#content form:has(input[name="post"])').first();
   await expect(delForm).toBeVisible();
 
-  // Form içindeki submit
+  // Form iÃ§indeki submit
   await delForm.locator('input[type="submit"], button[type="submit"]').first().click();
 
   await expect(page).toHaveURL(/\/admin\/maintenance\/equipment\/$/);
