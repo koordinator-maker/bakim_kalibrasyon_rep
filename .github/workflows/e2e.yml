@@ -27,9 +27,9 @@ jobs:
           npx playwright install --with-deps
         shell: pwsh
 
-      - name: Run tests (json + html)
+      - name: Run tests (html + line)
         run: |
-          npx playwright test --project=chromium --reporter=json=_otokodlama/out/pw.json,html || true
+          npx playwright test --project=chromium --reporter=html,line
         shell: pwsh
 
       - name: Upload Playwright HTML report
@@ -59,4 +59,4 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pwsh -File tools/post_pr_summary.ps1
+        run: powershell -File tools/post_pr_summary.ps1

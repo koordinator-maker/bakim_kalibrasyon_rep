@@ -1,56 +1,44 @@
 ﻿# tools/post_pr_summary.ps1
-# Rev: r4 (gh opsiyonel; Windows PowerShell/pwsh uyumlu)
+# Rev: r5 — .last-run.json okuyucu (gh opsiyonel)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
-$report = "_otokodlama/out/pw.json"
+# 1) Kaynak: Playwright özet dosyası
+$report = "test-results/.last-run.json"
 if (-not (Test-Path $report)) {
-  Write-Host "No json report at $report"
+  Write-Host "No summary at $report"
   exit 0
 }
 
-# ---- parse playwright json ----
+# 2) Oku
 $json = Get-Content $report -Raw | ConvertFrom-Json
-$stats = [ordered]@{ total=0; passed=0; failed=0; skipped=0; durationMs=0 }
 
-function Add-Spec {
-  param($spec)
-  if ($null -eq $spec) { return }
-  $stats.total++
-  # outcomes
-  $outcomes = @()
-  if ($spec.tests -and $spec.tests[0] -and $spec.tests[0].results) {
-    $outcomes = $spec.tests[0].results.outcome
-    $dur = ($spec.tests[0].results | Measure-Object duration -Sum).Sum
-    if ($dur) { $stats.durationMs += [double]$dur }
-  }
-  if ($spec.ok) { $stats.passed++ }
-  elseif ($outcomes -contains "skipped") { $stats.skipped++ }
-  else { $stats.failed++ }
-}
+# Beklenen alanlar: status, stats: { expected, skipped, unexpected, flaky, duration }
+$expected   = [int]$json.stats.expected
+$skipped    = [int]$json.stats.skipped
+$unexpected = [int]$json.stats.unexpected
+$flaky      = [int]$json.stats.flaky
+$durationMs = [double]$json.stats.duration
+$total      = $expected + $skipped + $unexpected + $flaky
+$passed     = $expected
+$failed     = $unexpected # (flaky genelde ayrı sayılır; istersen ekleyebilirsin)
 
-foreach ($proj in $json.suites) {
-  foreach ($suite in $proj.suites) {
-    foreach ($spec in $suite.specs) { Add-Spec $spec }
-  }
-}
-
-$mins  = [Math]::Round(($stats.durationMs/60000), 2)
-$badge = if ($stats.failed -gt 0) { "🔴" } else { "🟢" }
+$mins = [Math]::Round(($durationMs/60000), 2)
+$badge = if ($failed -gt 0) { "🔴" } else { "🟢" }
 
 $body = @"
 ## $badge E2E Sonuç Özeti
-- Toplam: **$($stats.total)** | Geçti: **$($stats.passed)** | Kaldı: **$($stats.failed)** | Skip: **$($stats.skipped)**
+- Toplam: **$total** | Geçti: **$passed** | Kaldı: **$failed** | Skip: **$skipped** | Flaky: **$flaky**
 - Süre (yaklaşık): **$mins dk**
 
 > HTML rapor: Actions → Artifacts → **playwright-report**
 "@
 
+# 3) GH Actions PR ise yorum bırak; değilse konsola + md
 $inCI = [bool]$env:GITHUB_ACTIONS
 $prNumber = $env:PR_NUMBER
 
-# gh opsiyonel
 $ghExists = $false
 try { $null = Get-Command gh -ErrorAction Stop; $ghExists = $true } catch {}
 
