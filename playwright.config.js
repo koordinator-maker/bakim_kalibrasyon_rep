@@ -1,15 +1,17 @@
-﻿import { defineConfig, devices } from '@playwright/test';
-export default defineConfig({
-  testDir: 'tests',
-  reporter: [['html', { open: 'never' }]],
-  use: { baseURL: process.env.BASE_URL || 'http://127.0.0.1:8010' },
+const path = require("path");
+/** @type {import("@playwright/test").PlaywrightTestConfig} */
+module.exports = {
+  testDir: "./tests",
+  timeout: 30_000,
+  globalSetup: path.resolve(__dirname, "tests/global.setup.cjs"),
+  use: {
+    baseURL: process.env.BASE_URL || "http://127.0.0.1:8010",
+    storageState: path.resolve(__dirname, "tests/.auth/admin.json"),
+    headless: true
+  },
   projects: [
-    { name: 'setup', testMatch: /_setup\.spec\.js/ },
-    {
-      name: 'chromium',
-      testIgnore: /_setup\.spec\.js/,
-      use: { ...devices['Desktop Chrome'], storageState: 'storage/user.json' },
-      dependencies: ['setup'],
-    },
+    { name: "chromium", use: { browserName: "chromium" } }
   ],
-});
+  testIgnore: ["tests/_setup.spec.js", "tests/**/_*.spec.*"],
+  reporter: [["list"]]
+};

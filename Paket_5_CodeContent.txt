@@ -1,0 +1,367 @@
+﻿### DOSYA BAŞLANGIÇ: .\\ops\auto_pr.ps1
+param(
+  [string]$BaseBranch   = "main",
+  [string]$Reviewer     = "ozkanrepo1",
+  [string]$FeaturePrefix = "feat/auto-",
+  [switch]$WaitForMerge,
+  [int]$WaitTimeoutSec  = 600
+)
+
+$ErrorActionPreference = "Stop"
+
+function Get-RepoSlug {
+  $u = (& git remote get-url origin 2>$null)
+  if (-not $u) { throw "origin remote yok" }
+  if ($u -match 'github\.com[:/](.+?)(?:\.git)?$') { return $Matches[1] }
+  throw "repo slug çözülemedi: $u"
+}
+
+# 0) Hazırlık
+$slug   = Get-RepoSlug
+$owner  = $slug.Split('/')[0]
+$ts     = (Get-Date -Format "yyyyMMdd-HHmmss")
+$branch = "$FeaturePrefix$ts"
+
+# 1) Yeni feature dalı + küçük fark
+git checkout -b $branch | Out-Null
+New-Item -ItemType Directory -Force ".github" | Out-Null
+"trigger $(Get-Date -Format s)" | Set-Content ".github\pr-bumper.md"
+git add ".github\pr-bumper.md"
+git commit -m "chore: auto bump for PR ($branch)" | Out-Null
+
+# 2) Pipeline'ı feature dalına çalıştır (main'e push ETMEZ)
+powershell -ExecutionPolicy Bypass -File "ops\pipeline_local.ps1" `
+  -BaseUrl "http://127.0.0.1:8010" `
+  -Branch  $branch `
+  -BaseBranch $BaseBranch
+
+# 3) Feature dalını push et
+git push -u origin $branch
+
+# 4) PR aç (varsa URL döner)
+$title = "[auto] $branch"
+$body  = "Auto PR"
+$out = & gh pr create --title $title --body $body --base $BaseBranch --head $branch 2>&1
+if ($LASTEXITCODE -ne 0) {
+  $prUrl = ($out | Select-String -Pattern 'https?://github\.com/.+?/pull/\d+' | Select-Object -First 1).Matches.Value
+  if (-not $prUrl) { throw "PR oluşturulamadı: $out" }
+} else {
+  $prUrl = ($out | Select-String -Pattern 'https?://github\.com/.+?/pull/\d+' | Select-Object -First 1).Matches.Value
+}
+Write-Host "[pr] $prUrl" -ForegroundColor Cyan
+
+# 5) PR numarası
+$pr = gh pr list --state open --head $branch --json number --jq '.[0].number'
+
+# 6) Label + reviewer + auto-merge
+gh label create "ui-tests" --color "5319e7" --description "UI pipeline checks" --force 2>$null | Out-Null
+gh pr edit $pr --add-label ui-tests 2>$null | Out-Null
+if ($Reviewer) { gh pr edit $pr --add-reviewer $Reviewer 2>$null | Out-Null }
+
+# GH_TOKEN (ör. ozkanrepo1 PAT) bu oturumda set ise otomatik approve dene
+if ($env:GH_TOKEN) {
+  try { gh pr review $pr --approve | Out-Null } catch {}
+}
+
+gh pr merge $pr --squash --auto
+
+# 7) Bekle & temizlik
+if ($WaitForMerge) {
+  $deadline = (Get-Date).AddSeconds($WaitTimeoutSec)
+  do {
+    Start-Sleep -Seconds 5
+    $state = gh pr view $pr --json state --jq .state
+    if ($state -eq "MERGED") { break }
+  } while ((Get-Date) -lt $deadline)
+
+  if ($state -eq "MERGED") {
+    git checkout $BaseBranch | Out-Null
+    git pull --rebase origin $BaseBranch | Out-Null
+    git branch -D $branch 2>$null | Out-Null
+    git push origin --delete $branch 2>$null | Out-Null
+    Write-Host "[done] PR merged & branches cleaned." -ForegroundColor Green
+  } else {
+    Write-Warning "Merge bekleme süresi aşıldı (hala koşullar tamamlanmamış olabilir)."
+  }
+} else {
+  Write-Host "[note] Auto-merge açık. Koşullar sağlanınca PR kendiliğinden birleşecek." -ForegroundColor Yellow
+}
+### DOSYA BİTİŞ: auto_pr.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\_spawn.ps1
+param(
+  [Parameter(Mandatory=$true)][string]$File,
+  [string[]]$Args = @(),
+  [int]$HardTimeoutSec = 300,
+  [int]$HeartbeatSec   = 5
+)
+
+# Argümanları tek stringe dönüştür (içinde boşluk olanları tırnakla)
+function Join-Args([string[]]$arr){
+  $arr | ForEach-Object {
+    if ($_ -match '\s' -and $_ -notmatch '^".*"$') { '"' + $_ + '"' } else { $_ }
+  } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | ForEach-Object { $_ } -join ' '
+}
+
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName               = $File
+$psi.Arguments              = (Join-Args $Args)
+$psi.UseShellExecute        = $false
+$psi.RedirectStandardOutput = $true
+$psi.RedirectStandardError  = $true
+$psi.CreateNoWindow         = $true
+
+$p = New-Object System.Diagnostics.Process
+$p.StartInfo = $psi
+[void]$p.Start()
+
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$lastBeat = 0
+
+while(-not $p.HasExited){
+  while(-not $p.StandardOutput.EndOfStream){
+    $line = $p.StandardOutput.ReadLine()
+    if($line){ Write-Host $line; [Console]::Out.Flush() }
+  }
+  while(-not $p.StandardError.EndOfStream){
+    $eline = $p.StandardError.ReadLine()
+    if($eline){ Write-Host $eline -ForegroundColor DarkYellow; [Console]::Out.Flush() }
+  }
+
+  Start-Sleep -Milliseconds 50  # hızlandırıldı (100 -> 50)
+
+  if($sw.Elapsed.TotalSeconds -ge $HardTimeoutSec){
+    Write-Host "[spawn] HARD TIMEOUT ($HardTimeoutSec s). Killing..." -ForegroundColor Red
+    try { $p.Kill() } catch {}
+    break
+  }
+
+  if([int]$sw.Elapsed.TotalSeconds -ge ($lastBeat + $HeartbeatSec)){
+    Write-Host ("[spawn] heartbeat {0}s" -f [int]$sw.Elapsed.TotalSeconds) -ForegroundColor DarkGray
+    [Console]::Out.Flush()
+    $lastBeat = [int]$sw.Elapsed.TotalSeconds
+  }
+}
+# kuyrukta kalan
+if($p){
+  try{
+    $restOut = $p.StandardOutput.ReadToEnd()
+    if($restOut){ Write-Host $restOut; [Console]::Out.Flush() }
+  }catch{}
+  try{
+    $restErr = $p.StandardError.ReadToEnd()
+    if($restErr){ Write-Host $restErr -ForegroundColor DarkYellow; [Console]::Out.Flush() }
+  }catch{}
+}
+
+exit ($p.ExitCode)
+
+
+
+
+
+
+
+
+
+
+
+### DOSYA BİTİŞ: _spawn.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\apply_ai_files.ps1
+param(
+  [string]$RepoRoot = ".",
+  [string]$InboxDir = "ai_inbox",
+  [string]$StateTools = "ops/state_tools.ps1",
+  [switch]$DryRun
+)
+
+$ErrorActionPreference = "Stop"
+
+function Ensure-Module {
+  param([string]$Path)
+  if (-not (Test-Path $Path)) { throw "Gerekli script bulunamadı: $Path" }
+  . $Path
+}
+function Normalize-TargetPath {
+  param([string]$InboxFile)
+  $rel = (Resolve-Path -LiteralPath $InboxFile).Path.Substring((Resolve-Path -LiteralPath $InboxDir).Path.Length).TrimStart('\','/')
+  $rel = $rel -replace '^[\\/]+',''
+  if ($rel.ToLower().EndsWith(".txt")) { $rel = $rel.Substring(0, $rel.Length-4) }
+  $rel = $rel -replace '^(root[\\/])',''
+  return $rel
+}
+function New-Directory {
+  param([string]$Path)
+  $dir = Split-Path -Parent $Path
+  if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+}
+
+Ensure-Module -Path (Join-Path $RepoRoot $StateTools)
+
+$inboxFull = Join-Path $RepoRoot $InboxDir
+if (-not (Test-Path $inboxFull)) {
+  Write-Host "[apply] Inbox klasörü yok: $InboxDir (atlandı)" -ForegroundColor Yellow
+  exit 0
+}
+
+$changed = @(); $deleted = @(); $skipped = @()
+$txts = Get-ChildItem $inboxFull -Recurse -File -Filter *.txt
+if (-not $txts) { Write-Host "[apply] Inbox boş." -ForegroundColor Yellow; exit 0 }
+
+foreach ($f in $txts) {
+  $targetRel = Normalize-TargetPath -InboxFile $f.FullName
+  $targetAbs = Join-Path $RepoRoot $targetRel
+  $raw = Get-Content -LiteralPath $f.FullName -Raw
+
+  if ($raw -match '^\s*#\s*DELETE\s*$') {
+    if (Test-Path $targetAbs) {
+      if ($DryRun) { Write-Host "[DRY] DELETE $targetRel" -ForegroundColor Yellow }
+      else { Remove-Item -LiteralPath $targetAbs -Force; $deleted += $targetRel }
+    } else { $skipped += "$targetRel (zaten yok)" }
+    continue
+  }
+
+  if ([string]::IsNullOrWhiteSpace($raw)) { $skipped += "$targetRel (boş içerik/no-op)"; continue }
+
+  if ($DryRun) { Write-Host "[DRY] WRITE $targetRel" -ForegroundColor Cyan }
+  else {
+    if (Test-Path $targetAbs) { Copy-Item -LiteralPath $targetAbs "$targetAbs.bak" -Force -ErrorAction SilentlyContinue }
+    New-Directory -Path $targetAbs
+    [IO.File]::WriteAllText($targetAbs, $raw, [Text.UTF8Encoding]::new($false))
+    $changed += $targetRel
+  }
+}
+
+if (-not $DryRun) {
+  foreach ($p in $changed) { Add-PendingAction -Id ("APPLY-" + [Guid]::NewGuid().ToString("N")) -Type "FILE_WRITE"  -Detail $p -DueStage "" }
+  foreach ($p in $deleted) { Add-PendingAction -Id ("APPLY-" + [Guid]::NewGuid().ToString("N")) -Type "FILE_DELETE" -Detail $p -DueStage "" }
+}
+
+Write-Host "`n=== APPLY SUMMARY ===" -ForegroundColor Green
+"{0,-10} {1}" -f "Changed:", ($changed.Count)
+"{0,-10} {1}" -f "Deleted:", ($deleted.Count)
+"{0,-10} {1}" -f "Skipped:", ($skipped.Count)
+if ($changed) { "`n-- Changed files --"; $changed | ForEach-Object { "  - $_" } }
+if ($deleted) { "`n-- Deleted files --"; $deleted | ForEach-Object { "  - $_" } }
+if ($skipped) { "`n-- Skipped --"; $skipped | ForEach-Object { "  - $_" } }
+### DOSYA BİTİŞ: apply_ai_files.ps1
+
+### DOSYA BAŞLANGIÇ: .\\tools\tasks_from_csv.py
+Rev: 2025-09-30 19:21 r1
+#!/usr/bin/env python3
+import csv, json, re, sys, argparse, pathlib
+
+ALLOWED_TYPES = {"feature","bugfix","refactor","test","chore"}
+ALLOWED_PRI = {"P0","P1","P2","P3"}
+ALLOWED_SIZE = {"XS","S","M","L","XL"}
+
+def slugify(s:str)->str:
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9\-_\sğüşöçıİĞÜŞÖÇ]", "", s, flags=re.IGNORECASE)
+    s = s.replace("ı","i").replace("İ","i")
+    s = s.replace("ç","c").replace("Ç","c")
+    s = s.replace("ğ","g").replace("Ğ","g")
+    s = s.replace("ö","o").replace("Ö","o")
+    s = s.replace("ş","s").replace("Ş","s")
+    s = s.replace("ü","u").replace("Ü","u")
+    s = re.sub(r"\s+","-", s).strip("-")
+    return s
+
+def read_csv(path):
+    with open(path, "r", encoding="utf-8-sig", newline="") as f:
+        rdr = csv.DictReader(f)
+        rows = [ {k.strip(): (v or "").strip() for k,v in row.items()} for row in rdr ]
+    return rows
+
+def validate(rows):
+    errs, warns = [], []
+    ids = set()
+    required = ["id","title","area","type","priority","size","description","acceptance_criteria"]
+    for i,row in enumerate(rows, start=2):  # header + 1-based index
+        miss = [k for k in required if not row.get(k)]
+        if miss:
+            errs.append(f"Satır {i}: Zorunlu alan yok: {', '.join(miss)}")
+        rid = row.get("id","")
+        if rid in ids:
+            errs.append(f"Satır {i}: id tekrarı: {rid}")
+        else:
+            ids.add(rid)
+        if row.get("type") and row["type"] not in ALLOWED_TYPES:
+            errs.append(f"Satır {i}: type geçersiz: {row['type']}")
+        if row.get("priority") and row["priority"] not in ALLOWED_PRI:
+            errs.append(f"Satır {i}: priority geçersiz: {row['priority']}")
+        if row.get("size") and row["size"] not in ALLOWED_SIZE:
+            errs.append(f"Satır {i}: size geçersiz: {row['size']}")
+        if not row.get("acceptance_criteria"):
+            warns.append(f"Satır {i}: acceptance_criteria boş görünüyor")
+    return errs, warns
+
+def transform(rows):
+    tasks = []
+    for r in rows:
+        labels = [s.strip() for s in (r.get("labels","") or "").split(",") if s.strip()]
+        ac = [s.strip() for s in (r.get("acceptance_criteria","") or "").split(";") if s.strip()]
+        branch = f"auto/{r['id']}-{slugify(r['title'])}"
+        tasks.append({
+            "id": r["id"],
+            "title": r["title"],
+            "area": r["area"],
+            "type": r["type"],
+            "priority": r["priority"],
+            "size": r["size"],
+            "labels": labels,
+            "description": r["description"],
+            "acceptance_criteria": ac,
+            "branch_name": branch
+        })
+    return tasks
+
+def write_md(tasks, path):
+    lines = []
+    lines.append("| id | title | type | pri | size | area | labels |")
+    lines.append("|----|-------|------|-----|------|------|--------|")
+    for t in tasks:
+        lines.append(f"| {t['id']} | {t['title']} | {t['type']} | {t['priority']} | {t['size']} | {t['area']} | {', '.join(t['labels'])} |")
+    lines.append("\n---\n")
+    for t in tasks:
+        lines.append(f"## {t['id']} — {t['title']}")
+        lines.append(f"**Area:** `{t['area']}`  |  **Type:** `{t['type']}`  |  **Priority:** `{t['priority']}`  |  **Size:** `{t['size']}`")
+        lines.append("")
+        lines.append(t["description"])
+        lines.append("")
+        if t["acceptance_criteria"]:
+            lines.append("**Acceptance Criteria:**")
+            for a in t["acceptance_criteria"]:
+                lines.append(f"- {a}")
+        lines.append("")
+    pathlib.Path(path).write_text("\n".join(lines), encoding="utf-8")
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("csv", help="input CSV (UTF-8)")
+    ap.add_argument("--out-json", default="plan/tasks.json")
+    ap.add_argument("--out-md", default="plan/tasks.md")
+    args = ap.parse_args()
+
+    rows = read_csv(args.csv)
+    errs, warns = validate(rows)
+    if warns:
+        print("\n".join(f"[WARN] {w}" for w in warns), file=sys.stderr)
+    if errs:
+        print("\n".join(f"[ERR]  {e}" for e in errs), file=sys.stderr)
+        sys.exit(1)
+
+    tasks = transform(rows)
+    pathlib.Path(args.out_json).parent.mkdir(parents=True, exist_ok=True)
+    pathlib.Path(args.out_md).parent.mkdir(parents=True, exist_ok=True)
+    pathlib.Path(args.out_json).write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_md(tasks, args.out_md)
+    print(f"[ok] JSON → {args.out_json}")
+    print(f"[ok] Markdown → {args.out_md}")
+    print(f"[ok] {len(tasks)} görev dönüştürüldü.")
+
+if __name__ == "__main__":
+    main()
+### DOSYA BİTİŞ: tasks_from_csv.py
+

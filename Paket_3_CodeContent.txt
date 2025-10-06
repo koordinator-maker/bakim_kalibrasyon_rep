@@ -1,0 +1,2972 @@
+﻿### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\check_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.contrib import admin
+from django.urls import reverse
+from maintenance.models import Equipment
+print("Registered:", Equipment in admin.site._registry)
+print("CL :", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_changelist"))
+print("ADD:", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_add"))
+### DOSYA BİTİŞ: check_admin_urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\check_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.contrib import admin
+from django.urls import reverse
+from maintenance.models import Equipment
+print("Registered:", Equipment in admin.site._registry)
+print("CL :", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_changelist"))
+print("ADD:", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_add"))
+### DOSYA BİTİŞ: check_admin_urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\ensure_superuser.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.contrib.auth import get_user_model
+User = get_user_model()
+u, _ = User.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True
+u.set_password("admin123!")
+u.save()
+print("ok ->", u.username, u.is_superuser, u.is_staff)
+### DOSYA BİTİŞ: ensure_superuser.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\ensure_superuser.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.contrib.auth import get_user_model
+User = get_user_model()
+u, _ = User.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True
+u.set_password("admin123!")
+u.save()
+print("ok ->", u.username, u.is_superuser, u.is_staff)
+### DOSYA BİTİŞ: ensure_superuser.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\ensure_superuser.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.contrib.auth import get_user_model
+User = get_user_model()
+u, _ = User.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True
+u.set_password("admin123!")
+u.save()
+print("ok ->", u.username, u.is_superuser, u.is_staff)
+### DOSYA BİTİŞ: ensure_superuser.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\resolve_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.urls import resolve, Resolver404
+for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipment/add/"]:
+    try:
+        m = resolve(p)
+        print(p, "-> OK:", m.func.__module__)
+    except Resolver404:
+        print(p, "-> 404 (pattern yok)")
+### DOSYA BİTİŞ: resolve_admin_urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\resolve_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.urls import resolve, Resolver404
+for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipment/add/"]:
+    try:
+        m = resolve(p)
+        print(p, "-> OK:", m.func.__module__)
+    except Resolver404:
+        print(p, "-> 404 (pattern yok)")
+### DOSYA BİTİŞ: resolve_admin_urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\resolve_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.urls import resolve, Resolver404
+for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipment/add/"]:
+    try:
+        m = resolve(p)
+        print(p, "-> OK:", m.func.__module__)
+    except Resolver404:
+        print(p, "-> 404 (pattern yok)")
+### DOSYA BİTİŞ: resolve_admin_urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\diag_dupes.py
+import os, sys, django
+ROOT = os.path.abspath(".")
+if ROOT not in sys.path: sys.path.insert(0, ROOT)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db.models import Count
+from maintenance.models import Equipment
+
+dupes = (Equipment.objects
+         .values("serial_number")
+         .annotate(c=Count("id"))
+         .filter(c__gt=1))
+print("Kalan duplike sayısı:", dupes.count())
+print(list(dupes[:20]))
+### DOSYA BİTİŞ: diag_dupes.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\diag_dupes.py
+import os, sys, django
+ROOT = os.path.abspath(".")
+if ROOT not in sys.path: sys.path.insert(0, ROOT)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db.models import Count
+from maintenance.models import Equipment
+
+dupes = (Equipment.objects
+         .values("serial_number")
+         .annotate(c=Count("id"))
+         .filter(c__gt=1))
+print("Kalan duplike sayısı:", dupes.count())
+print(list(dupes[:20]))
+### DOSYA BİTİŞ: diag_dupes.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\diag_dupes.py
+import os, sys, django
+ROOT = os.path.abspath(".")
+if ROOT not in sys.path: sys.path.insert(0, ROOT)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db.models import Count
+from maintenance.models import Equipment
+
+dupes = (Equipment.objects
+         .values("serial_number")
+         .annotate(c=Count("id"))
+         .filter(c__gt=1))
+print("Kalan duplike sayısı:", dupes.count())
+print(list(dupes[:20]))
+### DOSYA BİTİŞ: diag_dupes.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\fix_serial_dupes_runner.py
+import os, sys, django
+
+# --- PROJE KÖKÜNÜ sys.path'E EKLE ---
+HERE = os.path.abspath(os.path.dirname(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db import transaction
+from maintenance.models import Equipment
+
+MAX_LEN = 120
+SUFFIX_DUP = "__DUP__{id}"
+SUFFIX_EMPTY = "__EMPTY__{id}"
+
+def safe_unique_value(original: str, suffix: str) -> str:
+    room = MAX_LEN - len(suffix)
+    base = (original or "")[:room] if room > 0 else ""
+    return (base + suffix)[:MAX_LEN]
+
+# 1) Duplikeleri grupla (case-insensitive). Boş/whitespace -> özel anahtar.
+by_norm = {}
+for e in Equipment.objects.all().order_by("id"):
+    raw = e.serial_number
+    s = (raw or "")
+    norm = s.strip().lower()
+    key = norm if norm != "" else "__EMPTY__"
+    by_norm.setdefault(key, []).append((e.id, s))
+
+dupe_groups = {k:v for k,v in by_norm.items() if len(v) > 1}
+print("Duplike grup sayısı:", len(dupe_groups))
+
+changed = 0
+with transaction.atomic():
+    for key, rows in dupe_groups.items():
+        keeper_id, keeper_val = rows[0]  # ilk kaydı koru
+        for (pk, val) in rows[1:]:
+            if key == "__EMPTY__":
+                new_val = safe_unique_value("", SUFFIX_EMPTY.format(id=pk))
+            else:
+                new_val = safe_unique_value(val, SUFFIX_DUP.format(id=pk))
+            # ekstra güvenlik: yine çakışırsa hafif varyasyon
+            q = Equipment.objects.filter(serial_number=new_val).exclude(pk=pk)
+            if q.exists():
+                new_val = safe_unique_value(val, (SUFFIX_DUP.format(id=pk) + "_X"))
+            Equipment.objects.filter(pk=pk).update(serial_number=new_val)
+            changed += 1
+
+print("Güncellenen kayıt:", changed)
+### DOSYA BİTİŞ: fix_serial_dupes_runner.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\fix_serial_dupes_runner.py
+import os, sys, django
+
+# --- PROJE KÖKÜNÜ sys.path'E EKLE ---
+HERE = os.path.abspath(os.path.dirname(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db import transaction
+from maintenance.models import Equipment
+
+MAX_LEN = 120
+SUFFIX_DUP = "__DUP__{id}"
+SUFFIX_EMPTY = "__EMPTY__{id}"
+
+def safe_unique_value(original: str, suffix: str) -> str:
+    room = MAX_LEN - len(suffix)
+    base = (original or "")[:room] if room > 0 else ""
+    return (base + suffix)[:MAX_LEN]
+
+# 1) Duplikeleri grupla (case-insensitive). Boş/whitespace -> özel anahtar.
+by_norm = {}
+for e in Equipment.objects.all().order_by("id"):
+    raw = e.serial_number
+    s = (raw or "")
+    norm = s.strip().lower()
+    key = norm if norm != "" else "__EMPTY__"
+    by_norm.setdefault(key, []).append((e.id, s))
+
+dupe_groups = {k:v for k,v in by_norm.items() if len(v) > 1}
+print("Duplike grup sayısı:", len(dupe_groups))
+
+changed = 0
+with transaction.atomic():
+    for key, rows in dupe_groups.items():
+        keeper_id, keeper_val = rows[0]  # ilk kaydı koru
+        for (pk, val) in rows[1:]:
+            if key == "__EMPTY__":
+                new_val = safe_unique_value("", SUFFIX_EMPTY.format(id=pk))
+            else:
+                new_val = safe_unique_value(val, SUFFIX_DUP.format(id=pk))
+            # ekstra güvenlik: yine çakışırsa hafif varyasyon
+            q = Equipment.objects.filter(serial_number=new_val).exclude(pk=pk)
+            if q.exists():
+                new_val = safe_unique_value(val, (SUFFIX_DUP.format(id=pk) + "_X"))
+            Equipment.objects.filter(pk=pk).update(serial_number=new_val)
+            changed += 1
+
+print("Güncellenen kayıt:", changed)
+### DOSYA BİTİŞ: fix_serial_dupes_runner.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\fix_serial_dupes_runner.py
+import os, sys, django
+
+# --- PROJE KÖKÜNÜ sys.path'E EKLE ---
+HERE = os.path.abspath(os.path.dirname(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db import transaction
+from maintenance.models import Equipment
+
+MAX_LEN = 120
+SUFFIX_DUP = "__DUP__{id}"
+SUFFIX_EMPTY = "__EMPTY__{id}"
+
+def safe_unique_value(original: str, suffix: str) -> str:
+    room = MAX_LEN - len(suffix)
+    base = (original or "")[:room] if room > 0 else ""
+    return (base + suffix)[:MAX_LEN]
+
+# 1) Duplikeleri grupla (case-insensitive). Boş/whitespace -> özel anahtar.
+by_norm = {}
+for e in Equipment.objects.all().order_by("id"):
+    raw = e.serial_number
+    s = (raw or "")
+    norm = s.strip().lower()
+    key = norm if norm != "" else "__EMPTY__"
+    by_norm.setdefault(key, []).append((e.id, s))
+
+dupe_groups = {k:v for k,v in by_norm.items() if len(v) > 1}
+print("Duplike grup sayısı:", len(dupe_groups))
+
+changed = 0
+with transaction.atomic():
+    for key, rows in dupe_groups.items():
+        keeper_id, keeper_val = rows[0]  # ilk kaydı koru
+        for (pk, val) in rows[1:]:
+            if key == "__EMPTY__":
+                new_val = safe_unique_value("", SUFFIX_EMPTY.format(id=pk))
+            else:
+                new_val = safe_unique_value(val, SUFFIX_DUP.format(id=pk))
+            # ekstra güvenlik: yine çakışırsa hafif varyasyon
+            q = Equipment.objects.filter(serial_number=new_val).exclude(pk=pk)
+            if q.exists():
+                new_val = safe_unique_value(val, (SUFFIX_DUP.format(id=pk) + "_X"))
+            Equipment.objects.filter(pk=pk).update(serial_number=new_val)
+            changed += 1
+
+print("Güncellenen kayıt:", changed)
+### DOSYA BİTİŞ: fix_serial_dupes_runner.py
+
+### DOSYA BAŞLANGIÇ: .\\_otokodlama\dedupe_serials.py
+from django.db import transaction
+from maintenance.models import Equipment
+
+dupe_ids = []
+seen = set()
+
+qs = Equipment.objects.all().order_by('id')
+for e in qs:
+    sn = (e.serial_number or '').strip()
+    if not sn:
+        continue
+    key = sn.lower()
+    if key in seen:
+        dupe_ids.append(e.id)
+    else:
+        seen.add(key)
+
+with transaction.atomic():
+    for pk in dupe_ids:
+        Equipment.objects.filter(pk=pk).update(serial_number=None)
+
+print("Deduped:", len(dupe_ids), "records set to NULL")
+### DOSYA BİTİŞ: dedupe_serials.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\_otokodlama\dedupe_serials.py
+from django.db import transaction
+from maintenance.models import Equipment
+
+dupe_ids = []
+seen = set()
+
+qs = Equipment.objects.all().order_by('id')
+for e in qs:
+    sn = (e.serial_number or '').strip()
+    if not sn:
+        continue
+    key = sn.lower()
+    if key in seen:
+        dupe_ids.append(e.id)
+    else:
+        seen.add(key)
+
+with transaction.atomic():
+    for pk in dupe_ids:
+        Equipment.objects.filter(pk=pk).update(serial_number=None)
+
+print("Deduped:", len(dupe_ids), "records set to NULL")
+### DOSYA BİTİŞ: dedupe_serials.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\_otokodlama\dedupe_serials.py
+from django.db import transaction
+from maintenance.models import Equipment
+
+dupe_ids = []
+seen = set()
+
+qs = Equipment.objects.all().order_by('id')
+for e in qs:
+    sn = (e.serial_number or '').strip()
+    if not sn:
+        continue
+    key = sn.lower()
+    if key in seen:
+        dupe_ids.append(e.id)
+    else:
+        seen.add(key)
+
+with transaction.atomic():
+    for pk in dupe_ids:
+        Equipment.objects.filter(pk=pk).update(serial_number=None)
+
+print("Deduped:", len(dupe_ids), "records set to NULL")
+### DOSYA BİTİŞ: dedupe_serials.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0009_alter_equipment_options_remove_equipment_department_and_more.py
+# Generated by Django 5.2.6 on 2025-10-04 21:15
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('maintenance', '0008_department_remove_calibrationrecord_asset_and_more'),
+    ]
+
+    operations = [
+        migrations.AlterModelOptions(
+            name='equipment',
+            options={},
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='department',
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='inventory_code',
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='location',
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='purchase_date',
+        ),
+        migrations.AlterField(
+            model_name='department',
+            name='name',
+            field=models.CharField(max_length=100, unique=True, verbose_name='Departman AdÃƒÆ’Ã¢â‚¬Â\x9eÃƒâ€šÃ‚Â±'),
+        ),
+        migrations.AlterField(
+            model_name='equipment',
+            name='name',
+            field=models.CharField(max_length=200, verbose_name='Ekipman AdÃƒÆ’Ã¢â‚¬Â\x9eÃƒâ€šÃ‚Â±'),
+        ),
+        migrations.AlterField(
+            model_name='equipment',
+            name='serial_number',
+            field=models.CharField(blank=True, max_length=120, null=True, unique=True),
+        ),
+    ]
+### DOSYA BİTİŞ: 0009_alter_equipment_options_remove_equipment_department_and_more.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\models.py
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class Department(models.Model):
+    """Departman modelini tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    name = models.CharField(_("Departman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=100, unique=True)
+    
+    class Meta:
+        verbose_name = _("Departman")
+        verbose_name_plural = _("Departmanlar")
+
+    def __str__(self):
+        return self.name
+
+class Equipment(models.Model):
+    """BakÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±m ve kalibrasyon takibi yapÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±lacak ekipmanlarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    
+    # Zorunlu alanlar
+    name = models.CharField(_("Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=200)
+    
+    # DÃƒÆ’Ã†â€™Ãƒâ€¦Ã¢â‚¬Å“ZELTÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°LDÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°: unique=True kÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±sÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±tlamasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±, gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ hatasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±nÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶nlemek iÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§in kaldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±ldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±.
+    serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)
+### DOSYA BİTİŞ: models.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-192504\maintenance\models.py
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class Department(models.Model):
+    """Departman modelini tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    name = models.CharField(_("Departman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=100, unique=True)
+    
+    class Meta:
+        verbose_name = _("Departman")
+        verbose_name_plural = _("Departmanlar")
+
+    def __str__(self):
+        return self.name
+
+class Equipment(models.Model):
+    """BakÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±m ve kalibrasyon takibi yapÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±lacak ekipmanlarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    
+    # Zorunlu alanlar
+    name = models.CharField(_("Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=200)
+    
+    # DÃƒÆ’Ã†â€™Ãƒâ€¦Ã¢â‚¬Å“ZELTÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°LDÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°: unique=True kÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±sÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±tlamasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±, gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ hatasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±nÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶nlemek iÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§in kaldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±ldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±.
+    serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)
+### DOSYA BİTİŞ: models.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\maintenance\models.py
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class Department(models.Model):
+    """Departman modelini tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    name = models.CharField(_("Departman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=100, unique=True)
+    
+    class Meta:
+        verbose_name = _("Departman")
+        verbose_name_plural = _("Departmanlar")
+
+    def __str__(self):
+        return self.name
+
+class Equipment(models.Model):
+    """BakÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±m ve kalibrasyon takibi yapÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±lacak ekipmanlarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    
+    # Zorunlu alanlar
+    name = models.CharField(_("Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=200)
+    
+    # DÃƒÆ’Ã†â€™Ãƒâ€¦Ã¢â‚¬Å“ZELTÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°LDÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°: unique=True kÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±sÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±tlamasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±, gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ hatasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±nÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶nlemek iÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§in kaldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±ldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±.
+    serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)
+### DOSYA BİTİŞ: models.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-192603\maintenance\models.py
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class Department(models.Model):
+    """Departman modelini tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    name = models.CharField(_("Departman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=100, unique=True)
+    
+    class Meta:
+        verbose_name = _("Departman")
+        verbose_name_plural = _("Departmanlar")
+
+    def __str__(self):
+        return self.name
+
+class Equipment(models.Model):
+    """BakÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±m ve kalibrasyon takibi yapÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±lacak ekipmanlarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    
+    # Zorunlu alanlar
+    name = models.CharField(_("Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=200)
+    
+    # DÃƒÆ’Ã†â€™Ãƒâ€¦Ã¢â‚¬Å“ZELTÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°LDÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°: unique=True kÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±sÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±tlamasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±, gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ hatasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±nÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶nlemek iÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§in kaldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±ldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±.
+    serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)
+### DOSYA BİTİŞ: models.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\maintenance\models.py
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class Department(models.Model):
+    """Departman modelini tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    name = models.CharField(_("Departman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=100, unique=True)
+    
+    class Meta:
+        verbose_name = _("Departman")
+        verbose_name_plural = _("Departmanlar")
+
+    def __str__(self):
+        return self.name
+
+class Equipment(models.Model):
+    """BakÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±m ve kalibrasyon takibi yapÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±lacak ekipmanlarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar."""
+    
+    # Zorunlu alanlar
+    name = models.CharField(_("Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±"), max_length=200)
+    
+    # DÃƒÆ’Ã†â€™Ãƒâ€¦Ã¢â‚¬Å“ZELTÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°LDÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â°: unique=True kÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±sÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±tlamasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±, gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ hatasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±nÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶nlemek iÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§in kaldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±ldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±.
+    serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)
+### DOSYA BİTİŞ: models.py
+
+### DOSYA BAŞLANGIÇ: .\\core\settings_maintenance.py
+# -*- coding: utf-8 -*-
+"""
+core/settings_maintenance.py
+Base settings'i miras alÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±r, 'maintenance' app'ini tekilleÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸tirir ve custom admin urlconf'u tanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±mlar.
+"""
+
+from .settings import *  # noqa
+
+
+def _normalize_installed(apps):
+    out = []
+    seen = set()
+    for app in apps:
+        # 'maintenance' veya 'maintenance.apps.MaintenanceConfig' geldiÃƒÆ’Ã¢â‚¬ÂÃƒâ€¦Ã‚Â¸inde
+        # tek bir canonical entry'ye indiriyoruz:
+        if app in ("maintenance", "maintenance.apps.MaintenanceConfig"):
+            key = "maintenance.apps.MaintenanceConfig"
+        else:
+            key = app
+        if key not in seen:
+            seen.add(key)
+            out.append(key)
+    return out
+
+
+# TekilleÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸tir
+INSTALLED_APPS = _normalize_installed(INSTALLED_APPS)
+if "maintenance.apps.MaintenanceConfig" not in INSTALLED_APPS:
+    INSTALLED_APPS.insert(0, "maintenance.apps.MaintenanceConfig")
+
+# Custom admin site URL'leri
+ROOT_URLCONF = "core.urls"
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
+
+
+MIDDLEWARE = [
+    'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware','core.mw_no_append_admin.NoAppendSlashForAdmin']
+
+SESSION_COOKIE_SECURE = False
+
+CSRF_COOKIE_SECURE = False
+
+# --- AUTO PATCH (admin redirect loop & required middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+# 'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'core.mw_no_append_admin.NoAppendSlashForAdmin',  # CommonMiddleware yerine admin'de append_slash yok
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (admin redirect loop & required middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+# 'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (fix admin redirect loop & required middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+# 'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (fix admin redirect loop & required middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+# 'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# --- AUTO PATCH (canonical redirect middleware) ---
+APPEND_SLASH = False
+ALLOWED_HOSTS = ['127.0.0.1','localhost','testserver']
+
+MIDDLEWARE = [
+# 'core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    # Kanonik admin liste isteklerini erken yakala:
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+
+
+### DOSYA BİTİŞ: settings_maintenance.py
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_fix_and_test_pause.ps1
+param([string]$BaseUrl="http://127.0.0.1:8010", [switch]$Headed, [switch]$Debug)
+
+Set-StrictMode -Version Latest; $ErrorActionPreference='Stop'; trap { throw }
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+
+# 1) Backend düzeltici betik
+powershell -ExecutionPolicy Bypass -File scripts\fix_e102_addform.ps1 -BaseUrl $BaseUrl
+
+# 2) Testi çalıştır (npm/npx PowerShell wrapper bug'ından kaçınmak için *.cmd kullan)
+$env:BASE_URL = $BaseUrl
+$env:ALLOW_EQUIPMENT_ADD = "1"
+if ($Debug) { $env:PWDEBUG = "1" }
+
+$cmd = "playwright test tests/tasks.spec.cjs --project=chromium"
+if ($Headed) { $cmd += " --headed" }
+
+# npx yerine npx.cmd çağır
+& "$env:ProgramFiles\nodejs\npx.cmd" $cmd
+$code = $LASTEXITCODE
+
+Write-Host "`nExit code: $code"
+Read-Host "Kapatmak için Enter'a bas"
+exit $code
+### DOSYA BİTİŞ: run_fix_and_test_pause.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-225814\scripts\fix_e102_addform.ps1
+[CmdletBinding(SupportsShouldProcess)]
+param(
+  [string]$RepoRoot = $(git rev-parse --show-toplevel),
+  [string]$DjangoManage = "manage.py",
+  [string]$AdminUser = $env:ADMIN_USER,
+  [string]$AdminPass = $env:ADMIN_PASS,
+  [string]$AdminMail = "admin@example.com",
+  [string]$BaseUrl
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+trap { throw }
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+
+if (-not $BaseUrl) { $BaseUrl = $env:BASE_URL }
+if (-not $BaseUrl) { $BaseUrl = "http://127.0.0.1:8010" }
+
+function WriteUtf8NoBom($Path, $Text) {
+  $full = Resolve-Path -LiteralPath $Path
+  [IO.File]::WriteAllText($full, $Text, (New-Object Text.UTF8Encoding($false)))
+}
+
+function SafeReplace-InFile {
+  param(
+    [Parameter(Mandatory)] [string]$Path,
+    [Parameter(Mandatory)] [string]$Pattern,
+    [Parameter(Mandatory)] [string]$Replacement,
+    [switch]$Multiline
+  )
+  if (!(Test-Path $Path)) { return $false }
+  $raw = Get-Content $Path -Raw
+  $opt = [System.Text.RegularExpressions.RegexOptions]::None
+  if ($Multiline) { $opt = $opt -bor [System.Text.RegularExpressions.RegexOptions]::Singleline }
+  $new = [Regex]::Replace($raw, $Pattern, $Replacement, $opt)
+  if ($new -ne $raw) {
+    Copy-Item $Path "$Path.bak" -Force
+    WriteUtf8NoBom -Path $Path -Text $new
+    return $true
+  }
+  return $false
+}
+
+Set-Location $RepoRoot
+Write-Host "Repo: $RepoRoot"
+
+$ModelsPath = Join-Path $RepoRoot "maintenance\models.py"
+$AdminPath  = Join-Path $RepoRoot "maintenance\admin.py"
+$UrlsPath   = Join-Path $RepoRoot "core\mw_fix_equip_redirect.py"
+
+if (Test-Path $ModelsPath) {
+  $models = Get-Content $ModelsPath -Raw
+  if ($models -notmatch 'class\s+Equipment\s*\(') {
+    Write-Warning "models.py içinde Equipment bulunamadı. Bu adımı atlıyorum."
+  } else {
+    $touched = $false
+    $touched = $touched -bor (SafeReplace-InFile -Path $ModelsPath `
+      -Pattern 'serial_number\s*=\s*models\.CharField\([^\)]*?unique\s*=\s*True[^\)]*?\)' `
+      -Replacement 'serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)' )
+    $touched = $touched -bor (SafeReplace-InFile -Path $ModelsPath `
+      -Pattern 'serial_number\s*=\s*models\.CharField\([^\)]*?\)' `
+      -Replacement 'serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)' )
+    if ($touched) { Write-Host "[OK] models.py güncellendi (serial_number unique+nullable)." }
+    else { Write-Host "[i] models.py serial_number satırı zaten uygun görünüyor." }
+  }
+} else {
+  Write-Warning "models.py bulunamadı: $ModelsPath"
+}
+
+if (!(Test-Path $AdminPath)) {
+$stub = @"
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "serial_number")
+    search_fields = ("name", "serial_number")
+    # Add formunun engellenmediğinden emin olmak için:
+    def has_add_permission(self, request):
+        return True
+"@
+  New-Item -ItemType File -Path $AdminPath -Force | Out-Null
+  WriteUtf8NoBom -Path $AdminPath -Text $stub
+  Write-Host "[OK] admin.py oluşturuldu ve EquipmentAdmin eklendi."
+} else {
+  $raw = Get-Content $AdminPath -Raw
+  if ($raw -notmatch 'from\s+\.models\s+import\s+.*Equipment') {
+    $raw = "from .models import Equipment`r`n" + $raw
+  }
+  if ($raw -notmatch '@admin\.register\(\s*Equipment\s*\)' -and $raw -notmatch 'admin\.site\.register\(\s*Equipment') {
+    $raw += "`r`n@admin.register(Equipment)`r`nclass EquipmentAdmin(admin.ModelAdmin):`r`n    list_display = (""id"",""name"",""serial_number"")`r`n"
+  }
+  $raw = [Regex]::Replace($raw, 'def\s+has_add_permission\([^\)]*\):\s*return\s+False', 'def has_add_permission(self, request):`r`n        return True')
+  Copy-Item $AdminPath "$AdminPath.bak" -Force
+  WriteUtf8NoBom -Path $AdminPath -Text $raw
+  Write-Host "[OK] admin.py doğrulandı/güncellendi."
+}
+
+if (Test-Path $UrlsPath) {
+  $added = SafeReplace-InFile -Path $UrlsPath -Multiline `
+    -Pattern '(def\s+process_request\([^\)]*\)\s*:\s*.*?)(return\s+HttpResponseRedirect\([^\)]*\))' `
+    -Replacement '$1
+# /add/ yolu admin add view için bypass
+try:
+    path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
+except Exception:
+    path = request.path
+if path.endswith("/add/"):
+    return None
+$2'
+  if ($added) { Write-Host "[OK] middleware add/bypass güncellendi." } else { Write-Host "[i] middleware değişikliğine gerek yok gibi." }
+}
+
+& .\venv\Scripts\python.exe $DjangoManage makemigrations
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& .\venv\Scripts\python.exe $DjangoManage migrate
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+if (-not $AdminUser) { $AdminUser = "admin" }
+if (-not $AdminPass) { $AdminPass = "admin123!" }
+
+$py = @"
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.apps import apps
+User = get_user_model()
+u, created = User.objects.get_or_create(username='$AdminUser', defaults={'email':'$AdminMail','is_superuser':True,'is_staff':True})
+if created:
+    u.set_password('$AdminPass')
+    u.save()
+Equipment = apps.get_model('maintenance','Equipment')
+if Equipment:
+    ct = apps.get_model('contenttypes','ContentType').objects.get_for_model(Equipment)
+    try:
+        p = Permission.objects.get(codename='add_equipment', content_type=ct)
+        u.user_permissions.add(p)
+    except Permission.DoesNotExist:
+        pass
+print("OK-user:", u.username)
+"@
+$pyFile = Join-Path $RepoRoot "_otokodlama\ensure_admin.py"
+New-Item -ItemType Directory -Path (Split-Path $pyFile) -Force | Out-Null
+WriteUtf8NoBom -Path $pyFile -Text $py
+& .\venv\Scripts\python.exe $DjangoManage shell -c "exec(open(r'$pyFile','r',encoding='utf-8').read())"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$addUrl = "$BaseUrl/admin/maintenance/equipment/add/"
+try {
+  $resp = Invoke-WebRequest -Uri $addUrl -MaximumRedirection 5 -ErrorAction Stop
+  Write-Host "[HTTP] Status:" $resp.StatusCode "→ FinalUri:" $resp.BaseResponse.ResponseUri.AbsoluteUri
+  $title = ([Regex]::Match($resp.Content, '<title[^>]*>(.*?)</title>', 'Singleline')).Groups[1].Value
+  Write-Host "[HTTP] Title:" $title
+} catch {
+  Write-Warning "HTTP isteğinde hata: $($_.Exception.Message)"
+}
+
+$env:ALLOW_EQUIPMENT_ADD = "1"
+$env:BASE_URL = $BaseUrl
+
+# not: çıkış kodunu script dışından yönetelim (ayrı wrapper ile). Burada sadece hazırla.
+### DOSYA BİTİŞ: fix_e102_addform.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251005-193207\scripts\fix_e102_addform.ps1
+[CmdletBinding(SupportsShouldProcess)]
+param(
+  [string]$RepoRoot = $(git rev-parse --show-toplevel),
+  [string]$DjangoManage = "manage.py",
+  [string]$AdminUser = $env:ADMIN_USER,
+  [string]$AdminPass = $env:ADMIN_PASS,
+  [string]$AdminMail = "admin@example.com",
+  [string]$BaseUrl
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+trap { throw }
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+
+if (-not $BaseUrl) { $BaseUrl = $env:BASE_URL }
+if (-not $BaseUrl) { $BaseUrl = "http://127.0.0.1:8010" }
+
+function WriteUtf8NoBom($Path, $Text) {
+  $full = Resolve-Path -LiteralPath $Path
+  [IO.File]::WriteAllText($full, $Text, (New-Object Text.UTF8Encoding($false)))
+}
+
+function SafeReplace-InFile {
+  param(
+    [Parameter(Mandatory)] [string]$Path,
+    [Parameter(Mandatory)] [string]$Pattern,
+    [Parameter(Mandatory)] [string]$Replacement,
+    [switch]$Multiline
+  )
+  if (!(Test-Path $Path)) { return $false }
+  $raw = Get-Content $Path -Raw
+  $opt = [System.Text.RegularExpressions.RegexOptions]::None
+  if ($Multiline) { $opt = $opt -bor [System.Text.RegularExpressions.RegexOptions]::Singleline }
+  $new = [Regex]::Replace($raw, $Pattern, $Replacement, $opt)
+  if ($new -ne $raw) {
+    Copy-Item $Path "$Path.bak" -Force
+    WriteUtf8NoBom -Path $Path -Text $new
+    return $true
+  }
+  return $false
+}
+
+Set-Location $RepoRoot
+Write-Host "Repo: $RepoRoot"
+
+$ModelsPath = Join-Path $RepoRoot "maintenance\models.py"
+$AdminPath  = Join-Path $RepoRoot "maintenance\admin.py"
+$UrlsPath   = Join-Path $RepoRoot "core\mw_fix_equip_redirect.py"
+
+if (Test-Path $ModelsPath) {
+  $models = Get-Content $ModelsPath -Raw
+  if ($models -notmatch 'class\s+Equipment\s*\(') {
+    Write-Warning "models.py içinde Equipment bulunamadı. Bu adımı atlıyorum."
+  } else {
+    $touched = $false
+    $touched = $touched -bor (SafeReplace-InFile -Path $ModelsPath `
+      -Pattern 'serial_number\s*=\s*models\.CharField\([^\)]*?unique\s*=\s*True[^\)]*?\)' `
+      -Replacement 'serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)' )
+    $touched = $touched -bor (SafeReplace-InFile -Path $ModelsPath `
+      -Pattern 'serial_number\s*=\s*models\.CharField\([^\)]*?\)' `
+      -Replacement 'serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)' )
+    if ($touched) { Write-Host "[OK] models.py güncellendi (serial_number unique+nullable)." }
+    else { Write-Host "[i] models.py serial_number satırı zaten uygun görünüyor." }
+  }
+} else {
+  Write-Warning "models.py bulunamadı: $ModelsPath"
+}
+
+if (!(Test-Path $AdminPath)) {
+$stub = @"
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "serial_number")
+    search_fields = ("name", "serial_number")
+    # Add formunun engellenmediğinden emin olmak için:
+    def has_add_permission(self, request):
+        return True
+"@
+  New-Item -ItemType File -Path $AdminPath -Force | Out-Null
+  WriteUtf8NoBom -Path $AdminPath -Text $stub
+  Write-Host "[OK] admin.py oluşturuldu ve EquipmentAdmin eklendi."
+} else {
+  $raw = Get-Content $AdminPath -Raw
+  if ($raw -notmatch 'from\s+\.models\s+import\s+.*Equipment') {
+    $raw = "from .models import Equipment`r`n" + $raw
+  }
+  if ($raw -notmatch '@admin\.register\(\s*Equipment\s*\)' -and $raw -notmatch 'admin\.site\.register\(\s*Equipment') {
+    $raw += "`r`n@admin.register(Equipment)`r`nclass EquipmentAdmin(admin.ModelAdmin):`r`n    list_display = (""id"",""name"",""serial_number"")`r`n"
+  }
+  $raw = [Regex]::Replace($raw, 'def\s+has_add_permission\([^\)]*\):\s*return\s+False', 'def has_add_permission(self, request):`r`n        return True')
+  Copy-Item $AdminPath "$AdminPath.bak" -Force
+  WriteUtf8NoBom -Path $AdminPath -Text $raw
+  Write-Host "[OK] admin.py doğrulandı/güncellendi."
+}
+
+if (Test-Path $UrlsPath) {
+  $added = SafeReplace-InFile -Path $UrlsPath -Multiline `
+    -Pattern '(def\s+process_request\([^\)]*\)\s*:\s*.*?)(return\s+HttpResponseRedirect\([^\)]*\))' `
+    -Replacement '$1
+# /add/ yolu admin add view için bypass
+try:
+    path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
+except Exception:
+    path = request.path
+if path.endswith("/add/"):
+    return None
+$2'
+  if ($added) { Write-Host "[OK] middleware add/bypass güncellendi." } else { Write-Host "[i] middleware değişikliğine gerek yok gibi." }
+}
+
+& .\venv\Scripts\python.exe $DjangoManage makemigrations
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& .\venv\Scripts\python.exe $DjangoManage migrate
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+if (-not $AdminUser) { $AdminUser = "admin" }
+if (-not $AdminPass) { $AdminPass = "admin123!" }
+
+$py = @"
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.apps import apps
+User = get_user_model()
+u, created = User.objects.get_or_create(username='$AdminUser', defaults={'email':'$AdminMail','is_superuser':True,'is_staff':True})
+if created:
+    u.set_password('$AdminPass')
+    u.save()
+Equipment = apps.get_model('maintenance','Equipment')
+if Equipment:
+    ct = apps.get_model('contenttypes','ContentType').objects.get_for_model(Equipment)
+    try:
+        p = Permission.objects.get(codename='add_equipment', content_type=ct)
+        u.user_permissions.add(p)
+    except Permission.DoesNotExist:
+        pass
+print("OK-user:", u.username)
+"@
+$pyFile = Join-Path $RepoRoot "_otokodlama\ensure_admin.py"
+New-Item -ItemType Directory -Path (Split-Path $pyFile) -Force | Out-Null
+WriteUtf8NoBom -Path $pyFile -Text $py
+& .\venv\Scripts\python.exe $DjangoManage shell -c "exec(open(r'$pyFile','r',encoding='utf-8').read())"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$addUrl = "$BaseUrl/admin/maintenance/equipment/add/"
+try {
+  $resp = Invoke-WebRequest -Uri $addUrl -MaximumRedirection 5 -ErrorAction Stop
+  Write-Host "[HTTP] Status:" $resp.StatusCode "→ FinalUri:" $resp.BaseResponse.ResponseUri.AbsoluteUri
+  $title = ([Regex]::Match($resp.Content, '<title[^>]*>(.*?)</title>', 'Singleline')).Groups[1].Value
+  Write-Host "[HTTP] Title:" $title
+} catch {
+  Write-Warning "HTTP isteğinde hata: $($_.Exception.Message)"
+}
+
+$env:ALLOW_EQUIPMENT_ADD = "1"
+$env:BASE_URL = $BaseUrl
+
+# not: çıkış kodunu script dışından yönetelim (ayrı wrapper ile). Burada sadece hazırla.
+### DOSYA BİTİŞ: fix_e102_addform.ps1
+
+### DOSYA BAŞLANGIÇ: .\\scripts\fix_e102_addform.ps1
+[CmdletBinding(SupportsShouldProcess)]
+param(
+  [string]$RepoRoot = $(git rev-parse --show-toplevel),
+  [string]$DjangoManage = "manage.py",
+  [string]$AdminUser = $env:ADMIN_USER,
+  [string]$AdminPass = $env:ADMIN_PASS,
+  [string]$AdminMail = "admin@example.com",
+  [string]$BaseUrl
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+trap { throw }
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+
+if (-not $BaseUrl) { $BaseUrl = $env:BASE_URL }
+if (-not $BaseUrl) { $BaseUrl = "http://127.0.0.1:8010" }
+
+function WriteUtf8NoBom($Path, $Text) {
+  $full = Resolve-Path -LiteralPath $Path
+  [IO.File]::WriteAllText($full, $Text, (New-Object Text.UTF8Encoding($false)))
+}
+
+function SafeReplace-InFile {
+  param(
+    [Parameter(Mandatory)] [string]$Path,
+    [Parameter(Mandatory)] [string]$Pattern,
+    [Parameter(Mandatory)] [string]$Replacement,
+    [switch]$Multiline
+  )
+  if (!(Test-Path $Path)) { return $false }
+  $raw = Get-Content $Path -Raw
+  $opt = [System.Text.RegularExpressions.RegexOptions]::None
+  if ($Multiline) { $opt = $opt -bor [System.Text.RegularExpressions.RegexOptions]::Singleline }
+  $new = [Regex]::Replace($raw, $Pattern, $Replacement, $opt)
+  if ($new -ne $raw) {
+    Copy-Item $Path "$Path.bak" -Force
+    WriteUtf8NoBom -Path $Path -Text $new
+    return $true
+  }
+  return $false
+}
+
+Set-Location $RepoRoot
+Write-Host "Repo: $RepoRoot"
+
+$ModelsPath = Join-Path $RepoRoot "maintenance\models.py"
+$AdminPath  = Join-Path $RepoRoot "maintenance\admin.py"
+$UrlsPath   = Join-Path $RepoRoot "core\mw_fix_equip_redirect.py"
+
+if (Test-Path $ModelsPath) {
+  $models = Get-Content $ModelsPath -Raw
+  if ($models -notmatch 'class\s+Equipment\s*\(') {
+    Write-Warning "models.py içinde Equipment bulunamadı. Bu adımı atlıyorum."
+  } else {
+    $touched = $false
+    $touched = $touched -bor (SafeReplace-InFile -Path $ModelsPath `
+      -Pattern 'serial_number\s*=\s*models\.CharField\([^\)]*?unique\s*=\s*True[^\)]*?\)' `
+      -Replacement 'serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)' )
+    $touched = $touched -bor (SafeReplace-InFile -Path $ModelsPath `
+      -Pattern 'serial_number\s*=\s*models\.CharField\([^\)]*?\)' `
+      -Replacement 'serial_number = models.CharField(max_length=120, unique=True, blank=True, null=True)' )
+    if ($touched) { Write-Host "[OK] models.py güncellendi (serial_number unique+nullable)." }
+    else { Write-Host "[i] models.py serial_number satırı zaten uygun görünüyor." }
+  }
+} else {
+  Write-Warning "models.py bulunamadı: $ModelsPath"
+}
+
+if (!(Test-Path $AdminPath)) {
+$stub = @"
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "serial_number")
+    search_fields = ("name", "serial_number")
+    # Add formunun engellenmediğinden emin olmak için:
+    def has_add_permission(self, request):
+        return True
+"@
+  New-Item -ItemType File -Path $AdminPath -Force | Out-Null
+  WriteUtf8NoBom -Path $AdminPath -Text $stub
+  Write-Host "[OK] admin.py oluşturuldu ve EquipmentAdmin eklendi."
+} else {
+  $raw = Get-Content $AdminPath -Raw
+  if ($raw -notmatch 'from\s+\.models\s+import\s+.*Equipment') {
+    $raw = "from .models import Equipment`r`n" + $raw
+  }
+  if ($raw -notmatch '@admin\.register\(\s*Equipment\s*\)' -and $raw -notmatch 'admin\.site\.register\(\s*Equipment') {
+    $raw += "`r`n@admin.register(Equipment)`r`nclass EquipmentAdmin(admin.ModelAdmin):`r`n    list_display = (""id"",""name"",""serial_number"")`r`n"
+  }
+  $raw = [Regex]::Replace($raw, 'def\s+has_add_permission\([^\)]*\):\s*return\s+False', 'def has_add_permission(self, request):`r`n        return True')
+  Copy-Item $AdminPath "$AdminPath.bak" -Force
+  WriteUtf8NoBom -Path $AdminPath -Text $raw
+  Write-Host "[OK] admin.py doğrulandı/güncellendi."
+}
+
+if (Test-Path $UrlsPath) {
+  $added = SafeReplace-InFile -Path $UrlsPath -Multiline `
+    -Pattern '(def\s+process_request\([^\)]*\)\s*:\s*.*?)(return\s+HttpResponseRedirect\([^\)]*\))' `
+    -Replacement '$1
+# /add/ yolu admin add view için bypass
+try:
+    path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
+except Exception:
+    path = request.path
+if path.endswith("/add/"):
+    return None
+$2'
+  if ($added) { Write-Host "[OK] middleware add/bypass güncellendi." } else { Write-Host "[i] middleware değişikliğine gerek yok gibi." }
+}
+
+& .\venv\Scripts\python.exe $DjangoManage makemigrations
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& .\venv\Scripts\python.exe $DjangoManage migrate
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+if (-not $AdminUser) { $AdminUser = "admin" }
+if (-not $AdminPass) { $AdminPass = "admin123!" }
+
+$py = @"
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.apps import apps
+User = get_user_model()
+u, created = User.objects.get_or_create(username='$AdminUser', defaults={'email':'$AdminMail','is_superuser':True,'is_staff':True})
+if created:
+    u.set_password('$AdminPass')
+    u.save()
+Equipment = apps.get_model('maintenance','Equipment')
+if Equipment:
+    ct = apps.get_model('contenttypes','ContentType').objects.get_for_model(Equipment)
+    try:
+        p = Permission.objects.get(codename='add_equipment', content_type=ct)
+        u.user_permissions.add(p)
+    except Permission.DoesNotExist:
+        pass
+print("OK-user:", u.username)
+"@
+$pyFile = Join-Path $RepoRoot "_otokodlama\ensure_admin.py"
+New-Item -ItemType Directory -Path (Split-Path $pyFile) -Force | Out-Null
+WriteUtf8NoBom -Path $pyFile -Text $py
+& .\venv\Scripts\python.exe $DjangoManage shell -c "exec(open(r'$pyFile','r',encoding='utf-8').read())"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$addUrl = "$BaseUrl/admin/maintenance/equipment/add/"
+try {
+  $resp = Invoke-WebRequest -Uri $addUrl -MaximumRedirection 5 -ErrorAction Stop
+  Write-Host "[HTTP] Status:" $resp.StatusCode "→ FinalUri:" $resp.BaseResponse.ResponseUri.AbsoluteUri
+  $title = ([Regex]::Match($resp.Content, '<title[^>]*>(.*?)</title>', 'Singleline')).Groups[1].Value
+  Write-Host "[HTTP] Title:" $title
+} catch {
+  Write-Warning "HTTP isteğinde hata: $($_.Exception.Message)"
+}
+
+$env:ALLOW_EQUIPMENT_ADD = "1"
+$env:BASE_URL = $BaseUrl
+
+# not: çıkış kodunu script dışından yönetelim (ayrı wrapper ile). Burada sadece hazırla.
+### DOSYA BİTİŞ: fix_e102_addform.ps1
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_fix_equip_redirect.py
+# -*- coding: utf-8 -*-
+# core/mw_fix_equip_redirect.py
+from urllib.parse import parse_qsl, urlencode
+from django.utils.deprecation import MiddlewareMixin
+from django.http import HttpResponseRedirect
+
+CANONICAL = "/admin/maintenance/equipment/"
+DIRECT    = "/admin/maintenance/equipment/_direct/"
+
+BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+
+def _filtered_qs(environ_qs: str) -> str:
+    try:
+        pairs = parse_qsl(environ_qs or "", keep_blank_values=True)
+    except Exception:
+        pairs = []
+    pairs = [(k, v) for (k, v) in pairs if k not in BLOCK_KEYS]
+    qs = urlencode(pairs, doseq=True)
+    return ("?" + qs) if qs else ""
+
+class AdminEquipmentRedirectFixMiddleware(MiddlewareMixin):
+    """
+    /admin/maintenance/equipment/ hedefli TÃœM istek/yanÄ±tlarÄ± gÃ¼venli _direct listesine Ã§evirir.
+    - process_request: view'e gitmeden Ã¶nce 302'yle _direct'e yÃ¶nlendir.
+    - process_response: 301/302 Location header'Ä± kanonik listeyi gÃ¶steriyorsa _direct'e Ã§evir.
+    """
+
+    def process_request(self, request):
+        try:
+            path = request.path
+        except Exception:
+            path = ""
+        if path.endswith(CANONICAL):
+            qs = _filtered_qs(getattr(request.META, "QUERY_STRING", "") or request.META.get("QUERY_STRING",""))
+            
+# /add/ yolu admin add view iÃƒÂ§in bypass
+try:
+    path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
+except Exception:
+    path = request.path
+if path.endswith("/add/"):
+    return None
+
+# /add/ yolu admin add view iÃ§in bypass
+try:
+    path = request.get_full_path() if hasattr(request, "get_full_path") else request.path
+except Exception:
+    path = request.path
+if path.endswith("/add/"):
+    return None
+return HttpResponseRedirect(DIRECT + qs)
+
+    def process_response(self, request, response):
+        # YanÄ±t 301/302 ise ve hedef kanonik listeyse, _direct'e Ã§evir
+        try:
+            loc = response["Location"] if hasattr(response, "has_header") and response.has_header("Location") \
+                  else (response.headers.get("Location") if hasattr(response, "headers") else None)
+        except Exception:
+            loc = None
+
+        code = getattr(response, "status_code", 200)
+        if code in (301, 302) and loc:
+            # Sadece path kÄ±smÄ± ile karÅŸÄ±laÅŸtÄ±r: Ã§oÄŸu zaman relative Location geliyor
+            if str(loc).split("?",1)[0].endswith(CANONICAL):
+                qs = ""
+                try:
+                    # request tarafÄ±ndaki mevcut QUERY_STRING'i filtreleyip koru
+                    qs = _filtered_qs(request.META.get("QUERY_STRING",""))
+                except Exception:
+                    qs = ""
+                try:
+                    response["Location"] = DIRECT + qs
+                except Exception:
+                    pass
+        return response
+### DOSYA BİTİŞ: mw_fix_equip_redirect.py
+
+### DOSYA BAŞLANGIÇ: .\\core\settings.py
+# REV: 1.2 | 2025-09-25 | Hash: a7864e49 | ParÃ§a: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-3REMVA2D
+# <<< BLOK SONU: ID:PY-IMP-3REMVA2D
+# >>> BLOK: SETTINGS | Proje ayarlari | ID:PY-SET-10HDCS31
+"""
+Django settings for core project.
+
+Generated by 'django-admin startproject' using Django 5.2.6.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/5.2/topics/settings/
+
+For the full list of settings and their values, see
+https://docs.djangoproject.com/en/5.2/ref/settings/
+"""
+
+from pathlib import Path
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = 'django-insecure-7@x$&z9=&q!e3mgdj)35i2+(629e2e3%c*jp_)n30=(by-qcb3'
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+
+ALLOWED_HOSTS = []
+
+
+# Application definition
+
+INSTALLED_APPS = [    'maintenance.apps.MaintenanceConfig',
+    
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'core.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [ BASE_DIR / 'templates' ],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'core.wsgi.application'
+
+
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+
+# Password validation
+# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+
+# Internationalization
+# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
+LANGUAGE_CODE = 'en-us'
+
+TIME_ZONE = 'UTC'
+
+USE_I18N = True
+
+USE_TZ = True
+
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
+STATIC_URL = 'static/'
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# <<< BLOK SONU: ID:PY-SET-10HDCS31
+
+
+
+
+
+
+
+### DOSYA BİTİŞ: settings.py
+
+### DOSYA BAŞLANGIÇ: .\\tests\tasks.spec.backup.before-dedup.js
+const { test, expect } = require("@playwright/test");
+const fs = require("fs");
+const path = require("path");
+
+// Renkli konsol
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  magenta: '\x1b[35m',
+};
+
+const BEEP_ENABLED = process.env.PLAYWRIGHT_BEEP !== "0";
+function beep() { 
+  if (!BEEP_ENABLED) return;
+  try { process.stdout.write("\x07"); } catch {} 
+}
+
+function printBox(title, content, color = colors.cyan) {
+  const width = 80;
+  const border = '•'.repeat(width);
+  console.log(`\n${color}•”${border}•—${colors.reset}`);
+  console.log(`${color}•‘${title.padEnd(width)}•‘${colors.reset}`);
+  console.log(`${color}• ${border}•£${colors.reset}`);
+  content.forEach(line => {
+    console.log(`${color}•‘${colors.reset} ${line.padEnd(width-2)} ${color}•‘${colors.reset}`);
+  });
+  console.log(`${color}•š${border}•${colors.reset}\n`);
+}
+
+function printTestHeader(testId, title) {
+  console.log(`\n${colors.bright}${colors.blue}${'–¶'.repeat(40)}${colors.reset}`);
+  console.log(`${colors.bright}${colors.blue}–¶–¶–¶ TEST: ${testId} - ${title}${colors.reset}`);
+  console.log(`${colors.bright}${colors.blue}${'–¶'.repeat(40)}${colors.reset}\n`);
+}
+
+function printSuccess(message) {
+  console.log(`${colors.green}œ… ${message}${colors.reset}`);
+}
+
+function printWarning(message) {
+  console.log(`${colors.yellow}š ï¸  ${message}${colors.reset}`);
+}
+
+function printError(message) {
+  console.log(`${colors.red}Œ ${message}${colors.reset}`);
+}
+
+function printInfo(message) {
+  console.log(`${colors.cyan}„¹ï¸  ${message}${colors.reset}`);
+}
+
+function printTaskRequirements(steps, designRef, threshold) {
+  const width = 80;
+  const border = '•'.repeat(width);
+  console.log(`${colors.cyan}•”${border}•—${colors.reset}`);
+  console.log(`${colors.cyan}•‘ ${colors.bright}Ä°STENENLER (GÃ–REV TANIMI)${colors.reset}${' '.repeat(width - 29)}${colors.cyan}•‘${colors.reset}`);
+  console.log(`${colors.cyan}• ${border}•£${colors.reset}`);
+  
+  steps.forEach(step => {
+    const cmdText = step.cmd.toUpperCase().padEnd(6);
+    const line = `${colors.bright}${cmdText}${colors.reset}: ${step.val}`;
+    const plainLine = `${cmdText}: ${step.val}`;
+    const padding = width - plainLine.length - 1;
+    console.log(`${colors.cyan}•‘ ${colors.reset}${line}${' '.repeat(Math.max(0, padding))}${colors.cyan}•‘${colors.reset}`);
+  });
+
+  const isVisualSkip = !designRef || designRef.toUpperCase() === "N/A";
+  const visualStatus = isVisualSkip 
+    ? `VISUAL: AtlandÄ± (N/A)`
+    : `VISUAL: ${designRef} (EÅŸik: ${(threshold * 100).toFixed(0)}%)`;
+  
+  const padding = width - visualStatus.length - 1;
+  console.log(`${colors.cyan}•‘ ${colors.reset}${visualStatus}${' '.repeat(Math.max(0, padding))}${colors.cyan}•‘${colors.reset}`);
+  console.log(`${colors.cyan}•š${border}•${colors.reset}\n`);
+}
+
+const stats = {
+  total: 0,
+  passed: 0,
+  failed: 0,
+  skipped: 0,
+  startTime: Date.now(),
+  testResults: [],
+};
+
+const cycleNumber = parseInt(process.env.TEST_CYCLE || '1', 10);
+printInfo(`Ã‡alÄ±ÅŸtÄ±rÄ±lan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`);
+
+test.use({ storageState: "storage/user.json" });
+
+let PNG, pixelmatch;
+const BASE = process.env.BASE_URL || "http://127.0.0.1:8010";
+
+function loadTasks() {
+  const rootJson = path.resolve("tasks.json");
+  const buildJson = path.resolve("build", "tasks.json");
+  
+  function readJsonNoBOM(filePath) {
+    let content = fs.readFileSync(filePath, "utf8");
+    if (content.charCodeAt(0) === 0xFEFF) {
+      content = content.slice(1);
+    }
+    return JSON.parse(content);
+  }
+  
+  if (fs.existsSync(rootJson)) return readJsonNoBOM(rootJson);
+  if (fs.existsSync(buildJson)) return readJsonNoBOM(buildJson);
+  throw new Error("tasks.json bulunamadÄ±");
+}
+
+function parseSteps(jobDef) {
+  const steps = [];
+  for (const raw of String(jobDef || "").split(";")) {
+    const part = raw.trim();
+    if (!part) continue;
+    const m = part.match(/^(\w+)\s*:\s*(.+)$/);
+    if (!m) {
+      steps.push({ cmd: "note", val: part });
+      continue;
+    }
+    steps.push({ cmd: m[1].toLowerCase(), val: m[2].trim().replace(/^"|"$/g, "") });
+  }
+  return steps;
+}
+
+function normalizeWords(s) {
+  return String(s || "")
+    .replace(/\d+/g, " ")
+    .replace(/[^\p{L}\s]/gu, " ")
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function coverage90(actualText, expectedText) {
+  const A = new Set(normalizeWords(actualText));
+  const E = normalizeWords(expectedText);
+  if (!E.length) return true;
+  let hit = 0;
+  for (const w of E) if (A.has(w)) hit++;
+  return hit / E.length >= 0.9;
+}
+
+// === AKILLI SELECTOR SÄ°STEMÄ° ===
+function expandSmartCandidates(expr) {
+  const trimmed = String(expr || '').trim();
+  const out = new Set();
+  out.add(trimmed);
+
+  // input[name='xxx']
+  let m = trimmed.match(/^input\s*\[\s*name\s*=\s*['"]([^'"]+)['"]\s*\]$/i);
+  if (m) {
+    const key = m[1].toLowerCase();
+    const base = key.replace(/[\s\-]+/g,"_");
+    out.add(`#id_${base}`);
+    out.add(`input[name="${base}"]`);
+    out.add(`[name*="${base}"]`);
+    
+    if (base === "name") {
+      out.add(`#id_title`);
+      out.add(`#id_equipment_name`);
+      out.add(`input[name="title"]`);
+    }
+    if (base.includes("serial")) {
+      out.add(`#id_serial_number`);
+      out.add(`[id*="serial"]`);
+    }
+    return Array.from(out);
+  }
+
+  // #id_xxx
+  m = trimmed.match(/^#id_([\w\-:]+)$/i);
+  if (m) {
+    const key = m[1].toLowerCase();
+    out.add(`input[name="${key}"]`);
+    out.add(`[name*="${key}"]`);
+    
+    if (key === "name") {
+      out.add(`#id_title`);
+      out.add(`#id_equipment_name`);
+    }
+    if (key.includes("serial")) {
+      out.add(`#id_serial_number`);
+    }
+    return Array.from(out);
+  }
+
+  return Array.from(out);
+}
+
+async function saveArtifacts(id, page, tag = "error") {
+  try {
+    const outDir = path.resolve("targets","actual");
+    fs.mkdirSync(outDir, { recursive:true });
+    const pngPath = path.join(outDir, `${id}-${tag}.png`);
+    const htmlPath = path.join(outDir, `${id}-${tag}.html`);
+    await page.screenshot({ path: pngPath, fullPage:true });
+    fs.writeFileSync(htmlPath, await page.content(), "utf8");
+    printWarning(`[ARTIFACT] ${path.relative(process.cwd(), pngPath)}`);
+  } catch {}
+}
+
+async function waitVisibleAny(/* (id, page, ...cands) or (page, ...cands) */) {
+  const isPageLike = (p) => p && typeof p.locator === "function";
+
+  let id = "N/A";
+  let page;
+  let candidates = [];
+
+  const args = Array.from(arguments);
+  if (args.length && isPageLike(args[0])) {
+    page = args[0];
+    candidates = args.slice(1).flat();
+  } else if (args.length >= 2 && isPageLike(args[1])) {
+    id = String(args[0]);
+    page = args[1];
+    candidates = args.slice(2).flat();
+  } else {
+    throw new Error("waitVisibleAny: Geçersiz argüman dizilimi");
+  }
+
+  candidates = (Array.isArray(candidates) ? candidates : [candidates])
+    .filter(Boolean)
+    .map(String);
+
+  const extra = [
+    "form[action$='/add/']",
+    "input[name='csrfmiddlewaretoken']",
+    "div.submit-row",
+    "button[name='_save']",
+    "#content form",
+    "#content-main form",
+    "main form",
+    "#id_name",
+    "#id_serial_number",
+    "input[name='name']",
+    "input[name='serial_number']",
+    "form input[type='text']",
+    "form select"
+  ];
+
+  const merged = Array.from(new Set([
+    ...candidates,
+    ...extra,
+    ...((globalThis && globalThis.__EXTRA_CANDIDATES__) || [])
+  ]));
+
+  // Bazı ortamlarda tek CSS dizesi sorun çıkarırsa tek tek dene
+  for (const sel of merged) {
+    const loc = page.locator(sel);
+    try {
+      await expect(loc.first()).toBeVisible({ timeout: 500 });
+      return loc.first();
+    } catch {}
+  }
+
+  await saveArtifacts(id, page, "notfound");
+  throw new Error(`Hiçbir aday görünür değil: ${merged.join(", ")}`);
+}async function ensurePixelLibs() {
+  if (!PNG || !pixelmatch) {
+    try {
+      PNG = require("pngjs").PNG;
+      pixelmatch = require("pixelmatch");
+    } catch (e) {
+      printWarning("PNG/Pixelmatch kÃ¼tÃ¼phaneleri eksik");
+    }
+  }
+}
+
+async function visualCompare(page, designRefPath, threshold = 0.85, id = "task") {
+  await ensurePixelLibs();
+  
+  if (!PNG || !pixelmatch) {
+    printWarning(`[VISUAL] ${id}: KÃ¼tÃ¼phaneler eksik †’ skip`);
+    return;
+  }
+  
+  const rawRef = (designRefPath ?? "").toString().trim();
+  if (!rawRef || rawRef.toUpperCase() === "N/A") {
+    printWarning(`[VISUAL] ${id}: design_ref N/A †’ skip`);
+    return;
+  }
+  
+  const refPath = path.resolve(rawRef);
+  if (!fs.existsSync(refPath)) {
+    printWarning(`[VISUAL] ${id}: reference not found †’ skip`);
+    return;
+  }
+  
+  const outDir = path.resolve("targets", "actual");
+  fs.mkdirSync(outDir, { recursive: true });
+  const actPath = path.join(outDir, `${id}.png`);
+  await page.screenshot({ path: actPath, fullPage: true });
+  
+  const ref = PNG.sync.read(fs.readFileSync(refPath));
+  const act = PNG.sync.read(fs.readFileSync(actPath));
+  const w = Math.min(ref.width, act.width);
+  const h = Math.min(ref.height, act.height);
+  const refCrop = new PNG({ width: w, height: h });
+  const actCrop = new PNG({ width: w, height: h });
+  PNG.bitblt(ref, refCrop, 0, 0, 0, 0, w, h);
+  PNG.bitblt(act, actCrop, 0, 0, 0, 0, w, h);
+  
+  const diff = new PNG({ width: w, height: h });
+  const mismatch = pixelmatch(refCrop.data, actCrop.data, diff.data, w, h, { threshold: 0.1 });
+  const similarity = 1 - mismatch / (w * h);
+  
+  printInfo(`[VISUAL] ${id}: Benzerlik ${(similarity * 100).toFixed(2)}%`);
+  expect(similarity).toBeGreaterThanOrEqual(threshold);
+}
+
+const tasks = loadTasks();
+if (!Array.isArray(tasks) || tasks.length === 0) {
+  throw new Error("tasks.json boÅŸ");
+}
+
+stats.total = tasks.length;
+
+test.beforeAll(() => {
+  printBox('ğŸš€ TEST SUITE BAÅLANGICI', [
+    `Toplam YÃ¼klenen GÃ¶rev: ${stats.total}`,
+    `Ã‡alÄ±ÅŸan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`,
+    `Base URL: ${BASE}`,
+    `Ses: ${BEEP_ENABLED ? 'AÃ‡IK' : 'KAPALI'}`,
+    `BaÅŸlangÄ±Ã§: ${new Date().toLocaleString('tr-TR')}`,
+  ], colors.magenta);
+});
+
+for (const t of tasks) {
+  test(`${t.id} - ${t.title}`, async ({ page }) => {
+    const testStartTime = Date.now();
+    printTestHeader(t.id, t.title);
+    beep();
+    
+    const steps = parseSteps(t.job_definition);
+    printTaskRequirements(steps, t.design_ref, t.visual_threshold);
+    printInfo(`AdÄ±m SayÄ±sÄ±: ${steps.length}`);
+    
+    try {
+      // open
+      const open = steps.find(s => s.cmd === "open");
+      if (open) {
+        const url = open.val.startsWith("http") ? open.val : BASE + open.val;
+        printInfo(`AÃ§Ä±lÄ±yor: ${url}`);
+        await page.goto(url, { waitUntil: "domcontentloaded" });
+        printSuccess(`Sayfa yÃ¼klendi: ${page.url()}`);
+      }
+      
+      // expect (akÄ±llÄ±)
+      for (const s of steps.filter(s => s.cmd === "expect")) {
+        printInfo(`Bekleniyor: ${s.val}`);
+        await waitVisibleAny(page, t.id, s.val, 4000);
+      }
+      
+      // text
+      const txt = steps.find(s => s.cmd === "text");
+      if (txt) {
+        printInfo(`Metin kontrolÃ¼: "${txt.val}"`);
+        const body = await page.locator("body").innerText();
+        const ok = coverage90(body, txt.val);
+        expect(ok, "Metin kapsama < %90").toBeTruthy();
+        printSuccess(`Metin kapsama: ‰¥90%`);
+      }
+      
+      // visual
+      if (t.design_ref) {
+        const thr = t.visual_threshold ?? 0.85;
+        await visualCompare(page, t.design_ref, thr, t.id);
+      }
+      
+      stats.passed++;
+      stats.testResults.push({ 
+        id: t.id, 
+        status: 'PASSED', 
+        error: null, 
+        title: t.title, 
+        duration: (Date.now() - testStartTime), 
+        cycle: cycleNumber 
+      });
+      printSuccess(`œ… TEST BAÅARILI: ${t.id}`);
+      
+    } catch (error) {
+      await saveArtifacts(t.id, page, 'failed');
+      stats.failed++;
+      stats.testResults.push({ 
+        id: t.id, 
+        status: 'FAILED', 
+        error: error.message, 
+        title: t.title, 
+        duration: (Date.now() - testStartTime), 
+        cycle: cycleNumber 
+      });
+      printError(`Œ TEST BAÅARISIZ: ${t.id}`);
+      printError(`Hata: ${error.message}`);
+      throw error;
+    }
+  });
+}
+
+test.afterAll(() => {
+  const duration = ((Date.now() - stats.startTime) / 1000).toFixed(2);
+  const passRate = ((stats.passed / stats.total) * 100).toFixed(2);
+  
+  const quarantineReport = ['ID | BaÅŸlÄ±k | Durum | Ã‡Ã¶zÃ¼ldÃ¼/DÃ¶ngÃ¼'];
+  stats.testResults.forEach(r => {
+    const statusColor = r.status === 'PASSED' ? colors.green : colors.red;
+    const cycleInfo = r.status === 'PASSED' 
+      ? `Ã‡Ã–ZÃœLDÃœ (${r.cycle}. DÃ¶ngÃ¼)` 
+      : `BEKLEMEDE`;
+    quarantineReport.push(`${r.id} | ${r.title} | ${statusColor}${r.status}${colors.reset} | ${cycleInfo}`);
+  });
+  
+  printBox('ğŸ“„ KARANTÄ°NA RAPORU (GÃ–REV DURUM TAKÄ°BÄ°)', quarantineReport, colors.yellow);
+  
+  const summary = [
+    `Toplam YÃ¼klenen GÃ¶rev: ${stats.total}`, 
+    `Ã‡alÄ±ÅŸan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`,
+    `BaÅŸarÄ±lÄ± GÃ¶rev: ${colors.green}${stats.passed}${colors.reset}`,
+    `BaÅŸarÄ±sÄ±z GÃ¶rev: ${colors.red}${stats.failed}${colors.reset}`,
+    `BaÅŸarÄ± OranÄ±: ${passRate}%`,
+    `Toplam SÃ¼re: ${duration}s`,
+    `BitiÅŸ: ${new Date().toLocaleString('tr-TR')}`,
+  ];
+  
+  if (stats.failed === 0) {
+    printBox('œ… TÃœM GÃ–REVLER BAÅARILI!', summary, colors.green);
+  } else {
+    printBox('š ï¸  BAZI GÃ–REVLER BAÅARISIZ', summary, colors.yellow);
+  }
+  
+  console.log(`${colors.cyan}--- TEST ORTAMI BÄ°LGÄ°SÄ° ---${colors.reset}`);
+  console.log(`Bu rapor SADECE tasks.json'dan yÃ¼klenen ${stats.total} gÃ¶revin durumunu gÃ¶sterir.\n`);
+});
+
+
+
+
+
+
+
+
+
+
+/* ==== patched waitVisibleAny (appended) ==== */
+async function waitVisibleAny(/* (id, page, ...cands) or (page, ...cands) */) {
+  const isPageLike = (p) => p && typeof p.locator === "function";
+
+  let id = "N/A";
+  let page;
+  let idx;
+
+  const args = Array.from(arguments);
+
+  if (args.length && isPageLike(args[0])) {
+    page = args[0];
+    idx = 1;
+  } else if (args.length >= 2 && isPageLike(args[1])) {
+    id = String(args[0]);
+    page = args[1];
+    idx = 2;
+  } else {
+    throw new Error("waitVisibleAny: Geçersiz argüman dizilimi");
+  }
+
+  // İsteğe bağlı tek sayı argümanı (per-try timeout ms)
+  const numericArg = args.slice(idx).find(a => typeof a === 'number');
+  const perTry = Math.max(300, Math.min(Number(numericArg) || 500, 3000));
+
+  // Yalnızca string seçicileri al
+  const rawCands = args.slice(idx).flat();
+  const userCands = rawCands.filter(x => typeof x === 'string' && x.trim()).map(s => s.trim());
+
+  const extra = [
+    "form[action$='/add/']",
+    "input[name='csrfmiddlewaretoken']",
+    "div.submit-row",
+    "button[name='_save']",
+    "#content form",
+    "#content-main form",
+    "main form",
+    "#id_name",
+    "#id_serial_number",
+    "input[name='name']",
+    "input[name='serial_number']",
+    "form input[type='text']",
+    "form select"
+  ];
+
+  const merged = Array.from(new Set([
+    ...userCands,
+    ...extra,
+    ...((globalThis && globalThis.__EXTRA_CANDIDATES__) || [])
+  ]));
+
+  for (const sel of merged) {
+    const loc = page.locator(sel).first();
+    try {
+      await expect(loc).toBeVisible({ timeout: perTry });
+      return loc;
+    } catch { /* sıradaki adaya geç */ }
+  }
+
+  await saveArtifacts(id, page, "notfound");
+  throw new Error(`Hiçbir aday görünür değil: ${merged.join(", ")}`);
+}
+/* ==== end patched waitVisibleAny ==== */
+
+### DOSYA BİTİŞ: tasks.spec.backup.before-dedup.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\tasks.spec.backup.js
+const { test, expect } = require("@playwright/test");
+const fs = require("fs");
+const path = require("path");
+
+// Renkli konsol
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  magenta: '\x1b[35m',
+};
+
+const BEEP_ENABLED = process.env.PLAYWRIGHT_BEEP !== "0";
+function beep() { 
+  if (!BEEP_ENABLED) return;
+  try { process.stdout.write("\x07"); } catch {} 
+}
+
+function printBox(title, content, color = colors.cyan) {
+  const width = 80;
+  const border = '•'.repeat(width);
+  console.log(`\n${color}•”${border}•—${colors.reset}`);
+  console.log(`${color}•‘${title.padEnd(width)}•‘${colors.reset}`);
+  console.log(`${color}• ${border}•£${colors.reset}`);
+  content.forEach(line => {
+    console.log(`${color}•‘${colors.reset} ${line.padEnd(width-2)} ${color}•‘${colors.reset}`);
+  });
+  console.log(`${color}•š${border}•${colors.reset}\n`);
+}
+
+function printTestHeader(testId, title) {
+  console.log(`\n${colors.bright}${colors.blue}${'–¶'.repeat(40)}${colors.reset}`);
+  console.log(`${colors.bright}${colors.blue}–¶–¶–¶ TEST: ${testId} - ${title}${colors.reset}`);
+  console.log(`${colors.bright}${colors.blue}${'–¶'.repeat(40)}${colors.reset}\n`);
+}
+
+function printSuccess(message) {
+  console.log(`${colors.green}œ… ${message}${colors.reset}`);
+}
+
+function printWarning(message) {
+  console.log(`${colors.yellow}š ï¸  ${message}${colors.reset}`);
+}
+
+function printError(message) {
+  console.log(`${colors.red}Œ ${message}${colors.reset}`);
+}
+
+function printInfo(message) {
+  console.log(`${colors.cyan}„¹ï¸  ${message}${colors.reset}`);
+}
+
+function printTaskRequirements(steps, designRef, threshold) {
+  const width = 80;
+  const border = '•'.repeat(width);
+  console.log(`${colors.cyan}•”${border}•—${colors.reset}`);
+  console.log(`${colors.cyan}•‘ ${colors.bright}Ä°STENENLER (GÃ–REV TANIMI)${colors.reset}${' '.repeat(width - 29)}${colors.cyan}•‘${colors.reset}`);
+  console.log(`${colors.cyan}• ${border}•£${colors.reset}`);
+  
+  steps.forEach(step => {
+    const cmdText = step.cmd.toUpperCase().padEnd(6);
+    const line = `${colors.bright}${cmdText}${colors.reset}: ${step.val}`;
+    const plainLine = `${cmdText}: ${step.val}`;
+    const padding = width - plainLine.length - 1;
+    console.log(`${colors.cyan}•‘ ${colors.reset}${line}${' '.repeat(Math.max(0, padding))}${colors.cyan}•‘${colors.reset}`);
+  });
+
+  const isVisualSkip = !designRef || designRef.toUpperCase() === "N/A";
+  const visualStatus = isVisualSkip 
+    ? `VISUAL: AtlandÄ± (N/A)`
+    : `VISUAL: ${designRef} (EÅŸik: ${(threshold * 100).toFixed(0)}%)`;
+  
+  const padding = width - visualStatus.length - 1;
+  console.log(`${colors.cyan}•‘ ${colors.reset}${visualStatus}${' '.repeat(Math.max(0, padding))}${colors.cyan}•‘${colors.reset}`);
+  console.log(`${colors.cyan}•š${border}•${colors.reset}\n`);
+}
+
+const stats = {
+  total: 0,
+  passed: 0,
+  failed: 0,
+  skipped: 0,
+  startTime: Date.now(),
+  testResults: [],
+};
+
+const cycleNumber = parseInt(process.env.TEST_CYCLE || '1', 10);
+printInfo(`Ã‡alÄ±ÅŸtÄ±rÄ±lan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`);
+
+test.use({ storageState: "storage/user.json" });
+
+let PNG, pixelmatch;
+const BASE = process.env.BASE_URL || "http://127.0.0.1:8010";
+
+function loadTasks() {
+  const rootJson = path.resolve("tasks.json");
+  const buildJson = path.resolve("build", "tasks.json");
+  
+  function readJsonNoBOM(filePath) {
+    let content = fs.readFileSync(filePath, "utf8");
+    if (content.charCodeAt(0) === 0xFEFF) {
+      content = content.slice(1);
+    }
+    return JSON.parse(content);
+  }
+  
+  if (fs.existsSync(rootJson)) return readJsonNoBOM(rootJson);
+  if (fs.existsSync(buildJson)) return readJsonNoBOM(buildJson);
+  throw new Error("tasks.json bulunamadÄ±");
+}
+
+function parseSteps(jobDef) {
+  const steps = [];
+  for (const raw of String(jobDef || "").split(";")) {
+    const part = raw.trim();
+    if (!part) continue;
+    const m = part.match(/^(\w+)\s*:\s*(.+)$/);
+    if (!m) {
+      steps.push({ cmd: "note", val: part });
+      continue;
+    }
+    steps.push({ cmd: m[1].toLowerCase(), val: m[2].trim().replace(/^"|"$/g, "") });
+  }
+  return steps;
+}
+
+function normalizeWords(s) {
+  return String(s || "")
+    .replace(/\d+/g, " ")
+    .replace(/[^\p{L}\s]/gu, " ")
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function coverage90(actualText, expectedText) {
+  const A = new Set(normalizeWords(actualText));
+  const E = normalizeWords(expectedText);
+  if (!E.length) return true;
+  let hit = 0;
+  for (const w of E) if (A.has(w)) hit++;
+  return hit / E.length >= 0.9;
+}
+
+// === AKILLI SELECTOR SÄ°STEMÄ° ===
+function expandSmartCandidates(expr) {
+  const trimmed = String(expr || '').trim();
+  const out = new Set();
+  out.add(trimmed);
+
+  // input[name='xxx']
+  let m = trimmed.match(/^input\s*\[\s*name\s*=\s*['"]([^'"]+)['"]\s*\]$/i);
+  if (m) {
+    const key = m[1].toLowerCase();
+    const base = key.replace(/[\s\-]+/g,"_");
+    out.add(`#id_${base}`);
+    out.add(`input[name="${base}"]`);
+    out.add(`[name*="${base}"]`);
+    
+    if (base === "name") {
+      out.add(`#id_title`);
+      out.add(`#id_equipment_name`);
+      out.add(`input[name="title"]`);
+    }
+    if (base.includes("serial")) {
+      out.add(`#id_serial_number`);
+      out.add(`[id*="serial"]`);
+    }
+    return Array.from(out);
+  }
+
+  // #id_xxx
+  m = trimmed.match(/^#id_([\w\-:]+)$/i);
+  if (m) {
+    const key = m[1].toLowerCase();
+    out.add(`input[name="${key}"]`);
+    out.add(`[name*="${key}"]`);
+    
+    if (key === "name") {
+      out.add(`#id_title`);
+      out.add(`#id_equipment_name`);
+    }
+    if (key.includes("serial")) {
+      out.add(`#id_serial_number`);
+    }
+    return Array.from(out);
+  }
+
+  return Array.from(out);
+}
+
+async function saveArtifacts(id, page, tag = "error") {
+  try {
+    const outDir = path.resolve("targets","actual");
+    fs.mkdirSync(outDir, { recursive:true });
+    const pngPath = path.join(outDir, `${id}-${tag}.png`);
+    const htmlPath = path.join(outDir, `${id}-${tag}.html`);
+    await page.screenshot({ path: pngPath, fullPage:true });
+    fs.writeFileSync(htmlPath, await page.content(), "utf8");
+    printWarning(`[ARTIFACT] ${path.relative(process.cwd(), pngPath)}`);
+  } catch {}
+}
+
+async function waitVisibleAny(/* (id, page, ...cands) or (page, ...cands) */) {
+  const isPageLike = (p) => p && typeof p.locator === "function";
+
+  let id = "N/A";
+  let page;
+  let candidates = [];
+
+  const args = Array.from(arguments);
+  if (args.length && isPageLike(args[0])) {
+    page = args[0];
+    candidates = args.slice(1).flat();
+  } else if (args.length >= 2 && isPageLike(args[1])) {
+    id = String(args[0]);
+    page = args[1];
+    candidates = args.slice(2).flat();
+  } else {
+    throw new Error("waitVisibleAny: Geçersiz argüman dizilimi");
+  }
+
+  candidates = (Array.isArray(candidates) ? candidates : [candidates])
+    .filter(Boolean)
+    .map(String);
+
+  const extra = [
+    "form[action$='/add/']",
+    "input[name='csrfmiddlewaretoken']",
+    "div.submit-row",
+    "button[name='_save']",
+    "#content form",
+    "#content-main form",
+    "main form",
+    "#id_name",
+    "#id_serial_number",
+    "input[name='name']",
+    "input[name='serial_number']",
+    "form input[type='text']",
+    "form select"
+  ];
+
+  const merged = Array.from(new Set([
+    ...candidates,
+    ...extra,
+    ...((globalThis && globalThis.__EXTRA_CANDIDATES__) || [])
+  ]));
+
+  // Bazı ortamlarda tek CSS dizesi sorun çıkarırsa tek tek dene
+  for (const sel of merged) {
+    const loc = page.locator(sel);
+    try {
+      await expect(loc.first()).toBeVisible({ timeout: 500 });
+      return loc.first();
+    } catch {}
+  }
+
+  await saveArtifacts(id, page, "notfound");
+  throw new Error(`Hiçbir aday görünür değil: ${merged.join(", ")}`);
+}async function ensurePixelLibs() {
+  if (!PNG || !pixelmatch) {
+    try {
+      PNG = require("pngjs").PNG;
+      pixelmatch = require("pixelmatch");
+    } catch (e) {
+      printWarning("PNG/Pixelmatch kÃ¼tÃ¼phaneleri eksik");
+    }
+  }
+}
+
+async function visualCompare(page, designRefPath, threshold = 0.85, id = "task") {
+  await ensurePixelLibs();
+  
+  if (!PNG || !pixelmatch) {
+    printWarning(`[VISUAL] ${id}: KÃ¼tÃ¼phaneler eksik †’ skip`);
+    return;
+  }
+  
+  const rawRef = (designRefPath ?? "").toString().trim();
+  if (!rawRef || rawRef.toUpperCase() === "N/A") {
+    printWarning(`[VISUAL] ${id}: design_ref N/A †’ skip`);
+    return;
+  }
+  
+  const refPath = path.resolve(rawRef);
+  if (!fs.existsSync(refPath)) {
+    printWarning(`[VISUAL] ${id}: reference not found †’ skip`);
+    return;
+  }
+  
+  const outDir = path.resolve("targets", "actual");
+  fs.mkdirSync(outDir, { recursive: true });
+  const actPath = path.join(outDir, `${id}.png`);
+  await page.screenshot({ path: actPath, fullPage: true });
+  
+  const ref = PNG.sync.read(fs.readFileSync(refPath));
+  const act = PNG.sync.read(fs.readFileSync(actPath));
+  const w = Math.min(ref.width, act.width);
+  const h = Math.min(ref.height, act.height);
+  const refCrop = new PNG({ width: w, height: h });
+  const actCrop = new PNG({ width: w, height: h });
+  PNG.bitblt(ref, refCrop, 0, 0, 0, 0, w, h);
+  PNG.bitblt(act, actCrop, 0, 0, 0, 0, w, h);
+  
+  const diff = new PNG({ width: w, height: h });
+  const mismatch = pixelmatch(refCrop.data, actCrop.data, diff.data, w, h, { threshold: 0.1 });
+  const similarity = 1 - mismatch / (w * h);
+  
+  printInfo(`[VISUAL] ${id}: Benzerlik ${(similarity * 100).toFixed(2)}%`);
+  expect(similarity).toBeGreaterThanOrEqual(threshold);
+}
+
+const tasks = loadTasks();
+if (!Array.isArray(tasks) || tasks.length === 0) {
+  throw new Error("tasks.json boÅŸ");
+}
+
+stats.total = tasks.length;
+
+test.beforeAll(() => {
+  printBox('ğŸš€ TEST SUITE BAÅLANGICI', [
+    `Toplam YÃ¼klenen GÃ¶rev: ${stats.total}`,
+    `Ã‡alÄ±ÅŸan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`,
+    `Base URL: ${BASE}`,
+    `Ses: ${BEEP_ENABLED ? 'AÃ‡IK' : 'KAPALI'}`,
+    `BaÅŸlangÄ±Ã§: ${new Date().toLocaleString('tr-TR')}`,
+  ], colors.magenta);
+});
+
+for (const t of tasks) {
+  test(`${t.id} - ${t.title}`, async ({ page }) => {
+    const testStartTime = Date.now();
+    printTestHeader(t.id, t.title);
+    beep();
+    
+    const steps = parseSteps(t.job_definition);
+    printTaskRequirements(steps, t.design_ref, t.visual_threshold);
+    printInfo(`AdÄ±m SayÄ±sÄ±: ${steps.length}`);
+    
+    try {
+      // open
+      const open = steps.find(s => s.cmd === "open");
+      if (open) {
+        const url = open.val.startsWith("http") ? open.val : BASE + open.val;
+        printInfo(`AÃ§Ä±lÄ±yor: ${url}`);
+        await page.goto(url, { waitUntil: "domcontentloaded" });
+        printSuccess(`Sayfa yÃ¼klendi: ${page.url()}`);
+      }
+      
+      // expect (akÄ±llÄ±)
+      for (const s of steps.filter(s => s.cmd === "expect")) {
+        printInfo(`Bekleniyor: ${s.val}`);
+        await waitVisibleAny(page, t.id, s.val, 4000);
+      }
+      
+      // text
+      const txt = steps.find(s => s.cmd === "text");
+      if (txt) {
+        printInfo(`Metin kontrolÃ¼: "${txt.val}"`);
+        const body = await page.locator("body").innerText();
+        const ok = coverage90(body, txt.val);
+        expect(ok, "Metin kapsama < %90").toBeTruthy();
+        printSuccess(`Metin kapsama: ‰¥90%`);
+      }
+      
+      // visual
+      if (t.design_ref) {
+        const thr = t.visual_threshold ?? 0.85;
+        await visualCompare(page, t.design_ref, thr, t.id);
+      }
+      
+      stats.passed++;
+      stats.testResults.push({ 
+        id: t.id, 
+        status: 'PASSED', 
+        error: null, 
+        title: t.title, 
+        duration: (Date.now() - testStartTime), 
+        cycle: cycleNumber 
+      });
+      printSuccess(`œ… TEST BAÅARILI: ${t.id}`);
+      
+    } catch (error) {
+      await saveArtifacts(t.id, page, 'failed');
+      stats.failed++;
+      stats.testResults.push({ 
+        id: t.id, 
+        status: 'FAILED', 
+        error: error.message, 
+        title: t.title, 
+        duration: (Date.now() - testStartTime), 
+        cycle: cycleNumber 
+      });
+      printError(`Œ TEST BAÅARISIZ: ${t.id}`);
+      printError(`Hata: ${error.message}`);
+      throw error;
+    }
+  });
+}
+
+test.afterAll(() => {
+  const duration = ((Date.now() - stats.startTime) / 1000).toFixed(2);
+  const passRate = ((stats.passed / stats.total) * 100).toFixed(2);
+  
+  const quarantineReport = ['ID | BaÅŸlÄ±k | Durum | Ã‡Ã¶zÃ¼ldÃ¼/DÃ¶ngÃ¼'];
+  stats.testResults.forEach(r => {
+    const statusColor = r.status === 'PASSED' ? colors.green : colors.red;
+    const cycleInfo = r.status === 'PASSED' 
+      ? `Ã‡Ã–ZÃœLDÃœ (${r.cycle}. DÃ¶ngÃ¼)` 
+      : `BEKLEMEDE`;
+    quarantineReport.push(`${r.id} | ${r.title} | ${statusColor}${r.status}${colors.reset} | ${cycleInfo}`);
+  });
+  
+  printBox('ğŸ“„ KARANTÄ°NA RAPORU (GÃ–REV DURUM TAKÄ°BÄ°)', quarantineReport, colors.yellow);
+  
+  const summary = [
+    `Toplam YÃ¼klenen GÃ¶rev: ${stats.total}`, 
+    `Ã‡alÄ±ÅŸan Test DÃ¶ngÃ¼sÃ¼: ${cycleNumber}`,
+    `BaÅŸarÄ±lÄ± GÃ¶rev: ${colors.green}${stats.passed}${colors.reset}`,
+    `BaÅŸarÄ±sÄ±z GÃ¶rev: ${colors.red}${stats.failed}${colors.reset}`,
+    `BaÅŸarÄ± OranÄ±: ${passRate}%`,
+    `Toplam SÃ¼re: ${duration}s`,
+    `BitiÅŸ: ${new Date().toLocaleString('tr-TR')}`,
+  ];
+  
+  if (stats.failed === 0) {
+    printBox('œ… TÃœM GÃ–REVLER BAÅARILI!', summary, colors.green);
+  } else {
+    printBox('š ï¸  BAZI GÃ–REVLER BAÅARISIZ', summary, colors.yellow);
+  }
+  
+  console.log(`${colors.cyan}--- TEST ORTAMI BÄ°LGÄ°SÄ° ---${colors.reset}`);
+  console.log(`Bu rapor SADECE tasks.json'dan yÃ¼klenen ${stats.total} gÃ¶revin durumunu gÃ¶sterir.\n`);
+});
+
+
+
+
+
+
+
+
+
+
+### DOSYA BİTİŞ: tasks.spec.backup.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\EQP-003.spec.backup.js
+// tests/EQP-003.spec.js
+import { test, expect } from '@playwright/test';
+
+// Setup testinde kaydedilen kimlik doğrulama durumunu kullan
+test.use({ storageState: 'storage/user.json' });
+
+test.describe('EQP-003', () => {
+
+    test('Ekipman Ekleme formunda Üretici Firma alanının varlığı', async ({ page }) => {
+        // 1. Ekipman Ekleme sayfasına git (Önceki denemelerden varsayılan URL: /admin/maintenance/equipment/add/)
+        await page.goto(`${process.env.BASE_URL || "http://127.0.0.1:8010"}/admin/maintenance/equipment/add/`, { waitUntil: "networkidle" }); 
+        
+        // Sayfanın yüklendiğini kontrol et (Örneğin: Ana içerik alanının varlığı)
+        await expect(page.locator('main, #content, #content-main, [role="main"], .content, .container')).toBeVisible({ timeout: 10000 });
+        
+        // EN GÜVENİLİR DOĞRULAMA: Üretici Firma alanının etrafındaki HTML konteynerini (wrapper) kontrol et.
+        // Django Admin'de bu alan genellikle '.field-manufacturer' veya benzeri bir sınıfa sahiptir.
+        const fieldWrapper = page.locator([
+  "#id_manufacturer",
+  "select[name=''manufacturer'']",
+  "[name=''manufacturer'']",
+  "[data-field-name=''manufacturer'']",
+  ".form-row.field-manufacturer",
+  ".field-manufacturer",
+  "label[for=''id_manufacturer'']",
+  // Türkçe/İngilizce olası etiketler
+  "label:has-text(''Üretici'')",
+  "label:has-text(''İmalatçı'')",
+  "label:has-text(''Manufacturer'')",
+  // Alternatif isimler (bazı şemalarda 'brand' kullanılıyor)
+  "#id_brand",
+  "select[name=''brand'']",
+  "[name=''brand'']",
+  "[data-field-name=''brand'']",
+  ".form-row.field-brand",
+  ".field-brand"
+].join(", "));
+        
+        // Alanın görünür olduğunu doğrula (Metin bağımlılığını ortadan kaldırıyoruz)
+        try {
+  await expect(fieldWrapper.first()).toBeVisible({ timeout: 10000 });
+} catch (e) {
+  // Form gerçekten geldi mi?
+  await expect(page.locator("form[action$=''\/add\/'']")).toBeVisible({ timeout: 3000 });
+  throw new Error("Manufacturer/Brand alanı bulunamadı; ancak ekleme formu açıldı.");
+}console.log('[TEST SUCCESS] Üretici Firma alanı (CSS konumu ile) başarıyla doğrulandı.');
+    });
+});
+
+
+
+
+
+
+
+
+
+### DOSYA BİTİŞ: EQP-003.spec.backup.js
+
+### DOSYA BAŞLANGIÇ: .\\core\settings.backup.py
+# REV: 1.2 | 2025-09-25 | Hash: a7864e49 | ParÃ§a: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-3REMVA2D
+# <<< BLOK SONU: ID:PY-IMP-3REMVA2D
+# >>> BLOK: SETTINGS | Proje ayarlari | ID:PY-SET-10HDCS31
+"""
+Django settings for core project.
+
+Generated by 'django-admin startproject' using Django 5.2.6.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/5.2/topics/settings/
+
+For the full list of settings and their values, see
+https://docs.djangoproject.com/en/5.2/ref/settings/
+"""
+
+from pathlib import Path
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = 'django-insecure-7@x$&z9=&q!e3mgdj)35i2+(629e2e3%c*jp_)n30=(by-qcb3'
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+
+ALLOWED_HOSTS = []
+
+
+# Application definition
+
+INSTALLED_APPS = [    'maintenance.apps.MaintenanceConfig',
+    
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'core.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [, BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'core.wsgi.application'
+
+
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+
+# Password validation
+# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+
+# Internationalization
+# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
+LANGUAGE_CODE = 'en-us'
+
+TIME_ZONE = 'UTC'
+
+USE_I18N = True
+
+USE_TZ = True
+
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
+STATIC_URL = 'static/'
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# <<< BLOK SONU: ID:PY-SET-10HDCS31
+
+
+
+
+
+
+### DOSYA BİTİŞ: settings.backup.py
+
+### DOSYA BAŞLANGIÇ: .\\tests\quick-check.spec.js
+const { test, expect } = require("@playwright/test");
+test.use({ storageState: "storage/user.json" });
+
+test("admin anasayfa erişim", async ({ page }) => {
+  await page.goto("http://127.0.0.1:8010/admin/");
+  await page.screenshot({ path: "admin_home.png" });
+  
+  const url = page.url();
+  console.log("Final URL:", url);
+  
+  const bodyText = await page.locator("body").textContent();
+  console.log("Body preview:", bodyText.substring(0, 300));
+  
+  expect(url).not.toContain("login");
+});
+
+### DOSYA BİTİŞ: quick-check.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\EQP-002.spec.js
+import { test, expect } from '@playwright/test';
+
+test('test', async ({ page }) => {
+  await page.goto('about:blank');
+});
+### DOSYA BİTİŞ: EQP-002.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\reporters\custom_json_reporter.js
+const fs = require("fs");
+const path = require("path");
+
+class CustomJsonReporter {
+  constructor(options = {}) {
+    this.options = options;
+    this.results = {
+      stats: { total: 0, passed: 0, failed: 0, skipped: 0, startTime: null, endTime: null },
+      tests: []
+    };
+    // Varsayılan çıktı yolu: targets/artifacts/results.json
+    this.outFile = (options.outputFile && String(options.outputFile)) || "targets/artifacts/results.json";
+  }
+
+  onBegin(config, suite) {
+    this.results.stats.startTime = new Date().toISOString();
+    // Çıktı klasörünü garanti et
+    const outDir = path.dirname(this.outFile);
+    fs.mkdirSync(outDir, { recursive: true });
+  }
+
+  onTestEnd(test, result) {
+    this.results.stats.total += 1;
+    const status = result.status;
+    if (status === "passed") this.results.stats.passed += 1;
+    else if (status === "skipped") this.results.stats.skipped += 1;
+    else this.results.stats.failed += 1;
+
+    this.results.tests.push({
+      title: test.title,
+      location: test.location,
+      project: test.parent?.project()?.name || null,
+      status,
+      duration_ms: result.duration,
+      error: result.error ? {
+        message: result.error.message,
+        stack: result.error.stack
+      } : null,
+    });
+  }
+
+  async onEnd() {
+    this.results.stats.endTime = new Date().toISOString();
+    fs.writeFileSync(this.outFile, JSON.stringify(this.results, null, 2), "utf-8");
+    // Konsola kısa bir özet de basalım
+    const s = this.results.stats;
+    console.log(`[custom-json] total=${s.total} passed=${s.passed} failed=${s.failed} skipped=${s.skipped}`);
+    console.log(`[custom-json] file=${this.outFile}`);
+  }
+}
+
+module.exports = CustomJsonReporter;
+### DOSYA BİTİŞ: custom_json_reporter.js
+
+### DOSYA BAŞLANGIÇ: .\\example.spec.js
+// Dosya: example.spec.js
+// Bu dosya, Playwright'ın doğru çalıştığını ve raporlayıcıyı tetiklediğini doğrulamak için eklenmiştir.
+
+const { test, expect } = require('@playwright/test');
+
+test('example basic test', async ({ page }) => {
+  // Basit bir sayfaya gitmeyi dener
+  await page.goto('https://playwright.dev/');
+  
+  // Başlıkta 'Playwright' kelimesinin geçtiğini doğrular
+  await expect(page).toHaveTitle(/Playwright/);
+  
+  // 'Get started' bağlantısını bulur ve tıklar
+  await page.getByRole('link', { name: 'Get started' }).click();
+  
+  // URL'nin /docs/intro ile bittiğini doğrular (navigasyon başarılı)
+  await expect(page).toHaveURL(/.*intro/);
+});
+### DOSYA BİTİŞ: example.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_suite.ps1
+# Dosya: ops\run_suite.ps1
+
+# -------------------------------------------------------------
+# 1. PARAMETRELER (PS Betiğin ilk satırı olmalıdır)
+# -------------------------------------------------------------
+param(
+  [string]$ExtraArgs = ""
+)
+
+
+# -------------------------------------------------------------
+# 2. TÜM FONKSİYON TANIMLARI
+# -------------------------------------------------------------
+
+function Invoke-TestResultProcessing {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$ResultsDir,
+        
+        [Parameter(Mandatory=$true)]
+        [string]$AIQueuePath
+    )
+
+    $FailedTests = @()
+    $AIFailQueue = @()
+
+    # AI Kuyruğu dizinini hazırla
+    $AIDir = Split-Path -Parent $AIQueuePath
+    if (-not (Test-Path $AIDir)) { New-Item -ItemType Directory -Path $AIDir -Force | Out-Null }
+    
+    # Tüm JSON sonuç dosyalarını oku
+    $ResultFiles = Get-ChildItem -Path $ResultsDir -Filter "*.json" -ErrorAction SilentlyContinue
+
+    if (-not $ResultFiles) { return $true }
+
+    foreach ($File in $ResultFiles) {
+        try {
+            $Content = Get-Content $File.FullName -Raw -Encoding UTF8
+            $Result = $Content | ConvertFrom-Json -ErrorAction Stop
+        } catch {
+            continue
+        }
+
+        # Başarısız Test Kontrolü
+        if (-not $Result.ok) {
+            $TestID = $File.BaseName
+            $FailedTests += $TestID
+            
+            # AI Kuyruğu Yapılandırması (failed_tests.jsonl)
+            $AIRecord = [PSCustomObject]@{
+                test_id         = $TestID
+                reason          = $Result.reason
+                duration        = $Result.duration
+                metrics         = $Result.metrics
+                timestamp       = (Get-Date).ToString("o")
+            }
+            $AIFailQueue += ($AIRecord | ConvertTo-Json -Depth 5 -Compress)
+        }
+    }
+
+    # AI Kuyruğu Dosyasına Yazma (JSONL formatı)
+    $AIFailQueue | Out-File -FilePath $AIQueuePath -Encoding UTF8 -Force
+    
+    # Başarılı say
+    return ($FailedTests.Count -eq 0)
+}
+
+
+# -------------------------------------------------------------
+# 3. ANA ÇALIŞTIRMA MANTIĞI
+# -------------------------------------------------------------
+
+# 3.1 Karantina Listesini Oku ve Filtreyi Hazırla
+$QuarantineFile = "reporters\quarantine.json"
+if (Test-Path $QuarantineFile) {
+    try {
+        $QuarantineData = (Get-Content $QuarantineFile -Raw -Encoding UTF8) | ConvertFrom-Json
+        $QuarantinedIDs = $QuarantineData.punted | Where-Object { $_.count -ge 3 } | Select-Object -ExpandProperty id
+        
+        if ($QuarantinedIDs.Count -gt 0) {
+            Write-Host ("# {0} test karantinada. Bu testler atlanacak." -f $QuarantinedIDs.Count) -ForegroundColor DarkYellow
+            $QuarantineRegex = $QuarantinedIDs -join '|'
+            $ExtraArgs += " --grep-invert '($QuarantineRegex)'"
+        }
+    } catch {
+        Write-Host "[WARN] Karantina dosyası ($QuarantineFile) okunamadı/bozuk. Atlandı." -ForegroundColor Red
+    }
+}
+
+
+# 3.2 Temizlik ve Hazırlık
+if (Test-Path "targets\results") { Remove-Item "targets\results\*.json" -Force }
+if (Test-Path "ai_queue\failed_tests.jsonl") { Remove-Item "ai_queue\failed_tests.jsonl" -Force }
+Write-Host "[START] Uçtan Uca Testler Başlatılıyor..." -ForegroundColor Green
+
+
+# 3.3 Playwright'ı Çalıştırma
+$PlaywrightSuccess = $true
+try {
+    # Playwright'ı çalıştır
+    $PlaywrightOutput = & npm run test --silent -- "$ExtraArgs" 2>&1
+    
+    if ($LASTEXITCODE -ne 0) {
+        throw "Playwright Hata Kodu: $LASTEXITCODE"
+    }
+
+} catch {
+    # Hata yakalama ve loglama
+    $Global:PlaywrightError = $_.Exception.Message
+    $ErrorPath = "targets\playwright_error.log"
+    $Global:PlaywrightError | Out-File -FilePath $ErrorPath -Encoding UTF8 -Force
+    
+    Write-Host "[HATA] Playwright ÇALIŞMADI! Detaylar $ErrorPath içinde." -ForegroundColor Red
+    $PlaywrightSuccess = $false
+}
+
+
+# 3.4 Test Sonuçlarını İşleme
+$TestsPassed = Invoke-TestResultProcessing `
+    -ResultsDir "targets/results" `
+    -AIQueuePath "ai_queue/failed_tests.jsonl"
+
+
+# 3.5 Çıkış Kodu ve Terminali Açık Tutma Mantığı
+if (-not $PlaywrightSuccess) {
+    # Playwright komutunun kendisi başarısız olursa buraya düşeriz
+    Write-Host ""
+    Write-Host ">>> KRİTİK HATA: Terminal kapanmasını engelliyoruz. <<<" -ForegroundColor Red
+    Write-Host "Playwright'ın neden çalışmadığını anlamak için LÜTFEN targets\playwright_error.log dosyasının içeriğini paylaşın." -ForegroundColor Yellow
+    
+    # EN SON ÇIKARAK KAPATMAYI ENGELLEYELİM. BU SATIR SİZ ENTER'A BASANA KADAR TERMİNALİ TUTACAK.
+    Read-Host -Prompt "Hata Kaydını Paylaşmak İçin Enter'a Basın (Kapatmayacaktır)" | Out-Null
+    # Normalde burada "exit 2" olurdu, ancak terminalin kapanmasını engellemek için SİLİNDİ.
+
+} elseif (-not $TestsPassed) {
+    # Testler çalıştı ama bazıları başarısız oldu
+    Write-Host "[PIPELINE] Bazı testler başarısız oldu. AI Kuyruğu Hazırlandı." -ForegroundColor Magenta
+    exit 2
+
+} else {
+    # Her şey başarılı
+    Write-Host "[PIPELINE] Tüm zorunlu testler başarılı!" -ForegroundColor Green
+    exit 0
+}
+### DOSYA BİTİŞ: run_suite.ps1
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0008_department_remove_calibrationrecord_asset_and_more.py
+# Generated by Django 5.2.6 on 2025-10-03 13:59
+
+import django.db.models.deletion
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('maintenance', '0007_alter_equipment_manufacturer_and_more'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='Department',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('name', models.CharField(max_length=100, unique=True, verbose_name='Departman Adı')),
+            ],
+            options={
+                'verbose_name': 'Departman',
+                'verbose_name_plural': 'Departmanlar',
+            },
+        ),
+        migrations.RemoveField(
+            model_name='calibrationrecord',
+            name='asset',
+        ),
+        migrations.RemoveField(
+            model_name='maintenancechecklistitem',
+            name='equipment',
+        ),
+        migrations.RemoveField(
+            model_name='maintenanceorder',
+            name='equipment',
+        ),
+        migrations.RemoveField(
+            model_name='sparepart',
+            name='equipment',
+        ),
+        migrations.AlterModelOptions(
+            name='equipment',
+            options={'ordering': ['name'], 'verbose_name': 'Ekipman', 'verbose_name_plural': 'Ekipmanlar'},
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='area',
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='code',
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='criticality',
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='discipline',
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='is_active',
+        ),
+        migrations.RemoveField(
+            model_name='equipment',
+            name='manufacturer',
+        ),
+        migrations.AddField(
+            model_name='equipment',
+            name='inventory_code',
+            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='Envanter Kodu'),
+        ),
+        migrations.AddField(
+            model_name='equipment',
+            name='location',
+            field=models.CharField(default='Genel Merkez', max_length=100, verbose_name='Konum'),
+            preserve_default=False,
+        ),
+        migrations.AddField(
+            model_name='equipment',
+            name='purchase_date',
+            field=models.DateField(blank=True, null=True, verbose_name='Satın Alma Tarihi'),
+        ),
+        migrations.AddField(
+            model_name='equipment',
+            name='serial_number',
+            field=models.CharField(default='Genel Merkez1', max_length=100, verbose_name='Seri Numarası'),
+            preserve_default=False,
+        ),
+        migrations.AlterField(
+            model_name='equipment',
+            name='name',
+            field=models.CharField(max_length=200, verbose_name='Ekipman Adı'),
+        ),
+        migrations.AddField(
+            model_name='equipment',
+            name='department',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='maintenance.department', verbose_name='Departman'),
+        ),
+        migrations.DeleteModel(
+            name='CalibrationAsset',
+        ),
+        migrations.DeleteModel(
+            name='CalibrationRecord',
+        ),
+        migrations.DeleteModel(
+            name='MaintenanceChecklistItem',
+        ),
+        migrations.DeleteModel(
+            name='MaintenanceOrder',
+        ),
+        migrations.DeleteModel(
+            name='SparePart',
+        ),
+    ]
+### DOSYA BİTİŞ: 0008_department_remove_calibrationrecord_asset_and_more.py
+

@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="en-us" dir="ltr" data-theme="auto"><head>
-<title>Add equipment | Django site admin</title>
+<title>Log in | Django site admin</title>
 <link rel="stylesheet" href="/static/admin/css/base.css">
 
   <link rel="stylesheet" href="/static/admin/css/dark_mode.css">
@@ -9,18 +9,10 @@
   <link rel="stylesheet" href="/static/admin/css/nav_sidebar.css">
   <script src="/static/admin/js/nav_sidebar.js" defer=""></script>
 
-<link rel="stylesheet" href="/static/admin/css/forms.css">
+<link rel="stylesheet" href="/static/admin/css/login.css">
 
 
-<script src="/admin/jsi18n/"></script>
-<script src="/static/admin/js/vendor/jquery/jquery.js"></script>
-<script src="/static/admin/js/jquery.init.js"></script>
-<script src="/static/admin/js/core.js"></script>
-<script src="/static/admin/js/admin/RelatedObjectLookups.js"></script>
-<script src="/static/admin/js/actions.js"></script>
-<script src="/static/admin/js/urlify.js"></script>
-<script src="/static/admin/js/prepopulate.js"></script>
-<script src="/static/admin/js/vendor/xregexp/xregexp.js"></script>
+
 
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,7 +22,7 @@
 <meta name="robots" content="NONE,NOARCHIVE">
 </head>
 
-<body class=" app-maintenance model-equipment change-form" data-admin-utc-offset="0">
+<body class=" login" data-admin-utc-offset="0">
 <a href="#content-start" class="skip-to-content-link">Skip to main content</a>
 <!-- Container -->
 <div id="container">
@@ -43,31 +35,7 @@
         
 <div id="site-name"><a href="/admin/">Django administration</a></div>
 
-
-        </div>
-        
-        
-        <div id="user-tools">
-            
-                Welcome,
-                <strong>admin</strong>.
-            
-            
-                
-                    <a href="/">View site</a> /
-                
-                
-                    
-                    
-                
-                
-                <a href="/admin/password_change/">Change password</a> /
-                
-                <form id="logout-form" method="post" action="/admin/logout/">
-                    <input type="hidden" name="csrfmiddlewaretoken" value="rzU7jfhnR9voAheYHeMx3I5IdnfNHNClBe8USZip64vhqyNQMWVwvyO0cuuDoFKg" style="">
-                    <button type="submit">Log out</button>
-                </form>
-                
+  
 
 
 
@@ -86,129 +54,19 @@
   </svg>
 </button>
 
-            
+
+
         </div>
-        
         
         
       </header>
     
     <!-- END Header -->
     
-      <nav aria-label="Breadcrumbs">
-        
-<div class="breadcrumbs">
-<a href="/admin/">Home</a>
-› <a href="/admin/maintenance/">Bakım Modülü</a>
-› <a href="/admin/maintenance/equipment/">Equipments</a>
-› Add equipment
-</div>
-
-      </nav>
-    
     
 
-    <div class="main shifted" id="main">
+    <div class="main" id="main">
       
-        
-          
-
-
-
-<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="Toggle navigation"></button>
-<nav class="sticky" id="nav-sidebar" aria-label="Sidebar" aria-expanded="true">
-  <input type="search" id="nav-filter" placeholder="Start typing to filter…" aria-label="Filter navigation items" style="">
-  
-
-
-
-
-
-  
-    <div class="app-auth module">
-      <table>
-        <caption>
-          <a href="/admin/auth/" class="section" title="Models in the Authentication and Authorization application">Authentication and Authorization</a>
-        </caption>
-        <thead class="visually-hidden">
-          <tr>
-            <th scope="col">Model name</th>
-            <th scope="col">Add link</th>
-            <th scope="col">Change or view list link</th>
-          </tr>
-        </thead>
-        
-          
-            <tbody><tr class="model-group">
-              <th scope="row" id="auth-group">
-                
-                  <a href="/admin/auth/group/">Groups</a>
-                
-              </th>
-
-              
-                <td><a href="/admin/auth/group/add/" class="addlink" aria-describedby="auth-group">Add</a></td>
-              
-
-              
-            </tr>
-          
-        
-          
-            <tr class="model-user">
-              <th scope="row" id="auth-user">
-                
-                  <a href="/admin/auth/user/">Users</a>
-                
-              </th>
-
-              
-                <td><a href="/admin/auth/user/add/" class="addlink" aria-describedby="auth-user">Add</a></td>
-              
-
-              
-            </tr>
-          
-        
-      </tbody></table>
-    </div>
-  
-    <div class="app-maintenance module current-app">
-      <table>
-        <caption>
-          <a href="/admin/maintenance/" class="section" title="Models in the Bakım Modülü application">Bakım Modülü</a>
-        </caption>
-        <thead class="visually-hidden">
-          <tr>
-            <th scope="col">Model name</th>
-            <th scope="col">Add link</th>
-            <th scope="col">Change or view list link</th>
-          </tr>
-        </thead>
-        
-          
-            <tbody><tr class="model-equipment current-model">
-              <th scope="row" id="maintenance-equipment">
-                
-                  <a href="/admin/maintenance/equipment/" aria-current="page">Equipments</a>
-                
-              </th>
-
-              
-                <td><a href="/admin/maintenance/equipment/add/" class="addlink" aria-describedby="maintenance-equipment">Add</a></td>
-              
-
-              
-            </tr>
-          
-        
-      </tbody></table>
-    </div>
-  
-
-
-</nav>
-
         
       
       <main id="content-start" class="content" tabindex="-1">
@@ -218,112 +76,35 @@
         <!-- Content -->
         <div id="content" class="colM">
           
-          <h1>Add equipment</h1>
           
-          <div id="content-main">
-
-
-
-<form method="post" id="equipment_form" novalidate=""><input type="hidden" name="csrfmiddlewaretoken" value="rzU7jfhnR9voAheYHeMx3I5IdnfNHNClBe8USZip64vhqyNQMWVwvyO0cuuDoFKg" style="">
-<div>
+          
+          
 
 
 
 
+<div id="content-main">
 
 
 
+<form action="/admin/login/?next=/admin/maintenance/equipment/add/" method="post" id="login-form"><input type="hidden" name="csrfmiddlewaretoken" value="x6KRqLTqyDl5H2Qdy6LvnAvKrVyVFFnl4ocmNZ282Po3BIPZHeKD8zyM4VHF4s0U" style="">
+  <div class="form-row">
+    
+    <label for="id_username" class="required">Username:</label> <input type="text" name="username" autofocus="" autocapitalize="none" autocomplete="username" maxlength="150" required="" id="id_username" style="">
+  </div>
+  <div class="form-row">
+    
+    <label for="id_password" class="required">Password:</label> <input type="password" name="password" autocomplete="current-password" required="" id="id_password" style="">
+    <input type="hidden" name="next" value="/admin/maintenance/equipment/add/" style="">
+  </div>
   
-
-
-<fieldset class="module aligned ">
-    
-    
-    
-        <div class="form-row field-name">
-            
-            
-                <div>
-                    
-                        <div class="flex-container">
-                            
-                                <label class="required" for="id_name">Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±:</label>
-                                
-                                    <input type="text" name="name" class="vTextField" maxlength="200" required="" id="id_name" style="">
-                                
-                            
-                        </div>
-                    
-                </div>
-            
-            
-        </div>
-    
-        <div class="form-row field-serial_number">
-            
-            
-                <div>
-                    
-                        <div class="flex-container">
-                            
-                                <label for="id_serial_number">Serial number:</label>
-                                
-                                    <input type="text" name="serial_number" class="vTextField" maxlength="120" id="id_serial_number" style="">
-                                
-                            
-                        </div>
-                    
-                </div>
-            
-            
-        </div>
-    
-    
-</fieldset>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div class="submit-row">
-
-<input type="submit" value="Save" class="default" name="_save" style="">
-
-<input type="submit" value="Save and add another" name="_addanother" style="">
-<input type="submit" value="Save and continue editing" name="_continue" style="">
-
-
+  
+  <div class="submit-row">
+    <input type="submit" value="Log in" style="">
+  </div>
+</form>
 
 </div>
-
-
-
-    <script id="django-admin-form-add-constants" src="/static/admin/js/change_form.js" data-model-name="equipment" async="">
-    </script>
-
-
-
-
-
-
-
-<script id="django-admin-prepopulated-fields-constants" src="/static/admin/js/prepopulate_init.js" data-prepopulated-fields="[]">
-</script>
-
-
-</div>
-</form></div>
 
           
           <br class="clear">
