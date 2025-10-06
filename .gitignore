@@ -23,3 +23,5 @@ test-results/
 storage/user.json
 test-results/
 tests/.auth/
+
+tests/*.bak_*
