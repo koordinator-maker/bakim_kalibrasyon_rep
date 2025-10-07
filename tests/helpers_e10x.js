@@ -2,7 +2,7 @@ const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, ""
 const USER = process.env.ADMIN_USER || "admin";
 const PASS = process.env.ADMIN_PASS || "admin";
 
-// Kapalı sayfa ise aynı context'te taze sayfa aç
+// KapalÄ± sayfa ise aynÄ± context'te taze sayfa aÃ§
 export async function ensureAlivePage(page) {
   try { if (page && !page.isClosed()) return page; } catch {}
   const ctx = page.context();
@@ -14,7 +14,7 @@ export async function ensureAlivePage(page) {
 export async function loginIfNeeded(page) {
   page = await ensureAlivePage(page);
 
-  // Önce /admin/ — zaten login isek burada kalırız
+  // Ã–nce /admin/ â€” zaten login isek burada kalÄ±rÄ±z
   await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
   if (!/\/admin\/login\//i.test(page.url())) return page;
 
@@ -27,7 +27,7 @@ export async function loginIfNeeded(page) {
     page.locator('input[type="submit"], button[type="submit"]').first().click()
   ]);
 
-  // Başarılı mı?
+  // BaÅŸarÄ±lÄ± mÄ±?
   if (/\/admin\/login\//i.test(page.url())) {
     const err = await page.locator(".errornote, .errorlist, .messages .error").first().innerText().catch(()=> "");
     throw new Error(`LOGIN_FAILED: url=${page.url()} msg=${err}`);
@@ -59,3 +59,25 @@ export async function gotoListExport(page) {
 }
 
 export async function ensureLogin(page){ return loginIfNeeded(page); }
+
+// Basit ekipman oluşturucu: zorunlu alanı doldurup kaydeder
+export async function createTempEquipment(page, token) {
+  page = await loginIfNeeded(page);
+  const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+
+  // Add formuna git
+  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: "domcontentloaded" });
+
+  // Zorunlu alan: name
+  const ts = token || `AUTO-${Date.now()}`;
+  await page.fill("#id_name", `AUTO-name-${ts}`);
+
+  // Kaydet
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first().click()
+  ]);
+
+  // Listeye döndüysek OK
+  return { page, token: ts };
+}
