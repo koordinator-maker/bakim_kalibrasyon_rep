@@ -1,58 +1,37 @@
-﻿name: E2E UI
-
+name: e2e
 on:
   push:
-    branches: [ "ci/e2e-i18n-setup-fixes", "main" ]
   pull_request:
-    branches: [ "main" ]
 
 jobs:
-  e2e:
+  playwright:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      BASE_URL: http://127.0.0.1:8010
-      ADMIN_USER: admin
-      ADMIN_PASS: admin123!
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install deps
-        shell: pwsh
-        run: |
-          npm ci
-          npx playwright install --with-deps
+        run: npm ci
 
-      - name: Run tests (line+html+blob)
-        run: npx playwright test --project=chromium --reporter=line,html,blob
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
-      - name: Upload Playwright HTML report
+      - name: Run E2E (headless)
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          ADMIN_USER: ${{ secrets.ADMIN_USER }}
+          ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
+        run: npx playwright test --project=chromium --reporter=html
+
+      - name: Upload HTML report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: playwright-report
-          if-no-files-found: ignore
-
-      - name: Merge blob to JSON
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force _otokodlama/out | Out-Null
-          npx playwright merge-reports --reporter=json blob-report > _otokodlama/out/pw.json
-
-      - name: Upload merged pw.json
-        uses: actions/upload-artifact@v4
-        with:
-          name: pw-json
-          path: _otokodlama/out/pw.json
-
-      - name: Post PR summary (console + md file)
-        if: ${{ github.event_name == 'pull_request' }}
-        shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: tools/post_pr_summary.ps1
+          retention-days: 7
