@@ -1,37 +1,35 @@
-﻿# tools/post_pr_summary.ps1
-# Rev: r6 — missing stats guard
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+﻿Set-StrictMode -Version Latest
+$ErrorActionPreference='Stop'
+[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
 
-$report = "test-results/.last-run.json"
-if (-not (Test-Path $report)) {
-  Write-Host "No summary at $report"
-  exit 0
+# repo kökü ve rapor
+$repo = (& git rev-parse --show-toplevel) 2>$null; if(-not $repo){ $repo=(Get-Location).Path }
+$pw   = Join-Path $repo '_otokodlama\out\pw.json'
+if(!(Test-Path $pw)){ Write-Host "No pw.json at $pw"; exit 0 }
+
+# json’u yükle
+$json = Get-Content $pw -Raw -Encoding UTF8 | ConvertFrom-Json
+
+# istatistik topla (blob-json şeması)
+$total=0;$passed=0;$failed=0;$skipped=0;$flaky=0;$durationMs=0
+foreach($proj in $json.suites){
+  foreach($suite in $proj.suites){
+    foreach($spec in $suite.specs){
+      $total++
+      $ok = $false
+      if($spec | Get-Member -Name ok -MemberType NoteProperty){ $ok = [bool]$spec.ok }
+      $res = @()
+      if($spec.tests -and $spec.tests[0] -and $spec.tests[0].results){ $res = $spec.tests[0].results }
+      $durationMs += [double](($res | Measure-Object duration -Sum).Sum)
+      if($ok){ $passed++ }
+      elseif($res.outcome -contains 'skipped'){ $skipped++ }
+      else { $failed++ }
+    }
+  }
 }
 
-$json = Get-Content $report -Raw | ConvertFrom-Json
-
-# ---- Guard: stats yoksa nazikçe çık ----
-if (-not ($json.PSObject.Properties.Name -contains 'stats')) {
-  Write-Host "Summary has no 'stats' (run probably failed before reporting)."
-  [IO.File]::WriteAllText("_otokodlama/out/last_pr_summary.md",
-    "## 🔴 E2E Sonuç Özeti`n- Rapor oluşamadı (global setup veya erken hata).`n> HTML rapor yoksa test koştuktan sonra tekrar deneyin.",
-    [Text.UTF8Encoding]::new($false))
-  exit 0
-}
-
-$expected   = [int]$json.stats.expected
-$skipped    = [int]$json.stats.skipped
-$unexpected = [int]$json.stats.unexpected
-$flaky      = [int]$json.stats.flaky
-$durationMs = [double]$json.stats.duration
-$total      = $expected + $skipped + $unexpected + $flaky
-$passed     = $expected
-$failed     = $unexpected
-
-$mins  = [Math]::Round(($durationMs/60000), 2)
-$badge = if ($failed -gt 0) { "🔴" } else { "🟢" }
+$mins = if($durationMs){ [Math]::Round($durationMs/60000,2) } else { 0 }
+$badge = if($failed -gt 0){ "🔴" } else { "🟢" }
 
 $body = @"
 ## $badge E2E Sonuç Özeti
@@ -41,18 +39,7 @@ $body = @"
 > HTML rapor: Actions → Artifacts → **playwright-report**
 "@
 
-$inCI = [bool]$env:GITHUB_ACTIONS
-$prNumber = $env:PR_NUMBER
-
-$ghExists = $false
-try { $null = Get-Command gh -ErrorAction Stop; $ghExists = $true } catch {}
-
-if ($inCI -and $prNumber -and $ghExists) {
-  $repo = $env:GITHUB_REPOSITORY
-  $null = & gh api "repos/$repo/issues/$prNumber/comments" -f body="$body"
-  Write-Host "Posted PR comment to #$prNumber"
-} else {
-  Write-Host $body
-  [IO.File]::WriteAllText("_otokodlama/out/last_pr_summary.md", $body, [Text.UTF8Encoding]::new($false))
-  Write-Host "Saved to _otokodlama/out/last_pr_summary.md"
-}
+Write-Host $body
+$outDir = Join-Path $repo '_otokodlama\out'
+New-Item -ItemType Directory -Force $outDir | Out-Null
+[IO.File]::WriteAllText((Join-Path $outDir 'last_pr_summary.md'), $body, [Text.UTF8Encoding]::new($false))
