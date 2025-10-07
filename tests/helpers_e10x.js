@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 
 const BASE = (process.env.BASE_URL || 'http://127.0.0.1:8010').replace(/\/$/, '');
 const USER = process.env.ADMIN_USER || 'admin';
@@ -6,7 +6,17 @@ const PASS = process.env.ADMIN_PASS || 'admin';
 
 test.setTimeout(60000);
 
-async function loginIfNeeded(page) {
+// Kapalı sayfa ise aynı context’te taze sayfa aç
+async function ensureAlivePage(page) {
+  try { if (page && !page.isClosed()) return page; } catch {}
+  const ctx = page.context();
+  const fresh = await ctx.newPage();
+  await fresh.waitForLoadState('domcontentloaded');
+  return fresh;
+}
+
+export async function loginIfNeeded(page) {
+  page = await ensureAlivePage(page);
   await page.goto(`${BASE}/admin/`, { waitUntil: 'domcontentloaded' });
   if (!/\/admin\/login\//i.test(page.url())) return page;
 
@@ -20,7 +30,8 @@ async function loginIfNeeded(page) {
   return page;
 }
 
-async function ensureOnAdd(page) {
+export async function ensureOnAdd(page) {
+  page = await ensureAlivePage(page);
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
   if (/\/admin\/login\//i.test(page.url())) {
     page = await loginIfNeeded(page);
@@ -29,7 +40,8 @@ async function ensureOnAdd(page) {
   return page;
 }
 
-async function gotoList(page) {
+export async function gotoList(page) {
+  page = await ensureAlivePage(page);
   await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
   if (/\/admin\/login\//i.test(page.url())) {
     page = await loginIfNeeded(page);
@@ -45,13 +57,11 @@ function formWithSubmit(page) {
   }).first();
 }
 
+// Save -> yeni sekme açılabilir; yakala ve aktif sayfayı döndür
 async function clickSaveAndMaybeSwitch(page, form) {
-  // capture possible new page
   const ctx = page.context();
   const newPagePromise = ctx.waitForEvent('page', { timeout: 3000 }).catch(() => null);
-
   await form.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first().click();
-
   const maybeNew = await newPagePromise;
   if (maybeNew) {
     page = maybeNew;
@@ -60,10 +70,11 @@ async function clickSaveAndMaybeSwitch(page, form) {
   return page;
 }
 
+// Save sonrası stabilize: mesaj/URL/list görünür olana dek kısa döngü
 async function stabilizeAfterSave(page) {
   const deadline = Date.now() + 12000;
   while (Date.now() < deadline) {
-    if (page.isClosed()) break;
+    if (page.isClosed()) { page = await ensureAlivePage(page); }
     const url = page.url();
     if (/\/admin\/maintenance\/equipment\/(\d+\/change\/)?$/i.test(url)) break;
     if (await page.locator('ul.messagelist li.success, .success, .alert-success').first().isVisible().catch(()=>false)) break;
@@ -112,7 +123,6 @@ export async function createTempEquipment(page, token) {
   page = await clickSaveAndMaybeSwitch(page, form);
   page = await stabilizeAfterSave(page);
 
-  // If we saved and got redirected to changelist, open the created row via search
   if (!page.isClosed() && /\/admin\/maintenance\/equipment\/?$/i.test(page.url())) {
     await page.fill('input[name="q"]', ts);
     await Promise.all([
@@ -126,6 +136,3 @@ export async function createTempEquipment(page, token) {
   }
   return { token: ts, primaryText, page };
 }
-
-export async function ensureLogin(page) { return loginIfNeeded(page); }
-export async function gotoListExport(page){ return gotoList(page); }
