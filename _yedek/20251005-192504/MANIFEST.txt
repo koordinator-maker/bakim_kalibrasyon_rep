@@ -1,0 +1,14 @@
+Backup Timestamp : 20251005-192504
+Repo Root        : C:/dev/bakim_kalibrasyon
+Total Files      : 6
+Git Branch       : feature/e2e-altyapi-kurulumu
+Git Commit       : 3c1893a
+------------------------------------------------------------
+SHA256                                 SIZE(bytes)  PATH
+------------------------------------------------------------
+9C3118D6043C663D83C1BA3B6EFC907D8A5148A9C340AF8CE5A3DD8C80930351           911  manage.py
+5E1A0CC8CC7D2643470438308200A66DBA1B4BA30595BDA39DF1BD8ACBA1E6A2           206  core\urls.py
+4D04ECEF104EBB6158FBD89814AC3DF966C074B8979C24F79B2068457C29A721           778  .pre-commit-config.yaml
+1563B065A83AFC0F81CF944BA95C4E06EF1750DC67211C09570723F1D3E7BC1C           228  maintenance\admin.py
+A0D0C904FFC822C0FB92F4D12336C990AB6105AD31E6FA846C7EEA74B5C0A70E          1718  maintenance\models.py
+F2CC9098D517895D493116585AB53DFE7A23B1E7E9FEB014BCC3647FBCCD2F51        573440  db.sqlite3

@@ -1,0 +1,18 @@
+﻿[
+    {
+        "id":  "E101",
+        "title":  "Equipment Listesi SayfasÄ±nÄ± GÃ¶rÃ¼ntÃ¼leme",
+        "description":  "KullanÄ±cÄ±nÄ±n equipment listesini gÃ¶rebildiÄŸini doÄŸrular",
+        "job_definition":  "open: /admin/maintenance/equipment/; expect: body; text: Equipment",
+        "design_ref":  "N/A",
+        "visual_threshold":  0.85
+    },
+    {
+        "id":  "E102",
+        "title":  "Equipment Ekleme Formuna EriÅŸim",
+        "description":  "Equipment ekleme formundaki gerekli alanlarÄ±n gÃ¶rÃ¼nÃ¼r olduÄŸunu doÄŸrular.",
+        "job_definition":  "OPEN: /admin/maintenance/equipment/add/; EXPECT: button[name=\u0027_save\u0027], input[name=\u0027_save\u0027], button[type=\u0027submit\u0027], input[type=\u0027submit\u0027], input[type=\u0027submit\u0027][value*=\u0027Kaydet\u0027], button:has-text(\u0027Kaydet\u0027), div.submit-row, form[action*=\u0027/add/\u0027], form[method=\u0027post\u0027], #content-main form, #content form, main form, form; TEXT: Kaydet; VISUAL: N/A",
+        "design_ref":  "N/A",
+        "visual_threshold":  0.85
+    }
+]

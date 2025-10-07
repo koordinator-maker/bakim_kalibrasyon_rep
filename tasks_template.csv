@@ -1,0 +1,3 @@
+﻿id,type,title,design_ref,visual_threshold,job_definition
+TEST-001,ui,Maintenance Anasayfa,N/A,0.90,"open:/maintenance/;expect:body"
+TEST-002,ui,Admin Giriş Basit Kontrol,N/A,0.90,"open:/admin/;expect:h1"
