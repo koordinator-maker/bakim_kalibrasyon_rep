@@ -25,3 +25,8 @@ test-results/
 tests/.auth/
 
 tests/*.bak_*
+
+playwright-report/
+blob-report/
+_otokodlama/
+
