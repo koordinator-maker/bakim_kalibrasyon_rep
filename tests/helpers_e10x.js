@@ -1,81 +1,61 @@
-﻿const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
-const USER = process.env.ADMIN_USER || 'admin';
-const PASS = process.env.ADMIN_PASS || 'admin';
+const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+const USER = process.env.ADMIN_USER || "admin";
+const PASS = process.env.ADMIN_PASS || "admin";
 
+// Kapalı sayfa ise aynı context'te taze sayfa aç
 export async function ensureAlivePage(page) {
-  if (!page || page.isClosed()) {
-    throw new Error('Page is closed or invalid');
-  }
-  return page;
+  try { if (page && !page.isClosed()) return page; } catch {}
+  const ctx = page.context();
+  const fresh = await ctx.newPage();
+  await fresh.waitForLoadState("domcontentloaded");
+  return fresh;
 }
 
 export async function loginIfNeeded(page) {
   page = await ensureAlivePage(page);
-  
-  // Admin login sayfasına git
-  await page.goto(`${BASE}/admin/login/`, { 
-    waitUntil: 'domcontentloaded',
-    timeout: 10000
-  });
-  
-  // Zaten login ise atla
-  const url = page.url();
-  if (!/\/login\//i.test(url)) {
-    console.log('✅ Zaten login olunmuş');
-    return page;
+
+  // Önce /admin/ — zaten login isek burada kalırız
+  await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
+  if (!/\/admin\/login\//i.test(page.url())) return page;
+
+  // Login formu
+  await page.goto(`${BASE}/admin/login/`, { waitUntil: "domcontentloaded" });
+  await page.fill("#id_username", USER);
+  await page.fill("#id_password", PASS);
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.locator('input[type="submit"], button[type="submit"]').first().click()
+  ]);
+
+  // Başarılı mı?
+  if (/\/admin\/login\//i.test(page.url())) {
+    const err = await page.locator(".errornote, .errorlist, .messages .error").first().innerText().catch(()=> "");
+    throw new Error(`LOGIN_FAILED: url=${page.url()} msg=${err}`);
   }
-  
-  // Login formunu doldur
-  console.log('🔐 Login yapılıyor...');
-  
-  try {
-    await page.waitForSelector('#id_username', { timeout: 5000 });
-    await page.fill('#id_username', USER);
-    await page.fill('#id_password', PASS);
-    
-    // Submit butonuna tıkla
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }),
-      page.locator('input[type="submit"]').first().click()
-    ]);
-    
-    // Login başarılı mı kontrol et
-    const finalUrl = page.url();
-    if (/\/login\//i.test(finalUrl)) {
-      throw new Error('Login başarısız - hala login sayfasında');
-    }
-    
-    console.log('✅ Login başarılı:', finalUrl);
-    return page;
-    
-  } catch (error) {
-    console.error('❌ Login hatası:', error.message);
-    await page.screenshot({ path: 'debug_login_error.png', fullPage: true });
-    throw error;
-  }
+  return page;
 }
 
 export async function gotoListExport(page) {
   page = await ensureAlivePage(page);
-  
-  await page.goto(`${BASE}/admin/maintenance/equipment/`, { 
-    waitUntil: 'domcontentloaded',
-    timeout: 10000
-  });
-  
-  // Sayfa yüklenene kadar bekle
-  await page.waitForLoadState('networkidle');
-  
-  // Login redirect kontrolü
-  const url = page.url();
-  if (/\/login\//i.test(url)) {
-    console.log('⚠️  Equipment sayfası login gerektiriyor, yeniden login...');
-    await loginIfNeeded(page);
-    await page.goto(`${BASE}/admin/maintenance/equipment/`, { 
-      waitUntil: 'domcontentloaded' 
-    });
+  const listUrl = `${BASE}/admin/maintenance/equipment/`;
+
+  for (let i = 0; i < 3; i++) {
+    await page.goto(listUrl, { waitUntil: "domcontentloaded" });
+
+    if (/\/admin\/login\//i.test(page.url())) {
+      page = await loginIfNeeded(page);
+      continue;
+    }
+    const q = page.locator('input[name="q"]').first();
+    const tbl = page.locator("#result_list").first();
+    if (await q.isVisible().catch(()=>false) || await tbl.isVisible().catch(()=>false)) {
+      return page;
+    }
+    await page.waitForTimeout(400);
   }
-  
-  console.log('✅ Equipment listesi yüklendi:', page.url());
-  return page;
+
+  let title = ""; try { title = await page.title(); } catch {}
+  throw new Error(`Changelist not ready: url=${page.url()} title=${title}`);
 }
+
+export async function ensureLogin(page){ return loginIfNeeded(page); }
