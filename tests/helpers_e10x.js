@@ -1,138 +1,81 @@
-﻿import { test, expect } from '@playwright/test';
-
-const BASE = (process.env.BASE_URL || 'http://127.0.0.1:8010').replace(/\/$/, '');
+﻿const BASE = process.env.BASE_URL || 'http://127.0.0.1:8010';
 const USER = process.env.ADMIN_USER || 'admin';
 const PASS = process.env.ADMIN_PASS || 'admin';
 
-test.setTimeout(60000);
-
-// Kapalı sayfa ise aynı context’te taze sayfa aç
-async function ensureAlivePage(page) {
-  try { if (page && !page.isClosed()) return page; } catch {}
-  const ctx = page.context();
-  const fresh = await ctx.newPage();
-  await fresh.waitForLoadState('domcontentloaded');
-  return fresh;
+export async function ensureAlivePage(page) {
+  if (!page || page.isClosed()) {
+    throw new Error('Page is closed or invalid');
+  }
+  return page;
 }
 
 export async function loginIfNeeded(page) {
   page = await ensureAlivePage(page);
-  await page.goto(`${BASE}/admin/`, { waitUntil: 'domcontentloaded' });
-  if (!/\/admin\/login\//i.test(page.url())) return page;
-
-  await page.fill('#id_username', USER);
-  await page.fill('#id_password', PASS);
-  await Promise.all([
-    page.waitForLoadState('domcontentloaded'),
-    page.locator('input[type="submit"], button[type="submit"]').first().click(),
-  ]);
-  await page.waitForLoadState('domcontentloaded');
-  return page;
-}
-
-export async function ensureOnAdd(page) {
-  page = await ensureAlivePage(page);
-  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
-  if (/\/admin\/login\//i.test(page.url())) {
-    page = await loginIfNeeded(page);
-    await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
+  
+  // Admin login sayfasına git
+  await page.goto(`${BASE}/admin/login/`, { 
+    waitUntil: 'domcontentloaded',
+    timeout: 10000
+  });
+  
+  // Zaten login ise atla
+  const url = page.url();
+  if (!/\/login\//i.test(url)) {
+    console.log('✅ Zaten login olunmuş');
+    return page;
   }
-  return page;
-}
-
-export async function gotoList(page) {
-  page = await ensureAlivePage(page);
-  await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
-  if (/\/admin\/login\//i.test(page.url())) {
-    page = await loginIfNeeded(page);
-    await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
-  }
-  await expect(page.locator('#changelist, .change-list, #content')).toBeVisible();
-  return page;
-}
-
-function formWithSubmit(page) {
-  return page.locator('form').filter({
-    has: page.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]')
-  }).first();
-}
-
-// Save -> yeni sekme açılabilir; yakala ve aktif sayfayı döndür
-async function clickSaveAndMaybeSwitch(page, form) {
-  const ctx = page.context();
-  const newPagePromise = ctx.waitForEvent('page', { timeout: 3000 }).catch(() => null);
-  await form.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first().click();
-  const maybeNew = await newPagePromise;
-  if (maybeNew) {
-    page = maybeNew;
-    await page.waitForLoadState('domcontentloaded');
-  }
-  return page;
-}
-
-// Save sonrası stabilize: mesaj/URL/list görünür olana dek kısa döngü
-async function stabilizeAfterSave(page) {
-  const deadline = Date.now() + 12000;
-  while (Date.now() < deadline) {
-    if (page.isClosed()) { page = await ensureAlivePage(page); }
-    const url = page.url();
-    if (/\/admin\/maintenance\/equipment\/(\d+\/change\/)?$/i.test(url)) break;
-    if (await page.locator('ul.messagelist li.success, .success, .alert-success').first().isVisible().catch(()=>false)) break;
-    if (await page.locator('#result_list').first().isVisible().catch(()=>false)) break;
-    try { await page.waitForLoadState('domcontentloaded', { timeout: 500 }); } catch {}
-    try { await page.waitForTimeout(150); } catch { break; }
-  }
-  return page;
-}
-
-export async function createTempEquipment(page, token) {
-  page = await ensureOnAdd(page);
-  const form = formWithSubmit(page);
-  await expect(form).toBeVisible();
-
-  const ts = token || Date.now().toString();
-  let primaryText = null;
-
-  const textLike = form.locator('input[required][type="text"], input[required]:not([type]), textarea[required]');
-  const countText = await textLike.count();
-  if (countText === 0) {
-    const nm = page.locator('#id_name');
-    if (await nm.isVisible().catch(()=>false)) { await nm.fill(`AUTO-name-${ts}`); primaryText = `AUTO-name-${ts}`; }
-  } else {
-    for (let i = 0; i < countText; i++) {
-      const el = textLike.nth(i);
-      const name = (await el.getAttribute('name')) || `text${i}`;
-      const val = name.toLowerCase().includes('serial') ? `SN-${ts}` : `AUTO-${name}-${ts}`;
-      await el.fill(val);
-      if (!primaryText) primaryText = val;
-    }
-  }
-
-  const nums = form.locator('input[required][type="number"]');
-  for (let i = 0; i < await nums.count(); i++) await nums.nth(i).fill('0');
-
-  const today = new Date().toISOString().slice(0,10);
-  const dates = form.locator('input[required][type="date"]');
-  for (let i = 0; i < await dates.count(); i++) await dates.nth(i).fill(today);
-
-  const selects = form.locator('select[required]');
-  for (let i = 0; i < await selects.count(); i++) {
-    await selects.nth(i).selectOption({ index: 1 }).catch(() => {});
-  }
-
-  page = await clickSaveAndMaybeSwitch(page, form);
-  page = await stabilizeAfterSave(page);
-
-  if (!page.isClosed() && /\/admin\/maintenance\/equipment\/?$/i.test(page.url())) {
-    await page.fill('input[name="q"]', ts);
+  
+  // Login formunu doldur
+  console.log('🔐 Login yapılıyor...');
+  
+  try {
+    await page.waitForSelector('#id_username', { timeout: 5000 });
+    await page.fill('#id_username', USER);
+    await page.fill('#id_password', PASS);
+    
+    // Submit butonuna tıkla
     await Promise.all([
-      page.waitForLoadState('domcontentloaded'),
-      page.press('input[name="q"]', 'Enter'),
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }),
+      page.locator('input[type="submit"]').first().click()
     ]);
-    const first = page.locator('#result_list tbody tr th a').first();
-    if (await first.isVisible().catch(()=>false)) {
-      await Promise.all([page.waitForLoadState('domcontentloaded'), first.click()]);
+    
+    // Login başarılı mı kontrol et
+    const finalUrl = page.url();
+    if (/\/login\//i.test(finalUrl)) {
+      throw new Error('Login başarısız - hala login sayfasında');
     }
+    
+    console.log('✅ Login başarılı:', finalUrl);
+    return page;
+    
+  } catch (error) {
+    console.error('❌ Login hatası:', error.message);
+    await page.screenshot({ path: 'debug_login_error.png', fullPage: true });
+    throw error;
   }
-  return { token: ts, primaryText, page };
+}
+
+export async function gotoListExport(page) {
+  page = await ensureAlivePage(page);
+  
+  await page.goto(`${BASE}/admin/maintenance/equipment/`, { 
+    waitUntil: 'domcontentloaded',
+    timeout: 10000
+  });
+  
+  // Sayfa yüklenene kadar bekle
+  await page.waitForLoadState('networkidle');
+  
+  // Login redirect kontrolü
+  const url = page.url();
+  if (/\/login\//i.test(url)) {
+    console.log('⚠️  Equipment sayfası login gerektiriyor, yeniden login...');
+    await loginIfNeeded(page);
+    await page.goto(`${BASE}/admin/maintenance/equipment/`, { 
+      waitUntil: 'domcontentloaded' 
+    });
+  }
+  
+  console.log('✅ Equipment listesi yüklendi:', page.url());
+  return page;
 }
