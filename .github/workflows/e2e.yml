@@ -22,15 +22,13 @@ jobs:
           node-version: 20
 
       - name: Install deps
+        shell: pwsh
         run: |
           npm ci
           npx playwright install --with-deps
-        shell: pwsh
 
-      - name: Run tests (html + line)
-        run: |
-          npx playwright test --project=chromium --reporter=html,line
-        shell: pwsh
+      - name: Run tests (line+html+blob)
+        run: npx playwright test --project=chromium --reporter=line,html,blob
 
       - name: Upload Playwright HTML report
         uses: actions/upload-artifact@v4
@@ -39,24 +37,22 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
 
-      - name: Upload AI queue (optional)
-        if: always()
+      - name: Merge blob to JSON
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force _otokodlama/out | Out-Null
+          npx playwright merge-reports --reporter=json blob-report > _otokodlama/out/pw.json
+
+      - name: Upload merged pw.json
         uses: actions/upload-artifact@v4
         with:
-          name: ai_queue
-          path: ai_queue
-          if-no-files-found: ignore
+          name: pw-json
+          path: _otokodlama/out/pw.json
 
-      - name: Install gh
-        uses: cli/cli-action@v2
-
-      - name: Set PR number
+      - name: Post PR summary (console + md file)
         if: ${{ github.event_name == 'pull_request' }}
-        run: echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
         shell: pwsh
-
-      - name: Post PR comment (summary)
-        if: ${{ github.event_name == 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: powershell -File tools/post_pr_summary.ps1
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: tools/post_pr_summary.ps1

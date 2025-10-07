@@ -30,3 +30,9 @@ playwright-report/
 blob-report/
 _otokodlama/
 
+
+playwright-report/
+blob-report/
+_otokodlama/
+tests/.auth/
+
