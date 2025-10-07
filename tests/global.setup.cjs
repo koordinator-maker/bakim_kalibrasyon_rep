@@ -1,49 +1,44 @@
+﻿const path = require("path");
+const fs = require("fs");
 const { chromium } = require("@playwright/test");
-const fs   = require("fs");
-const path = require("path");
-const { loginAdmin } = require("./_helpers/auth.cjs");
 
-const STATE = path.resolve(__dirname, ".auth", "admin.json"); // mutlak
+async function loginAdmin(page, BASE, USER, PASS) {
+  await page.goto(`${BASE}/admin/login/`, { waitUntil: "domcontentloaded", timeout: 20000 });
+  // login sayfasında değilsek zaten authenticated
+  if (!/\/admin\/login\//.test(page.url())) return;
 
-module.exports = async function globalSetup() {
-  const baseURL = process.env.BASE_URL  || "http://127.0.0.1:8010";
-  const user    = process.env.ADMIN_USER || "admin";
-  const pass    = process.env.ADMIN_PASS || "admin";
+  await page.fill("#id_username", USER);
+  await page.fill("#id_password", PASS);
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.locator('input[type="submit"],button[type="submit"]').first().click(),
+  ]);
+}
 
-  fs.mkdirSync(path.dirname(STATE), { recursive: true });
+module.exports = async () => {
+  const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+  const USER = process.env.ADMIN_USER || "admin";
+  const PASS = process.env.ADMIN_PASS || "admin123!";
 
-  const headless = process.env.PW_HEAD ? false : true;
-  const browser  = await chromium.launch({ headless });
-  const context  = await browser.newContext();
-  const page     = await context.newPage();
+  const stateFile = path.join(__dirname, ".auth", "admin.json");
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
 
-  console.log("[setup] __dirname =", __dirname);
-  console.log("[setup] will write state to:", STATE);
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
-  await loginAdmin(page, baseURL, user, pass);
+  try {
+    // küçük bir retry
+    let ok = false, lastErr;
+    for (let i = 0; i < 3 && !ok; i++) {
+      try { await loginAdmin(page, BASE, USER, PASS); ok = true; }
+      catch (e) { lastErr = e; await page.waitForTimeout(500*(i+1)); }
+    }
+    if (!ok) throw lastErr;
 
-  const root = baseURL.replace(/\/$/, "");
-  await page.goto(root + "/admin/", { waitUntil: "domcontentloaded" });
-
-  const loggedIn = !/\/admin\/login\//.test(page.url());
-  console.log("[setup] after login url:", page.url(), "loggedIn:", loggedIn);
-  if (!loggedIn) {
-    
-// --- DEBUG: drop evidence when login fails ---
-await page.screenshot({
-  path: require("path").resolve(__dirname, "login_fail.png"),
-  fullPage: true
-}).catch(() => {});
-require("fs").writeFileSync(
-  require("path").resolve(__dirname, "login_fail.html"),
-  await page.content()
-);
-await browser.close();
-    throw new Error("globalSetup: Login baÅŸarÄ±sÄ±z. ADMIN_USER/ADMIN_PASS ve yetkileri kontrol edin.");
+    await context.storageState({ path: stateFile });
+  } finally {
+    await context.close().catch(()=>{});
+    await browser.close().catch(()=>{});
   }
-
-  await context.storageState({ path: STATE });
-  console.log("[setup] state exists:", fs.existsSync(STATE));
-
-  await browser.close();
 };
