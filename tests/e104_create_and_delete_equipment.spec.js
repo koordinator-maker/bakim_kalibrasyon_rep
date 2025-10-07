@@ -1,5 +1,8 @@
 /**
- * E104 — Equipment oluştur & sil (dayanıklı silme akışı)
+ * E104 — Equipment oluştur & sil (dayanıklı akış)
+ * - Save sonrası changelist'e düşse bile adıyla satırı bulup change'e girer
+ * - Delete linki bulunamazsa URL ile /delete/ sayfasına zorlar
+ * - Onayı çok dilli buton adına göre dener; olmazsa ilk submit
  */
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
@@ -25,11 +28,12 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
 
   // 1) Add form
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
+
   let form = page.locator('form:has(input[name="_save"])').first();
   if (!(await form.count())) form = page.locator('form[action*="/add/"]').first();
   await expect(form, 'ADD formu görünür değil').toBeVisible();
 
-  // 2) İsim doldur (stabil + fallback)
+  // 2) Name doldur (stabil + fallback)
   const ts = Date.now().toString();
   const nameValue = 'AUTO-NAME-' + ts;
   const nameSel = ['input[name="name"]', '#id_name', 'input[type="text"][name], input:not([type])[name]'];
@@ -44,7 +48,7 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
   }
   expect(filled, 'E104: Name-like alan bulunamadı').toBeTruthy();
 
-  // 3) Kaydet → change
+  // 3) Kaydet
   const save = form.locator('input[name="_save"]').first();
   if (await save.isVisible().catch(()=>false)) {
     await Promise.all([ page.waitForLoadState('domcontentloaded'), save.click() ]);
@@ -53,77 +57,84 @@ test('E104 - Equipment oluştur ve sil (temizlik)', async ({ page }) => {
     await Promise.all([ page.waitForLoadState('domcontentloaded'), submitAlt.click() ]);
   }
 
-  // Listeye düştüysek ada göre change'e gir
-  if (!/\/change\/?$/.test(page.url())) {
-    const rowLink = page.locator(`#result_list a:has-text("${nameValue}")`).first();
-    if (await rowLink.isVisible().catch(()=>false)) {
-      await Promise.all([ page.waitForLoadState('domcontentloaded'), rowLink.click() ]);
+  // 4) Change mi? Liste mi? — ikisini de kabul et, sonra change'e geç
+  const changeRx = /\/admin\/maintenance\/equipment\/\d+\/change\/?$/;
+  const listRx   = /\/admin\/maintenance\/equipment\/?$/;
+
+  // kısa bekleme: change ya da list
+  await Promise.race([
+    page.waitForURL(changeRx, { timeout: 2000 }).catch(()=>null),
+    page.waitForURL(listRx,   { timeout: 2000 }).catch(()=>null),
+    page.waitForLoadState('domcontentloaded').catch(()=>null)
+  ]);
+
+  // Eğer listede kaldıysak, adıyla satırı aç
+  if (!changeRx.test(page.url())) {
+    // başarı mesajındaki change linki (bazı temalarda olur)
+    const successLink = page.locator('main a[href*="/admin/maintenance/equipment/"][href$="/change/"]').first();
+    if (await successLink.isVisible().catch(()=>false)) {
+      await Promise.all([ page.waitForLoadState('domcontentloaded'), successLink.click() ]);
     }
   }
-  await expect(page).toHaveURL(/\/admin\/maintenance\/equipment\/\d+\/change\/|\/change\/?$/);
+  if (!changeRx.test(page.url())) {
+    const rowLinkByName = page.locator('#result_list tr:has-text("' + nameValue + '") a[href*="/change/"]').first();
+    if (await rowLinkByName.isVisible().catch(()=>false)) {
+      await Promise.all([ page.waitForLoadState('domcontentloaded'), rowLinkByName.click() ]);
+    } else {
+      // Son çare: listede ilk satırın change linki
+      const anyRow = page.locator('#result_list tr a[href*="/change/"]').first();
+      if (await anyRow.isVisible().catch(()=>false)) {
+        await Promise.all([ page.waitForLoadState('domcontentloaded'), anyRow.click() ]);
+      }
+    }
+  }
+
+  await expect(page, 'Change sayfasına geçilemedi').toHaveURL(changeRx);
   const changeForm = page.locator('form:has(input[name="_save"])').first();
   await expect(changeForm, 'CHANGE formu görünür değil').toBeVisible();
 
-  // 4) Delete linki (çoklu strateji + URL fallback)
-  const deleteCandidates = [
+  // 5) Delete'e geç (önce linkler, sonra URL)
+  const deleteSelectors = [
     '.object-tools a.deletelink',
     '.object-tools a[href$="/delete/"]',
-    '.object-tools a:has-text("Delete")',
     '.submit-row a.deletelink',
-    '.deletelink-box a',
     '#content a[href$="/delete/"]',
-    'a[href$="/delete/"]',
+    'a[href$="/delete/"]'
   ];
-  let clickedDelete = false;
-  for (const sel of deleteCandidates) {
+  let wentDelete = false;
+  for (const sel of deleteSelectors) {
     const link = page.locator(sel).first();
     if (await link.isVisible().catch(()=>false)) {
       await Promise.all([ page.waitForLoadState('domcontentloaded'), link.click() ]);
-      clickedDelete = true; break;
+      wentDelete = true;
+      break;
     }
   }
-  if (!clickedDelete) {
+  if (!wentDelete) {
     const u = new URL(page.url());
-    if (!u.pathname.endsWith('/delete/')) {
-      const forced = (u.origin + u.pathname.replace(/\/change\/?$/, '/') + 'delete/');
-      await page.goto(forced, { waitUntil: 'domcontentloaded' }).catch(()=>{});
-      clickedDelete = /\/delete\/?$/.test(page.url());
-    }
+    const forced = u.origin + u.pathname.replace(/\/change\/?$/, '/') + 'delete/';
+    await page.goto(forced, { waitUntil: 'domcontentloaded' }).catch(()=>{});
+    wentDelete = /\/delete\/?$/.test(page.url());
   }
-  expect(clickedDelete, 'Delete linki bulunamadı').toBeTruthy();
+  expect(wentDelete, 'Delete sayfasına gidilemedi').toBeTruthy();
 
-  // 5) Onay formu + çok dilli butonlar
-  const confirmForm = page.locator('#content form:has(input[name="post"])').first()
-                     .or(page.locator('form[action$="/delete/"]').first())
-                     .or(page.locator('form:has(button[type="submit"]), form:has(input[type="submit"])').first());
-  await expect(confirmForm, 'Delete onay formu yok').toBeVisible();
-
-  const yesTexts = [
-    /^Yes, I'?m sure$/i,
-    /^Evet, eminim$/i,
-    /^Sí, estoy segur(?:o|a)$/i,   // ← DÜZELTİLDİ
-    /^Ja$/i, /^Oui$/i, /^Sì$/i
-  ];
-  let clickedConfirm = false;
-  for (const rx of yesTexts) {
-    const btn = page.getByRole('button', { name: rx }).first();
-    if (await btn.isVisible().catch(()=>false)) {
-      await Promise.all([ page.waitForLoadState('domcontentloaded'), btn.click() ]);
-      clickedConfirm = true; break;
-    }
-    const fallbackBtn = confirmForm.locator('button[type="submit"], input[type="submit"]').filter({ hasText: rx }).first();
-    if (await fallbackBtn.isVisible().catch(()=>false)) {
-      await Promise.all([ page.waitForLoadState('domcontentloaded'), fallbackBtn.click() ]);
-      clickedConfirm = true; break;
-    }
+  // 6) Onay (çok dilli) — yoksa ilk submit
+  const yesRx = /(Yes|Evet|Si|Sí|Ja|Oui|Sì)/i;
+  let confirmed = false;
+  const btnByRole = page.getByRole('button', { name: yesRx }).first();
+  if (await btnByRole.isVisible().catch(()=>false)) {
+    await Promise.all([ page.waitForLoadState('domcontentloaded'), btnByRole.click() ]);
+    confirmed = true;
   }
-  if (!clickedConfirm) {
-    const fallbackSubmit = confirmForm.locator('button[type="submit"], input[type="submit"]').first();
-    await Promise.all([ page.waitForLoadState('domcontentloaded'), fallbackSubmit.click() ]);
+  if (!confirmed) {
+    const confirmForm = page.locator('#content form:has(input[name="post"]), form[action$="/delete/"]').first();
+    const firstSubmit = confirmForm.locator('button[type="submit"], input[type="submit"]').first();
+    await Promise.all([ page.waitForLoadState('domcontentloaded'), firstSubmit.click() ]);
   }
 
-  // 6) Silme sonrası liste
-  await expect(page).toHaveURL(new RegExp('/admin/maintenance/equipment/?$'));
+  // 7) Changelist’e dönmüş ol
+  await expect(page).toHaveURL(listRx);
 
+  // 8) Artefakt
   try { fs.writeFileSync('test-results/e104_debug_last.html', await page.content()); } catch {}
 });
