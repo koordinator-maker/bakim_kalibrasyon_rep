@@ -1,0 +1,64 @@
+{
+  "cookies": [
+    {
+      "name": "csrftoken",
+      "value": "I8TGu00SxX5z5UPmCJeSmJoHOnncg11h",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1790879668.620026,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sessionid",
+      "value": "pvkab90zpa7wd285c8wyqwyqe5busmp4",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1760639668.620115,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "csrftoken",
+      "value": "7WI3snHbaxltW1FCUa5uvJnbKRlJU6xZ",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1790883243.309968,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sessionid",
+      "value": "bbp9tpyq01dngfckw0qqfwb8vnqwq7ox",
+      "domain": "127.0.0.1",
+      "path": "/",
+      "expires": 1760643243.310051,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://127.0.0.1:8010",
+      "localStorage": [
+        {
+          "name": "theme",
+          "value": "auto"
+        }
+      ]
+    },
+    {
+      "origin": "http://localhost:8000",
+      "localStorage": [
+        {
+          "name": "theme",
+          "value": "auto"
+        }
+      ]
+    }
+  ]
+}

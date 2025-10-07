@@ -1,0 +1,104 @@
+name: e2e-dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (branch/tag/sha) to test"
+        required: true
+        default: "main"
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PYTHONUNBUFFERED: "1"
+      DJANGO_SETTINGS_MODULE: config.settings
+      BASE_URL: http://127.0.0.1:8010
+      ADMIN_USER: ${{ secrets.ADMIN_USER }}
+      ADMIN_PASS: ${{ secrets.ADMIN_PASS }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Node deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Migrate & seed admin
+        run: |
+          python manage.py migrate --noinput
+          python - << 'PY'
+          import os, django
+          os.environ.setdefault("DJANGO_SETTINGS_MODULE", os.environ.get("DJANGO_SETTINGS_MODULE","config.settings"))
+          django.setup()
+          from django.contrib.auth import get_user_model
+          User = get_user_model()
+          u = os.environ.get("ADMIN_USER","admin")
+          p = os.environ.get("ADMIN_PASS","admin")
+          if not User.objects.filter(username=u).exists():
+              User.objects.create_superuser(username=u, email="ci@example.com", password=p)
+          print("Admin OK:", u)
+          PY
+
+      - name: Run Django server
+        run: |
+          nohup python manage.py runserver 0.0.0.0:8010 --noreload > devserver.log 2>&1 &
+
+      - name: Wait for server
+        run: |
+          for i in {1..90}; do
+            curl -fsS http://127.0.0.1:8010/admin/login/ && echo "up" && exit 0
+            sleep 1
+          done
+          echo "Server did not start in time" >&2
+          echo "=== tail devserver.log ===" >&2
+          tail -n 200 devserver.log || true
+          exit 1
+
+      - name: Run E2E (headless)
+        run: npx playwright test --project=chromium --reporter=html
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
+
+      - name: Upload traces/videos on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces
+          path: |
+            test-results/**/*.zip
+            test-results/**/*.webm
+          retention-days: 7
+
+      - name: Upload devserver.log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: devserver-log
+          path: devserver.log
+          retention-days: 7
