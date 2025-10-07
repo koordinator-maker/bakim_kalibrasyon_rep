@@ -1,5 +1,6 @@
-name: e2e
+﻿name: e2e
 on:
+  workflow_dispatch:
   push:
   pull_request:
 
@@ -43,3 +44,4 @@ jobs:
         test-results/**/*.zip
         test-results/**/*.webm
       retention-days: 7
+
