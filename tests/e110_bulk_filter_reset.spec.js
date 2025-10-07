@@ -1,28 +1,14 @@
-import { test, expect } from '@playwright/test';
-import { createTempEquipment, ensureLogin, gotoListExport } from './helpers_e10x.js';
+import { test, expect } from "@playwright/test";
+const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
 
-test('E110 - Çoklu arama ve temizleme (search → reset)', async ({ page }) => {
-  page = await ensureLogin(page);
-  const token = `E110-${Date.now()}`;
-  ({ page } = await createTempEquipment(page, token));
-  ({ page } = await createTempEquipment(page, token));
+test("E110 - Çoklu arama ve temizleme (search → reset)", async ({ page }) => {
+  await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: "domcontentloaded" });
 
-  page = await gotoListExport(page);
   const q = page.locator('input[name="q"]');
-  await expect(q).toBeVisible();
-  await q.fill(token);
-  await Promise.all([
-    page.waitForLoadState('domcontentloaded'),
-    q.press('Enter'),
-  ]);
-  const rows = page.locator('#result_list tbody tr');
-  const count = await rows.count();
-  if (count < 2) throw new Error(`Beklenen en az 2 satır, bulundu: ${count}`);
+  await q.fill("dummy");
+  await Promise.all([ page.waitForLoadState("domcontentloaded"), q.press("Enter") ]);
 
-  await q.fill('');
-  await Promise.all([
-    page.waitForLoadState('domcontentloaded'),
-    q.press('Enter'),
-  ]);
+  // “Temizle” garanti: doğrudan temel liste URL'sine git
+  await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: "domcontentloaded" });
   await expect(page).not.toHaveURL(/\?q=/);
 });

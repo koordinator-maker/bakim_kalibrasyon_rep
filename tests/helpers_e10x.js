@@ -2,7 +2,7 @@ const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, ""
 const USER = process.env.ADMIN_USER || "admin";
 const PASS = process.env.ADMIN_PASS || "admin";
 
-// KapalÄ± sayfa ise aynÄ± context'te taze sayfa aÃ§
+// KapalÃƒâ€Ã‚Â± sayfa ise aynÃƒâ€Ã‚Â± context'te taze sayfa aÃƒÆ’Ã‚Â§
 export async function ensureAlivePage(page) {
   try { if (page && !page.isClosed()) return page; } catch {}
   const ctx = page.context();
@@ -14,7 +14,7 @@ export async function ensureAlivePage(page) {
 export async function loginIfNeeded(page) {
   page = await ensureAlivePage(page);
 
-  // Ã–nce /admin/ â€” zaten login isek burada kalÄ±rÄ±z
+  // ÃƒÆ’Ã¢â‚¬â€œnce /admin/ ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â zaten login isek burada kalÃƒâ€Ã‚Â±rÃƒâ€Ã‚Â±z
   await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
   if (!/\/admin\/login\//i.test(page.url())) return page;
 
@@ -27,7 +27,7 @@ export async function loginIfNeeded(page) {
     page.locator('input[type="submit"], button[type="submit"]').first().click()
   ]);
 
-  // BaÅŸarÄ±lÄ± mÄ±?
+  // BaÃƒâ€¦Ã…Â¸arÃƒâ€Ã‚Â±lÃƒâ€Ã‚Â± mÃƒâ€Ã‚Â±?
   if (/\/admin\/login\//i.test(page.url())) {
     const err = await page.locator(".errornote, .errorlist, .messages .error").first().innerText().catch(()=> "");
     throw new Error(`LOGIN_FAILED: url=${page.url()} msg=${err}`);
@@ -60,7 +60,7 @@ export async function gotoListExport(page) {
 
 export async function ensureLogin(page){ return loginIfNeeded(page); }
 
-// Basit ekipman oluşturucu: zorunlu alanı doldurup kaydeder
+// Basit ekipman oluÃ…Å¸turucu: zorunlu alanÃ„Â± doldurup kaydeder
 export async function createTempEquipment(page, token) {
   page = await loginIfNeeded(page);
   const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
@@ -75,9 +75,11 @@ export async function createTempEquipment(page, token) {
   // Kaydet
   await Promise.all([
     page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-    page.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first().click()
+    page.locator('input[name="_continue"], button[name="_continue"]').first().click()
   ]);
 
-  // Listeye döndüysek OK
-  return { page, token: ts };
+  // Listeye dÃƒÂ¶ndÃƒÂ¼ysek OK
+  await page.waitForSelector('#id_name', { timeout: 10000 });
+await page.waitForSelector('#id_name', { timeout: 10000 });
+return { page, token: ts };
 }
