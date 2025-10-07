@@ -1,0 +1,43 @@
+import { test, expect } from "@playwright/test";
+const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/,"");
+
+test("E108 - Zorunlu alan uyarısı", async ({ page }) => {
+  // Add formuna git
+  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: "domcontentloaded" });
+
+  // Her ihtimale karşı 'name' alanını temizle
+  const nameInput = page.locator("#id_name");
+  await nameInput.fill("");
+  await nameInput.blur();
+
+  // Gönder
+  const submit = page.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first();
+  await Promise.all([
+    page.waitForLoadState("domcontentloaded"),
+    submit.click()
+  ]);
+
+  // Başarısız kayıt durumunda sayfa URL'i /add/ üzerinde kalmalı (redirect olmaz)
+  await expect(page).toHaveURL(/\/admin\/maintenance\/equipment\/add\/?/);
+
+  // Hata sinyallerinin her ihtimali (farklı Django temaları için)
+  const candidates = [
+    'ul.errorlist li',
+    '#id_name_error li',
+    '.errornote',                         // üst kısımdaki genel hata
+    '.form-row.errors',                   // bazı temalar
+    'li:has-text("This field is required")',
+    'li:has-text("required")'
+  ];
+
+  // Toplam hata sayısı > 0 olana kadar bekle
+  await expect.poll(async () => {
+    let total = 0;
+    for (const sel of candidates) total += await page.locator(sel).count();
+    return total;
+  }).toBeGreaterThan(0);
+
+  // Ek güvence: name input hata class'ı almış mı?
+  // (opsiyonel, varsa kontrol et; yoksa test buradan etkilenmez)
+  const hasErrorClass = await nameInput.evaluate(el => (el.closest('.errors') || el.classList.contains('error')) ? 1 : 0).catch(() => 0);
+});

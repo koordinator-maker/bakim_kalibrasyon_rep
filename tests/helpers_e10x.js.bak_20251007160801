@@ -1,0 +1,131 @@
+import { test, expect } from '@playwright/test';
+
+const BASE = (process.env.BASE_URL || 'http://127.0.0.1:8010').replace(/\/$/, '');
+const USER = process.env.ADMIN_USER || 'admin';
+const PASS = process.env.ADMIN_PASS || 'admin';
+
+test.setTimeout(60000);
+
+async function loginIfNeeded(page) {
+  await page.goto(`${BASE}/admin/`, { waitUntil: 'domcontentloaded' });
+  if (!/\/admin\/login\//i.test(page.url())) return page;
+
+  await page.fill('#id_username', USER);
+  await page.fill('#id_password', PASS);
+  await Promise.all([
+    page.waitForLoadState('domcontentloaded'),
+    page.locator('input[type="submit"], button[type="submit"]').first().click(),
+  ]);
+  await page.waitForLoadState('domcontentloaded');
+  return page;
+}
+
+async function ensureOnAdd(page) {
+  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
+  if (/\/admin\/login\//i.test(page.url())) {
+    page = await loginIfNeeded(page);
+    await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
+  }
+  return page;
+}
+
+async function gotoList(page) {
+  await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
+  if (/\/admin\/login\//i.test(page.url())) {
+    page = await loginIfNeeded(page);
+    await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
+  }
+  await expect(page.locator('#changelist, .change-list, #content')).toBeVisible();
+  return page;
+}
+
+function formWithSubmit(page) {
+  return page.locator('form').filter({
+    has: page.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]')
+  }).first();
+}
+
+async function clickSaveAndMaybeSwitch(page, form) {
+  // capture possible new page
+  const ctx = page.context();
+  const newPagePromise = ctx.waitForEvent('page', { timeout: 3000 }).catch(() => null);
+
+  await form.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first().click();
+
+  const maybeNew = await newPagePromise;
+  if (maybeNew) {
+    page = maybeNew;
+    await page.waitForLoadState('domcontentloaded');
+  }
+  return page;
+}
+
+async function stabilizeAfterSave(page) {
+  const deadline = Date.now() + 12000;
+  while (Date.now() < deadline) {
+    if (page.isClosed()) break;
+    const url = page.url();
+    if (/\/admin\/maintenance\/equipment\/(\d+\/change\/)?$/i.test(url)) break;
+    if (await page.locator('ul.messagelist li.success, .success, .alert-success').first().isVisible().catch(()=>false)) break;
+    if (await page.locator('#result_list').first().isVisible().catch(()=>false)) break;
+    try { await page.waitForLoadState('domcontentloaded', { timeout: 500 }); } catch {}
+    try { await page.waitForTimeout(150); } catch { break; }
+  }
+  return page;
+}
+
+export async function createTempEquipment(page, token) {
+  page = await ensureOnAdd(page);
+  const form = formWithSubmit(page);
+  await expect(form).toBeVisible();
+
+  const ts = token || Date.now().toString();
+  let primaryText = null;
+
+  const textLike = form.locator('input[required][type="text"], input[required]:not([type]), textarea[required]');
+  const countText = await textLike.count();
+  if (countText === 0) {
+    const nm = page.locator('#id_name');
+    if (await nm.isVisible().catch(()=>false)) { await nm.fill(`AUTO-name-${ts}`); primaryText = `AUTO-name-${ts}`; }
+  } else {
+    for (let i = 0; i < countText; i++) {
+      const el = textLike.nth(i);
+      const name = (await el.getAttribute('name')) || `text${i}`;
+      const val = name.toLowerCase().includes('serial') ? `SN-${ts}` : `AUTO-${name}-${ts}`;
+      await el.fill(val);
+      if (!primaryText) primaryText = val;
+    }
+  }
+
+  const nums = form.locator('input[required][type="number"]');
+  for (let i = 0; i < await nums.count(); i++) await nums.nth(i).fill('0');
+
+  const today = new Date().toISOString().slice(0,10);
+  const dates = form.locator('input[required][type="date"]');
+  for (let i = 0; i < await dates.count(); i++) await dates.nth(i).fill(today);
+
+  const selects = form.locator('select[required]');
+  for (let i = 0; i < await selects.count(); i++) {
+    await selects.nth(i).selectOption({ index: 1 }).catch(() => {});
+  }
+
+  page = await clickSaveAndMaybeSwitch(page, form);
+  page = await stabilizeAfterSave(page);
+
+  // If we saved and got redirected to changelist, open the created row via search
+  if (!page.isClosed() && /\/admin\/maintenance\/equipment\/?$/i.test(page.url())) {
+    await page.fill('input[name="q"]', ts);
+    await Promise.all([
+      page.waitForLoadState('domcontentloaded'),
+      page.press('input[name="q"]', 'Enter'),
+    ]);
+    const first = page.locator('#result_list tbody tr th a').first();
+    if (await first.isVisible().catch(()=>false)) {
+      await Promise.all([page.waitForLoadState('domcontentloaded'), first.click()]);
+    }
+  }
+  return { token: ts, primaryText, page };
+}
+
+export async function ensureLogin(page) { return loginIfNeeded(page); }
+export async function gotoListExport(page){ return gotoList(page); }

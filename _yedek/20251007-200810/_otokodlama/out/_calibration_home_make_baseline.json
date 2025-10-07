@@ -1,0 +1,21 @@
+{
+  "ok": false,
+  "results": [
+    {
+      "i": 1,
+      "cmd": "COMMENT",
+      "arg": "make baseline (calibration_home)",
+      "ok": true,
+      "error": "",
+      "url": "about:blank"
+    },
+    {
+      "i": 2,
+      "cmd": "GOTO",
+      "arg": "/admin/login/",
+      "ok": false,
+      "error": "Error: Page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:8010/admin/login/\nCall log:\n  - navigating to \"http://127.0.0.1:8010/admin/login/\", waiting until \"domcontentloaded\"\n",
+      "url": "about:blank"
+    }
+  ]
+}
