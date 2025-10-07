@@ -1,7 +1,10 @@
+import { ensureLogin, gotoListExport } from './helpers_e10x';
 import { test, expect } from "@playwright/test";
 const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
 
-test("E109 - Arama sonrası sonuçta kayıt bulunmalı", async ({ page }) => {
+test("E109 - Arama sonrasÄ± sonuÃ§ta kayÄ±t bulunmalÄ±", async ({ page }) => {
+  page = await ensureLogin(page);
+  page = await gotoListExport(page);
   const prefix = "AUTO-E109-";
   await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: "domcontentloaded" });
   const q = page.locator('input[name="q"]');

@@ -2,7 +2,7 @@ const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, ""
 const USER = process.env.ADMIN_USER || "admin";
 const PASS = process.env.ADMIN_PASS || "admin";
 
-// KapalÃƒâ€Ã‚Â± sayfa ise aynÃƒâ€Ã‚Â± context'te taze sayfa aÃƒÆ’Ã‚Â§
+// KapalÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± sayfa ise aynÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± context'te taze sayfa aÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§
 export async function ensureAlivePage(page) {
   try { if (page && !page.isClosed()) return page; } catch {}
   const ctx = page.context();
@@ -14,7 +14,7 @@ export async function ensureAlivePage(page) {
 export async function loginIfNeeded(page) {
   page = await ensureAlivePage(page);
 
-  // ÃƒÆ’Ã¢â‚¬â€œnce /admin/ ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â zaten login isek burada kalÃƒâ€Ã‚Â±rÃƒâ€Ã‚Â±z
+  // ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“nce /admin/ ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â zaten login isek burada kalÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±z
   await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
   if (!/\/admin\/login\//i.test(page.url())) return page;
 
@@ -27,7 +27,7 @@ export async function loginIfNeeded(page) {
     page.locator('input[type="submit"], button[type="submit"]').first().click()
   ]);
 
-  // BaÃƒâ€¦Ã…Â¸arÃƒâ€Ã‚Â±lÃƒâ€Ã‚Â± mÃƒâ€Ã‚Â±?
+  // BaÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸arÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±lÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± mÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±?
   if (/\/admin\/login\//i.test(page.url())) {
     const err = await page.locator(".errornote, .errorlist, .messages .error").first().innerText().catch(()=> "");
     throw new Error(`LOGIN_FAILED: url=${page.url()} msg=${err}`);
@@ -60,13 +60,30 @@ export async function gotoListExport(page) {
 
 export async function ensureLogin(page){ return loginIfNeeded(page); }
 
-// Basit ekipman oluÃ…Å¸turucu: zorunlu alanÃ„Â± doldurup kaydeder
+// Basit ekipman oluÃƒâ€¦Ã…Â¸turucu: zorunlu alanÃƒâ€Ã‚Â± doldurup kaydeder
 export async function createTempEquipment(page, token) {
   page = await loginIfNeeded(page);
   const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
 
-  // Add formuna git
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: "domcontentloaded" });
+
+  const ts = token || `AUTO-${Date.now()}`;
+  await page.fill("#id_name", `AUTO-name-${ts}`);
+
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    page.locator('input[name="_continue"], button[name="_continue"]').first().click()
+  ]);
+
+  // Eğer login'e düştüysek tekrar login ol
+  if (/\/login\//i.test(page.url())) {
+    await loginIfNeeded(page);
+  }
+
+  // Form alanını garanti bekle
+  await page.waitForSelector("#id_name", { timeout: 15000 });
+  return { page, token: ts };
+}/admin/maintenance/equipment/add/`, { waitUntil: "domcontentloaded" });
 
   // Zorunlu alan: name
   const ts = token || `AUTO-${Date.now()}`;
@@ -78,7 +95,7 @@ export async function createTempEquipment(page, token) {
     page.locator('input[name="_continue"], button[name="_continue"]').first().click()
   ]);
 
-  // Listeye dÃƒÂ¶ndÃƒÂ¼ysek OK
+  // Listeye dÃƒÆ’Ã‚Â¶ndÃƒÆ’Ã‚Â¼ysek OK
   await page.waitForSelector('#id_name', { timeout: 10000 });
 await page.waitForSelector('#id_name', { timeout: 10000 });
 return { page, token: ts };
