@@ -8,32 +8,35 @@ test.setTimeout(60000);
 
 async function loginIfNeeded(page) {
   await page.goto(`${BASE}/admin/`, { waitUntil: 'domcontentloaded' });
-  if (!/\/admin\/login\//i.test(page.url())) return;
+  if (!/\/admin\/login\//i.test(page.url())) return page;
+
   await page.fill('#id_username', USER);
   await page.fill('#id_password', PASS);
   await Promise.all([
     page.waitForLoadState('domcontentloaded'),
     page.locator('input[type="submit"], button[type="submit"]').first().click(),
   ]);
-  // stabilize
   await page.waitForLoadState('domcontentloaded');
+  return page;
 }
 
 async function ensureOnAdd(page) {
   await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
   if (/\/admin\/login\//i.test(page.url())) {
-    await loginIfNeeded(page);
+    page = await loginIfNeeded(page);
     await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: 'domcontentloaded' });
   }
+  return page;
 }
 
 async function gotoList(page) {
   await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
   if (/\/admin\/login\//i.test(page.url())) {
-    await loginIfNeeded(page);
+    page = await loginIfNeeded(page);
     await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: 'domcontentloaded' });
   }
   await expect(page.locator('#changelist, .change-list, #content')).toBeVisible();
+  return page;
 }
 
 function formWithSubmit(page) {
@@ -42,28 +45,37 @@ function formWithSubmit(page) {
   }).first();
 }
 
-async function clickSaveAndStabilize(page, form) {
-  const btn = form.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first();
-  await btn.click();
-  // Don't use waitForNavigation (caused context-close race). Instead, wait for any of below:
-  // 1) success message appears OR
-  // 2) URL becomes changelist or change page OR
-  // 3) the page fully loads and submit becomes disabled (postback)
-  const start = Date.now();
-  const success = page.locator('ul.messagelist li.success, .success, .alert-success');
-  while (Date.now() - start < 12000) {
-    const url = page.url();
-    if (/\/admin\/maintenance\/equipment\/(\d+\/change\/)?$/i.test(url)) return;
-    if (await success.first().isVisible().catch(()=>false)) return;
-    // minor idle
-    await page.waitForTimeout(200);
+async function clickSaveAndMaybeSwitch(page, form) {
+  // capture possible new page
+  const ctx = page.context();
+  const newPagePromise = ctx.waitForEvent('page', { timeout: 3000 }).catch(() => null);
+
+  await form.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first().click();
+
+  const maybeNew = await newPagePromise;
+  if (maybeNew) {
+    page = maybeNew;
+    await page.waitForLoadState('domcontentloaded');
   }
-  // final fallback wait for load
-  await page.waitForLoadState('domcontentloaded');
+  return page;
+}
+
+async function stabilizeAfterSave(page) {
+  const deadline = Date.now() + 12000;
+  while (Date.now() < deadline) {
+    if (page.isClosed()) break;
+    const url = page.url();
+    if (/\/admin\/maintenance\/equipment\/(\d+\/change\/)?$/i.test(url)) break;
+    if (await page.locator('ul.messagelist li.success, .success, .alert-success').first().isVisible().catch(()=>false)) break;
+    if (await page.locator('#result_list').first().isVisible().catch(()=>false)) break;
+    try { await page.waitForLoadState('domcontentloaded', { timeout: 500 }); } catch {}
+    try { await page.waitForTimeout(150); } catch { break; }
+  }
+  return page;
 }
 
 export async function createTempEquipment(page, token) {
-  await ensureOnAdd(page);
+  page = await ensureOnAdd(page);
   const form = formWithSubmit(page);
   await expect(form).toBeVisible();
 
@@ -73,7 +85,6 @@ export async function createTempEquipment(page, token) {
   const textLike = form.locator('input[required][type="text"], input[required]:not([type]), textarea[required]');
   const countText = await textLike.count();
   if (countText === 0) {
-    // fallback: try known fields
     const nm = page.locator('#id_name');
     if (await nm.isVisible().catch(()=>false)) { await nm.fill(`AUTO-name-${ts}`); primaryText = `AUTO-name-${ts}`; }
   } else {
@@ -98,10 +109,11 @@ export async function createTempEquipment(page, token) {
     await selects.nth(i).selectOption({ index: 1 }).catch(() => {});
   }
 
-  await clickSaveAndStabilize(page, form);
+  page = await clickSaveAndMaybeSwitch(page, form);
+  page = await stabilizeAfterSave(page);
 
   // If we saved and got redirected to changelist, open the created row via search
-  if (/\/admin\/maintenance\/equipment\/?$/i.test(page.url())) {
+  if (!page.isClosed() && /\/admin\/maintenance\/equipment\/?$/i.test(page.url())) {
     await page.fill('input[name="q"]', ts);
     await Promise.all([
       page.waitForLoadState('domcontentloaded'),
@@ -112,8 +124,8 @@ export async function createTempEquipment(page, token) {
       await Promise.all([page.waitForLoadState('domcontentloaded'), first.click()]);
     }
   }
-  return { token: ts, primaryText };
+  return { token: ts, primaryText, page };
 }
 
-export async function ensureLogin(page) { await loginIfNeeded(page); }
+export async function ensureLogin(page) { return loginIfNeeded(page); }
 export async function gotoListExport(page){ return gotoList(page); }
