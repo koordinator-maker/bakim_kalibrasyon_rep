@@ -6,10 +6,10 @@
     "scripts":  {
                     "test:headed":  "playwright test --project=chromium --headed",
                     "test:tasks":  "playwright test tests/tasks.spec.cjs --reporter=line,./reporters/custom_json_reporter.js --output=targets/artifacts",
+                    "test:e2e":  "playwright test --project=chromium",
                     "report":  "playwright show-report",
                     "test":  "playwright test --reporter=line,./reporters/custom_json_reporter.js --output=targets/artifacts",
-                    "test:trace":  "playwright test --project=chromium --trace on",
-                    "test:e2e":  "playwright test --project=chromium"
+                    "test:trace":  "playwright test --project=chromium --trace on"
                 },
     "keywords":  [
                      "playwright",
