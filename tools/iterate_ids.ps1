@@ -1,45 +1,53 @@
+\
 param(
-  [string[]] $Ids = @('E105','E106','E107','E108','E109','E110'),
-  [int]      $MaxTries = 15
+  [int]$Cycles,
+  [string]$Project,
+  [switch]$Headed,
+  [switch]$Debug
 )
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+
+Set-StrictMode -Version Latest; $ErrorActionPreference='Stop'; trap { throw }
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
-if (-not $env:BASE_URL)   { $env:BASE_URL   = "http://127.0.0.1:8010" }
-if (-not $env:ADMIN_USER) { $env:ADMIN_USER = "admin" }
-if (-not $env:ADMIN_PASS) { $env:ADMIN_PASS = "admin123!" }
+if (-not $PSBoundParameters.ContainsKey('Cycles'))  { $Cycles  = 15 }
+if (-not $PSBoundParameters.ContainsKey('Project')) { $Project = 'chromium' }
 
-$Map = @{
-  E105 = 'tests/e105_list_search_exact.spec.js'
-  E106 = 'tests/e106_list_search_partial.spec.js'
-  E107 = 'tests/e107_edit_equipment.spec.js'
-  E108 = 'tests/e108_required_validation.spec.js'
-  E109 = 'tests/e109_search_result_presence.spec.js'
-  E110 = 'tests/e110_permission_redirect.spec.js'
-}
+if (-not $env:BASE_URL) { $env:BASE_URL = "http://127.0.0.1:8010" }
+$env:PLAYWRIGHT_BEEP = "1"
+if ($Debug) { $env:PWDEBUG = "1" }
 
-function Run-One([string]$id, [int]$max) {
-  if (-not $Map.ContainsKey($id)) { Write-Host "[$id] için dosya yok." -ForegroundColor Red; return $false }
-  $file = $Map[$id]
-  Write-Host "`n=== $id için yineleme başlıyor (max $max) ===" -ForegroundColor Cyan
-  for ($i=1; $i -le $max; $i++) {
-    Write-Host "[$id] Deneme $i..." -ForegroundColor Yellow
+$headedArg = $null
+if ($Headed) { $headedArg = "--headed" }
 
-    npx playwright test $file --project=chromium --reporter=line,html,blob
-    $ok = ($LASTEXITCODE -eq 0)
+$npx = Join-Path $env:ProgramFiles "nodejs\npx.cmd"
+if (!(Test-Path $npx)) { $npx = "npx" }
 
-    New-Item -ItemType Directory -Force _otokodlama\out | Out-Null
-    npx playwright merge-reports --reporter=json blob-report > _otokodlama/out/pw.json
-    powershell -ExecutionPolicy Bypass -File tools/post_pr_summary.ps1
+$tests = @(
+  "tests/helpers_e10x.js",
+  "tests/e106_list_filter.spec.js",
+  "tests/e107_edit_equipment.spec.js",
+  "tests/e108_validation.spec.js",
+  "tests/e109_permission_anonymous.spec.js",
+  "tests/e110_bulk_filter_reset.spec.js"
+)
 
-    if ($ok) { Write-Host "[$id] BAŞARILI ✅" -ForegroundColor Green; return $true }
-    Write-Host "[$id] Başarısız, tekrar denenecek..." -ForegroundColor Red
+for ($i = 1; $i -le $Cycles; $i++) {
+  $env:TEST_CYCLE = "$i"
+  Write-Host ""
+  Write-Host ("==== CYCLE {0}/{1} ====" -f $i, $Cycles) -ForegroundColor Cyan
+
+  foreach ($t in $tests) {
+    if (-not (Test-Path $t)) { Write-Host "[SKIP] $t (yok)" -ForegroundColor Yellow; continue }
+    if ($t -like "*helpers_e10x.js") { continue } # not a test
+    $args = @('playwright','test', $t, "--project=$Project")
+    if ($headedArg) { $args += $headedArg }
+    & $npx @args
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "[FAIL] $t (cycle $i)" -ForegroundColor Red
+    } else {
+      Write-Host "[PASS] $t (cycle $i)" -ForegroundColor Green
+    }
   }
-  Write-Host "[$id] Maksimum denemeye ulaşıldı ❌" -ForegroundColor Red
-  return $false
 }
 
-$allOk = $true
-foreach ($id in $Ids) { if (-not (Run-One $id $MaxTries)) { $allOk = $false } }
-if ($allOk) { Write-Host "`nTÜM ID'ler başarıyla geçti. 🎉" -ForegroundColor Green } else { exit 1 }
+Write-Host "`n[iterate_ids.ps1] tamamlandı." -ForegroundColor Green
