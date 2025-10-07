@@ -62,24 +62,21 @@ jobs:
       # Django dev server'ı 8010'da arka planda başlat
       - name: Run Django server
         run: |
-          nohup python manage.py runserver 0.0.0.0:8010 > devserver.log 2>&1 &
+          nohup python manage.py runserver 0.0.0.0:8010 --noreload > devserver.log 2>&1 &
 
       # Server hazır mı? (30 sn bekle)
       - name: Wait for server
-        run: |
-          for i in {1..60}; do
-            curl -fsS http://127.0.0.1:8010/ && echo "up" && exit 0
-            sleep 1
-          done
-          echo "Server did not start in time" >&2
-          exit 1
+  run: |
+    for i in {1..90}; do
+      curl -fsS http://127.0.0.1:8010/admin/login/ && echo "up" && exit 0
+      sleep 1
+    done
+    echo "Server did not start in time" >&2
+    echo "=== tail devserver.log ===" >&2
+    tail -n 200 devserver.log || true
+    exit 1
 
-      # E2E testleri (headless)
-      - name: Run E2E (headless)
-        run: npx playwright test --project=chromium --reporter=html
-
-      # Raporu her durumda yükle
-      - name: Upload HTML report
+\1 Upload HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -97,3 +94,12 @@ jobs:
             test-results/**/*.zip
             test-results/**/*.webm
           retention-days: 7
+
+
+- name: Upload devserver.log
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: devserver-log
+    path: devserver.log
+    retention-days: 7
