@@ -1,4 +1,4 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
 
 test("login check", async ({ page }) => {
