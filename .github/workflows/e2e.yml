@@ -25,6 +25,25 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Django migrate + seed admin
+      - name: Start Django server (bg)
+        shell: pwsh
+        env:
+          DJANGO_SETTINGS_MODULE: "core.settings_maintenance"
+        run: |
+          if (Test-Path "manage.py") {
+            Start-Process -FilePath python -ArgumentList "manage.py","runserver","127.0.0.1:8010" -WindowStyle Hidden
+            $deadline = [DateTime]::UtcNow.AddSeconds(60)
+            while ([DateTime]::UtcNow -lt $deadline) {
+              try {
+                $client = New-Object Net.Sockets.TcpClient
+                $iar = $client.BeginConnect("127.0.0.1",8010,$null,$null)
+                $ok  = $iar.AsyncWaitHandle.WaitOne(1000)
+                if ($ok -and $client.Connected) { $client.Close(); break }
+                $client.Close()
+              } catch {}
+              Start-Sleep -Milliseconds 500
+            }
+          }
         shell: pwsh
         run: |
           if (Test-Path "manage.py") {
