@@ -1,4 +1,4 @@
-name: E2E Dispatch
+﻿name: E2E Dispatch
 
 on:
   workflow_dispatch:
@@ -13,4 +13,4 @@ jobs:
   call-e2e:
     uses: koordinator-maker/bakim_kalibrasyon_rep/.github/workflows/e2e.yml@ci/add-e2e-dispatcher
     with:
-      base_url: ${{ inputs.base_url }}
+      base_url: ${{ github.event.inputs.base_url }}
