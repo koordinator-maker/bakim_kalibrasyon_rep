@@ -81,7 +81,26 @@ jobs:
             } else {
               throw
             }
+          }      - name: Build tasks (ensure tasks.json)
+        shell: pwsh
+        run: |
+          if (Test-Path "scripts/build-tasks.js") {
+            node scripts/build-tasks.js
+          } elseif (Test-Path "tools/tasks_from_csv.ps1") {
+            powershell -File tools/tasks_from_csv.ps1 -Csv "tasks_template.csv" -OutJson "build/tasks.json"
+            Copy-Item build/tasks.json tasks.json -Force
+          } else {
+            # fallback: minimal tasks.json
+            New-Item -Force -ItemType Directory -Path build | Out-Null
+            $json = @"
+{ "meta": {"generatedAt":"$(Get-Date -Format s)","source":"fallback"},
+  "jobs":[{"id":"ADMIN_SMOKE","title":"Admin login smoke",
+           "steps":[{"action":"goto","url":"/admin/login/"}]}] }
+"@
+            $json | Set-Content tasks.json -Encoding UTF8
+            Copy-Item tasks.json build/tasks.json -Force
           }
+
 
       - name: Run Playwright tests
         run: |
