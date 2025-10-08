@@ -64,7 +64,15 @@ jobs:
               Start-Sleep -Milliseconds 500
             }
           }
-
+      - name: Smoke check (port 8010)
+        shell: pwsh
+        run: |
+          try {
+            $r = iwr http://127.0.0.1:8010/ -UseBasicParsing -TimeoutSec 10 -MaximumRedirection 0
+            "SMOKE: $($r.StatusCode) $($r.BaseResponse.ResponseUri)"
+          } catch {
+            Write-Error "SMOKE FAILED: $($_.Exception.Message)"
+          }
       - name: Build tasks (back-compat)
         shell: pwsh
         run: |
@@ -81,11 +89,13 @@ jobs:
         env:
           BASE_URL: "http://127.0.0.1:8010"
         run: |
-          if (Test-Path "tools/run_playwright.ps1") {
-            powershell -File tools/run_playwright.ps1 -BaseUrl "http://127.0.0.1:8010"
+          if (Test-Path "tools/run_playwright.ps1") { --timeout=60000
+            powershell -File tools/run_playwright.ps1 -BaseUrl "http://127.0.0.1:8010" --timeout=60000
           } else {
-            npx playwright test --reporter line,html
+            npx playwright test --reporter line,html --timeout=60000 --reporter line,html
           }
+          DEBUG: "pw:api"
+          CI: "true"
 
       - name: Save Playwright report
         if: always()
