@@ -1,4 +1,4 @@
-﻿import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:8010';
 
@@ -10,7 +10,7 @@ export default defineConfig({
   // ESM configte düz string yol:
   globalSetup: './tests/ensure_tasks_json.cjs',
 
-  use: {
+  use: { actionTimeout: 10_000, navigationTimeout: 15_000,
     baseURL,
     storageState: 'storage/user.json',
     trace: 'on-first-retry',
@@ -19,9 +19,9 @@ export default defineConfig({
   },
 
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    // { name: 'webkit',  use: { ...devices['Desktop Safari'] } },
+    { name: 'chromium', use: { actionTimeout: 10_000, navigationTimeout: 15_000, ...devices['Desktop Chrome'] } },
+    // { name: 'firefox', use: { actionTimeout: 10_000, navigationTimeout: 15_000, ...devices['Desktop Firefox'] } },
+    // { name: 'webkit',  use: { actionTimeout: 10_000, navigationTimeout: 15_000, ...devices['Desktop Safari'] } },
   ],
 
   reporter: [
