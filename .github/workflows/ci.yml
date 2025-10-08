@@ -30,7 +30,7 @@ jobs:
         run: |
           $u = "${env:ADMIN_USER}"; if (-not $u) { $u="admin" }
           $p = "${env:ADMIN_PASS}"; if (-not $p) { $p="Admin!2345" }
-          ./venv/Scripts/python manage.py shell --settings=core.settings_maintenance -c "from django.contrib.auth import get_user_model as G; U=G(); u,created=U.objects.get_or_create(username='$u', defaults={'email':'admin@example.com','is_staff':True,'is_superuser':True}); u.is_staff=True; u.is_superuser=True; u.set_password('$p'); u.save(); print('created' if created else 'updated')"
+python manage.py shell --settings=core.settings_maintenance -c "from django.contrib.auth import get_user_model as G; U=G(); u,created=U.objects.get_or_create(username='$u', defaults={'email':'admin@example.com','is_staff':True,'is_superuser':True}); u.is_staff=True; u.is_superuser=True; u.set_password('$p'); u.save(); print('created' if created else 'updated')"
 
       - name: Run visual pipeline + flows gate
         shell: pwsh
