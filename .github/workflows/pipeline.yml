@@ -8,14 +8,42 @@ jobs:
         with: { python-version: '3.11' }
       - name: Install deps
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          python -m pip install playwright
-          python -m playwright install chromium
-      - name: Serve & Pipeline
+        python -m pip install --upgrade pip
+        if (Test-Path "requirements.txt") { pip install -r requirements.txt }
+        python -m pip install playwright
+        python -m playwright install chromium
+            - name: Serve & Pipeline (guarded)
         shell: pwsh
-        run: powershell -ExecutionPolicy Bypass -File .\tools\serve_then_pipeline.ps1 -BindHost 127.0.0.1 -Port 8000
-      - name: Upload screenshots (artifact)
+        env:
+          DJANGO_SETTINGS_MODULE: "core.settings_maintenance"
+        run: |
+          if (Test-Path ".\tools\serve_then_pipeline.ps1") {
+            powershell -ExecutionPolicy Bypass -File .\tools\serve_then_pipeline.ps1 -BindHost 127.0.0.1 -Port 8010
+            exit $LASTEXITCODE
+          }
+
+          # Fallback: Django devserver 8010 + Playwright
+          if (Test-Path "manage.py") {
+            Start-Process -FilePath python -ArgumentList "manage.py","runserver","127.0.0.1:8010" -WindowStyle Hidden
+            $deadline = [DateTime]::UtcNow.AddSeconds(90)
+            while ([DateTime]::UtcNow -lt $deadline) {
+              try {
+                $c = New-Object Net.Sockets.TcpClient
+                $iar = $c.BeginConnect("127.0.0.1",8010,$null,$null)
+                $ok  = $iar.AsyncWaitHandle.WaitOne(1000)
+                if ($ok -and $c.Connected) { $c.Close(); break }
+                $c.Close()
+              } catch {}
+              Start-Sleep -Milliseconds 500
+            }
+          }
+
+          $env:BASE_URL = "http://127.0.0.1:8010"
+          if (Test-Path "tools/run_playwright.ps1") {
+            powershell -ExecutionPolicy Bypass -File tools/run_playwright.ps1 -BaseUrl $env:BASE_URL
+          } else {
+            npx playwright test --reporter line,html
+          }      - name: Upload screenshots (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: screens
