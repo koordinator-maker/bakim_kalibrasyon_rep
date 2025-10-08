@@ -209,6 +209,14 @@ setup("login state -> storage/user.json", async ({ page, context }) => {
 });
 ### DOSYA BİTİŞ: _setup.spec.js
 
+### DOSYA BAŞLANGIÇ: .\\tests\EQP-002.spec.js
+import { test, expect } from '@playwright/test';
+
+test('test', async ({ page }) => {
+  await page.goto('about:blank');
+});
+### DOSYA BİTİŞ: EQP-002.spec.js
+
 ### DOSYA BAŞLANGIÇ: .\\tests\EQP-003.spec.js
 // tests/EQP-003.spec.js
 import { test, expect } from '@playwright/test';
@@ -237,13 +245,31 @@ test.describe('EQP-003', () => {
 });
 ### DOSYA BİTİŞ: EQP-003.spec.js
 
-### DOSYA BAŞLANGIÇ: .\\tests\EQP-002.spec.js
-import { test, expect } from '@playwright/test';
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\build-tasks.js
+// scripts/build-tasks.js (CSV'den JSON'a dönüştürücü)
+const fs = require('fs');
+const path = require('path');
+const csv = fs.readFileSync(path.join(process.cwd(), 'tasks_template.csv'), 'utf8');
 
-test('test', async ({ page }) => {
-  await page.goto('about:blank');
-});
-### DOSYA BİTİŞ: EQP-002.spec.js
+const lines = csv.trim().split('\r\n');
+const headers = lines[0].split(',');
+const tasks = [];
+
+for (let i = 1; i < lines.length; i++) {
+     const values = lines[i].split(',');
+     if (values.length === headers.length) {
+          let task = {};
+          for (let j = 0; j < headers.length; j++) {
+               task[headers[j].trim()] = values[j].trim().replace(/^"|"$/g, '');
+          }
+          tasks.push(task);
+     }
+}
+
+if (!fs.existsSync('build')) { fs.mkdirSync('build'); }
+fs.writeFileSync('build/tasks.json', JSON.stringify(tasks, null, 2));
+console.log(`[BUILD] ${tasks.length} görev tasks.json dosyasına başarıyla dönüştürüldü.`);
+### DOSYA BİTİŞ: build-tasks.js
 
 ### DOSYA BAŞLANGIÇ: .\\scripts\build-tasks.js
 // scripts/build-tasks.js (CSV'den JSON'a dönüştürücü)
@@ -385,7 +411,7 @@ if ($allOk) {
 }
 ### DOSYA BİTİŞ: run_suite.ps1
 
-### DOSYA BAŞLANGIÇ: .\\maintenance\models.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\maintenance\models.py
 from django.db import models
 import uuid
 
@@ -422,22 +448,42 @@ class Equipment(models.Model):
         return self.name
 ### DOSYA BİTİŞ: models.py
 
-### DOSYA BAŞLANGIÇ: .\\core\urls.py
-from django.contrib import admin
-from django.urls import path, include
-from django.shortcuts import redirect
+### DOSYA BAŞLANGIÇ: .\\maintenance\models.py
+from django.db import models
+import uuid
 
-urlpatterns = [
-    # root URL'ye gidildiğinde /admin/'e yönlendir
-    path('', lambda request: redirect('admin/', permanent=False)),
+# Manufacturer modelini ekliyoruz (Equipment modeli için ForeignKey gerektirebiliriz)
+# Ancak şimdilik sadece Equipment modelindeki alanı CharField olarak tutalım
+# Eğer Manufacturer ayrı bir model olsaydı, şuna benzer olurdu:
+# class Manufacturer(models.Model):
+#     name = models.CharField(max_length=100)
+#     def __str__(self):
+#         return self.name
+
+class Equipment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
-    # Standart Django Admin yolu
-    path('admin/', admin.site.urls),
+    # admin.py'nin beklediği alanlar
+    name = models.CharField(max_length=200, verbose_name="Ekipman Adı")
+    serial_number = models.CharField(max_length=100, unique=True, verbose_name="Seri Numarası")
+    location = models.CharField(max_length=100, verbose_name="Konum")
     
-    # Uygulama URL'leri
-    path('maintenance/', include('maintenance.urls')),
-]
-### DOSYA BİTİŞ: urls.py
+    # EQP-003 testi için gerekli olan ve admin.py'de eklediğimiz alan
+    manufacturer = models.CharField(max_length=100, blank=True, null=True, verbose_name="Üretici Firma")
+
+    # Diğer bakım alanları
+    purchase_date = models.DateField(null=True, blank=True, verbose_name="Satın Alma Tarihi")
+    last_maintenance_date = models.DateField(null=True, blank=True, verbose_name="Son Bakım Tarihi")
+    next_maintenance_date = models.DateField(null=True, blank=True, verbose_name="Sonraki Bakım Tarihi")
+    is_active = models.BooleanField(default=True, verbose_name="Aktif")
+
+    class Meta:
+        verbose_name = "Ekipman"
+        verbose_name_plural = "Ekipmanlar"
+
+    def __str__(self):
+        return self.name
+### DOSYA BİTİŞ: models.py
 
 ### DOSYA BAŞLANGIÇ: .\\core\settings_maintenance.py
 # -*- coding: utf-8 -*-
@@ -561,6 +607,103 @@ MIDDLEWARE = [
 
 
 ### DOSYA BİTİŞ: settings_maintenance.py
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_fix_equip_redirect.py
+# -*- coding: utf-8 -*-
+# core/mw_fix_equip_redirect.py
+from urllib.parse import parse_qsl, urlencode
+from django.utils.deprecation import MiddlewareMixin
+from django.http import HttpResponseRedirect
+
+CANONICAL = "/admin/maintenance/equipment/"
+DIRECT    = "/admin/maintenance/equipment/_direct/"
+
+BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+
+def _filtered_qs(environ_qs: str) -> str:
+    try:
+        pairs = parse_qsl(environ_qs or "", keep_blank_values=True)
+    except Exception:
+        pairs = []
+    pairs = [(k, v) for (k, v) in pairs if k not in BLOCK_KEYS]
+    qs = urlencode(pairs, doseq=True)
+    return ("?" + qs) if qs else ""
+
+class AdminEquipmentRedirectFixMiddleware(MiddlewareMixin):
+    """
+    /admin/maintenance/equipment/ hedefli TÜM istek/yanıtları güvenli _direct listesine çevirir.
+    - process_request: view'e gitmeden önce 302'yle _direct'e yönlendir.
+    - process_response: 301/302 Location header'ı kanonik listeyi gösteriyorsa _direct'e çevir.
+    """
+
+    def process_request(self, request):
+        try:
+            path = request.path
+        except Exception:
+            path = ""
+        if path.endswith(CANONICAL):
+            qs = _filtered_qs(getattr(request.META, "QUERY_STRING", "") or request.META.get("QUERY_STRING",""))
+            return HttpResponseRedirect(DIRECT + qs)
+
+    def process_response(self, request, response):
+        # Yanıt 301/302 ise ve hedef kanonik listeyse, _direct'e çevir
+        try:
+            loc = response["Location"] if hasattr(response, "has_header") and response.has_header("Location") \
+                  else (response.headers.get("Location") if hasattr(response, "headers") else None)
+        except Exception:
+            loc = None
+
+        code = getattr(response, "status_code", 200)
+        if code in (301, 302) and loc:
+            # Sadece path kısmı ile karşılaştır: çoğu zaman relative Location geliyor
+            if str(loc).split("?",1)[0].endswith(CANONICAL):
+                qs = ""
+                try:
+                    # request tarafındaki mevcut QUERY_STRING'i filtreleyip koru
+                    qs = _filtered_qs(request.META.get("QUERY_STRING",""))
+                except Exception:
+                    qs = ""
+                try:
+                    response["Location"] = DIRECT + qs
+                except Exception:
+                    pass
+        return response
+### DOSYA BİTİŞ: mw_fix_equip_redirect.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\maintenance\admin.py
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'serial_number', 'location', 'manufacturer', 'is_active')
+    list_filter = ('location', 'is_active')
+    search_fields = ('name', 'serial_number')
+    
+    # EQP-003 testi için 'manufacturer' alanının formda görünür olduğundan emin olunur.
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'serial_number', 'manufacturer', 'purchase_date', 'last_maintenance_date', 'next_maintenance_date', 'location', 'is_active')
+        }),
+    )
+### DOSYA BİTİŞ: admin.py
+
+### DOSYA BAŞLANGIÇ: .\\core\urls.py
+from django.contrib import admin
+from django.urls import path, include
+from django.shortcuts import redirect
+
+urlpatterns = [
+    # root URL'ye gidildiğinde /admin/'e yönlendir
+    path('', lambda request: redirect('admin/', permanent=False)),
+    
+    # Standart Django Admin yolu
+    path('admin/', admin.site.urls),
+    
+    # Uygulama URL'leri
+    path('maintenance/', include('maintenance.urls')),
+]
+### DOSYA BİTİŞ: urls.py
 
 ### DOSYA BAŞLANGIÇ: .\\maintenance\admin.py
 from django.contrib import admin
@@ -716,67 +859,42 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 ### DOSYA BİTİŞ: settings.py
 
-### DOSYA BAŞLANGIÇ: .\\core\mw_fix_equip_redirect.py
-# -*- coding: utf-8 -*-
-# core/mw_fix_equip_redirect.py
-from urllib.parse import parse_qsl, urlencode
-from django.utils.deprecation import MiddlewareMixin
-from django.http import HttpResponseRedirect
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\core\urls.py
+from django.contrib import admin
+from django.urls import path, include
+from django.shortcuts import redirect
 
-CANONICAL = "/admin/maintenance/equipment/"
-DIRECT    = "/admin/maintenance/equipment/_direct/"
+urlpatterns = [
+    # root URL'ye gidildiğinde /admin/'e yönlendir
+    path('', lambda request: redirect('admin/', permanent=False)),
+    
+    # Standart Django Admin yolu
+    path('admin/', admin.site.urls),
+    
+    # Uygulama URL'leri
+    path('maintenance/', include('maintenance.urls')),
+]
+### DOSYA BİTİŞ: urls.py
 
-BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
-
-def _filtered_qs(environ_qs: str) -> str:
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\ensure_admin.py
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.apps import apps
+User = get_user_model()
+u, created = User.objects.get_or_create(username='admin', defaults={'email':'admin@example.com','is_superuser':True,'is_staff':True})
+if created:
+    u.set_password('admin')
+    u.save()
+Equipment = apps.get_model('maintenance','Equipment')
+if Equipment:
+    ct = apps.get_model('contenttypes','ContentType').objects.get_for_model(Equipment)
     try:
-        pairs = parse_qsl(environ_qs or "", keep_blank_values=True)
-    except Exception:
-        pairs = []
-    pairs = [(k, v) for (k, v) in pairs if k not in BLOCK_KEYS]
-    qs = urlencode(pairs, doseq=True)
-    return ("?" + qs) if qs else ""
-
-class AdminEquipmentRedirectFixMiddleware(MiddlewareMixin):
-    """
-    /admin/maintenance/equipment/ hedefli TÜM istek/yanıtları güvenli _direct listesine çevirir.
-    - process_request: view'e gitmeden önce 302'yle _direct'e yönlendir.
-    - process_response: 301/302 Location header'ı kanonik listeyi gösteriyorsa _direct'e çevir.
-    """
-
-    def process_request(self, request):
-        try:
-            path = request.path
-        except Exception:
-            path = ""
-        if path.endswith(CANONICAL):
-            qs = _filtered_qs(getattr(request.META, "QUERY_STRING", "") or request.META.get("QUERY_STRING",""))
-            return HttpResponseRedirect(DIRECT + qs)
-
-    def process_response(self, request, response):
-        # Yanıt 301/302 ise ve hedef kanonik listeyse, _direct'e çevir
-        try:
-            loc = response["Location"] if hasattr(response, "has_header") and response.has_header("Location") \
-                  else (response.headers.get("Location") if hasattr(response, "headers") else None)
-        except Exception:
-            loc = None
-
-        code = getattr(response, "status_code", 200)
-        if code in (301, 302) and loc:
-            # Sadece path kısmı ile karşılaştır: çoğu zaman relative Location geliyor
-            if str(loc).split("?",1)[0].endswith(CANONICAL):
-                qs = ""
-                try:
-                    # request tarafındaki mevcut QUERY_STRING'i filtreleyip koru
-                    qs = _filtered_qs(request.META.get("QUERY_STRING",""))
-                except Exception:
-                    qs = ""
-                try:
-                    response["Location"] = DIRECT + qs
-                except Exception:
-                    pass
-        return response
-### DOSYA BİTİŞ: mw_fix_equip_redirect.py
+        p = Permission.objects.get(codename='add_equipment', content_type=ct)
+        u.user_permissions.add(p)
+    except Permission.DoesNotExist:
+        pass
+print("OK-user:", u.username)
+### DOSYA BİTİŞ: ensure_admin.py
 
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\ensure_admin.py
 from django.contrib.auth import get_user_model
@@ -797,6 +915,40 @@ if Equipment:
         pass
 print("OK-user:", u.username)
 ### DOSYA BİTİŞ: ensure_admin.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\_smoke_for_bak.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib.auth import get_user_model
+from django.test import Client
+from maintenance.models import Equipment
+from django.contrib.admin.templatetags import admin_urls
+from django.urls import reverse
+
+U = get_user_model()
+u, _ = U.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff=True; u.is_superuser=True; u.set_password("admin123!"); u.save()
+
+c = Client()
+# login sayfasına gidip giriş yap
+c.get("/admin/")
+c.post("/admin/login/?next=/admin/", {
+    "username":"admin","password":"admin123!",
+    "this_is_the_login_form":1,"next":"/admin/"
+}, follow=True)
+
+cl  = reverse(admin_urls.admin_urlname(Equipment._meta, "changelist"))
+add = reverse(admin_urls.admin_urlname(Equipment._meta, "add"))
+
+ok = (c.get(reverse("admin:index")).status_code == 200
+      and c.get(cl).status_code == 200
+      and c.get(add).status_code == 200)
+print("OK" if ok else "FAIL")
+### DOSYA BİTİŞ: _smoke_for_bak.py
 
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\_smoke_for_bak.py
 import os, sys, django
@@ -832,6 +984,20 @@ ok = (c.get(reverse("admin:index")).status_code == 200
 print("OK" if ok else "FAIL")
 ### DOSYA BİTİŞ: _smoke_for_bak.py
 
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_auth_walk.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.urls import resolve, Resolver404
+for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipment/add/"]:
+    try:
+        m = resolve(p)
+        print(p, "-> OK:", m.func.__module__)
+    except Resolver404:
+        print(p, "-> 404 (pattern yok)")
+### DOSYA BİTİŞ: admin_auth_walk.py
+
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_walk.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
@@ -845,6 +1011,46 @@ for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipmen
     except Resolver404:
         print(p, "-> 404 (pattern yok)")
 ### DOSYA BİTİŞ: admin_auth_walk.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_smoke_authed.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+from django.contrib.auth import get_user_model
+from django.test import Client
+from django.urls import reverse
+from maintenance.models import Equipment
+
+# Süper kullanıcı garanti
+U = get_user_model()
+u, _ = U.objects.get_or_create(
+    username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True}
+)
+u.is_staff = True; u.is_superuser = True; u.set_password("admin123!"); u.save()
+
+# Login + kontroller
+c = Client()
+c.force_login(u)  # login formuna post atmaya gerek yok, direkt oturum aç
+print("admin:index ->", c.get(reverse("admin:index")).status_code)
+
+nm_cl  = admin_urlname(Equipment._meta, "changelist")
+nm_add = admin_urlname(Equipment._meta, "add")
+cl_url  = reverse(nm_cl)
+add_url = reverse(nm_add)
+
+r1 = c.get(cl_url)
+r2 = c.get(add_url)
+print("CL  status:", r1.status_code, cl_url)
+print("ADD status:", r2.status_code, add_url)
+
+# Basit bir içerik işareti (isteğe bağlı)
+print("Has 'Equipment' in CL page?:", "Equipment" in r1.content.decode("utf-8", "ignore"))
+### DOSYA BİTİŞ: admin_smoke_authed.py
 
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_authed.py
 import os, sys, django
@@ -922,6 +1128,71 @@ print("CL  status:", c.get(reverse(nm_cl)).status_code, reverse(nm_cl))
 print("ADD status:", c.get(reverse(nm_add)).status_code, reverse(nm_add))
 ### DOSYA BİTİŞ: admin_smoke_autodiscover.py
 
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_smoke_autodiscover.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+from django.contrib.auth import get_user_model
+from django.urls import reverse, NoReverseMatch
+from django.test import Client
+from maintenance.models import Equipment
+
+print("System check identified no issues (0 silenced).")
+print("admin:index ->", reverse("admin:index"))
+print("admin:login ->", reverse("admin:login"))
+try:
+    print("admin:app_list(maintenance) ->", reverse("admin:app_list", kwargs={"app_label":"maintenance"}))
+except NoReverseMatch as e:
+    print("WARN app_list:", e)
+
+nm_cl  = admin_urlname(Equipment._meta, "changelist")
+nm_add = admin_urlname(Equipment._meta, "add")
+print(admin_urlname(Equipment._meta, "changelist"), "->", reverse(nm_cl))
+print(admin_urlname(Equipment._meta, "add"),        "->", reverse(nm_add))
+
+U = get_user_model()
+u, _ = U.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True; u.set_password("admin123!"); u.save()
+
+c = Client()
+print("CL  status:", c.get(reverse(nm_cl)).status_code, reverse(nm_cl))
+print("ADD status:", c.get(reverse(nm_add)).status_code, reverse(nm_add))
+### DOSYA BİTİŞ: admin_smoke_autodiscover.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_smoke_final2.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib.auth import get_user_model
+from django.test import Client
+from maintenance.models import Equipment
+
+# superuser garanti
+U = get_user_model()
+u, _ = U.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True; u.set_password("admin123!"); u.save()
+
+c = Client()
+print("GET /admin/ ->", c.get("/admin/").status_code)
+c.post("/admin/login/?next=/admin/", {
+    "username":"admin","password":"admin123!",
+    "this_is_the_login_form":1,"next":"/admin/"
+}, follow=True)
+
+cl = f"/admin/{Equipment._meta.app_label}/{Equipment._meta.model_name}/"
+ad = f"/admin/{Equipment._meta.app_label}/{Equipment._meta.model_name}/add/"
+print("CL:", c.get(cl).status_code, cl)
+print("AD:", c.get(ad).status_code, ad)
+### DOSYA BİTİŞ: admin_smoke_final2.py
+
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_final2.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
@@ -950,6 +1221,69 @@ ad = f"/admin/{Equipment._meta.app_label}/{Equipment._meta.model_name}/add/"
 print("CL:", c.get(cl).status_code, cl)
 print("AD:", c.get(ad).status_code, ad)
 ### DOSYA BİTİŞ: admin_smoke_final2.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_smoke_final.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.conf import settings
+from django.urls import reverse, NoReverseMatch, clear_url_caches, get_resolver
+from importlib import import_module, reload
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+from maintenance.models import Equipment
+from django.contrib.auth import get_user_model
+from django.test import Client
+
+# Admin registry'yi yükle ve URL resolver'ı tazeleyip yeniden derle
+admin.autodiscover()
+clear_url_caches()
+reload(import_module(settings.ROOT_URLCONF))
+
+# Çekirdek admin reverse'leri
+print("admin:index ->", reverse("admin:index"))
+print("admin:login ->", reverse("admin:login"))
+try:
+    print("admin:app_list(maintenance) ->", reverse("admin:app_list", kwargs={"app_label":"maintenance"}))
+except NoReverseMatch as e:
+    print("WARN app_list:", e)
+
+# Model bazlı isimleri deneyelim (namespace + app + model + action)
+nm_cl  = f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_changelist"
+nm_add = f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_add"
+
+# Debug: resolver'daki ilgili isimleri göster
+names = sorted(n for n in get_resolver().reverse_dict.keys()
+               if isinstance(n, str) and "admin" in n and Equipment._meta.model_name in n)
+print("resolver names (sample):", names[:10])
+
+for nm in (nm_cl, nm_add):
+    try:
+        print(nm, "->", reverse(nm))
+    except NoReverseMatch as e:
+        print("WARN", nm, "->", e)
+
+# Superuser garanti
+User = get_user_model()
+u, _ = User.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True; u.set_password("admin123!"); u.save()
+
+# Login + gerçek URL yoluyla duman testi
+c = Client()
+c.post("/admin/login/?next=/admin/", {
+    "username":"admin","password":"admin123!",
+    "this_is_the_login_form":1,"next":"/admin/"
+}, follow=True)
+
+cl_path  = f"/admin/{Equipment._meta.app_label}/{Equipment._meta.model_name}/"
+add_path = f"/admin/{Equipment._meta.app_label}/{Equipment._meta.model_name}/add/"
+
+print("CL  status:", c.get(cl_path).status_code, cl_path)
+print("ADD status:", c.get(add_path).status_code, add_path)
+### DOSYA BİTİŞ: admin_smoke_final.py
 
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_final.py
 import os, sys, django
@@ -1014,6 +1348,54 @@ print("CL  status:", c.get(cl_path).status_code, cl_path)
 print("ADD status:", c.get(add_path).status_code, add_path)
 ### DOSYA BİTİŞ: admin_smoke_final.py
 
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_smoke_fixed.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+admin.autodiscover()  # güvenli
+
+from django.contrib.auth import get_user_model
+from django.test import Client
+from django.urls import reverse, NoReverseMatch
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+from maintenance.models import Equipment
+
+# kritik reverse'ler
+print("admin:index ->", reverse("admin:index"))
+print("admin:login ->", reverse("admin:login"))
+
+# app_list bazı sürümlerde/kurulumlarda isim/ekleme farkı yüzünden reverse edilmeyebilir
+try:
+    print("admin:app_list(maintenance) ->", reverse("admin:app_list", kwargs={"app_label":"maintenance"}))
+except NoReverseMatch as e:
+    print("WARN app_list:", e)
+
+# model bazlı reverse (garanti)
+nm_cl  = admin_urlname(Equipment._meta, "changelist")
+nm_add = admin_urlname(Equipment._meta, "add")
+print(nm_cl,  "->", reverse(nm_cl))
+print(nm_add, "->", reverse(nm_add))
+
+# superuser garanti
+User = get_user_model()
+u, _ = User.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True; u.set_password("admin123!"); u.save()
+
+# login + sayfa durumları
+c = Client()
+c.post("/admin/login/?next=/admin/", {
+    "username":"admin","password":"admin123!",
+    "this_is_the_login_form":1,"next":"/admin/"
+}, follow=True)
+
+print("CL  status:", c.get("/admin/maintenance/equipment/").status_code)
+print("ADD status:", c.get("/admin/maintenance/equipment/add/").status_code)
+### DOSYA BİTİŞ: admin_smoke_fixed.py
+
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke_fixed.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
@@ -1062,6 +1444,36 @@ print("CL  status:", c.get("/admin/maintenance/equipment/").status_code)
 print("ADD status:", c.get("/admin/maintenance/equipment/add/").status_code)
 ### DOSYA BİTİŞ: admin_smoke_fixed.py
 
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_smoke.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.urls import reverse
+from django.test import Client
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+u, _ = User.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True; u.set_password("admin123!"); u.save()
+
+print("admin:index ->", reverse("admin:index"))
+print("admin:login ->", reverse("admin:login"))
+print("app_list(maintenance) ->", reverse("admin:app_list", kwargs={"app_label":"maintenance"}))
+
+c = Client()
+c.post("/admin/login/?next=/admin/", {
+    "username":"admin","password":"admin123!",
+    "this_is_the_login_form":1,"next":"/admin/"
+}, follow=True)
+
+print("CL  /admin/maintenance/equipment/     ->", c.get("/admin/maintenance/equipment/").status_code)
+print("ADD /admin/maintenance/equipment/add/ ->", c.get("/admin/maintenance/equipment/add/").status_code)
+### DOSYA BİTİŞ: admin_smoke.py
+
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_smoke.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
@@ -1091,6 +1503,40 @@ c.post("/admin/login/?next=/admin/", {
 print("CL  /admin/maintenance/equipment/     ->", c.get("/admin/maintenance/equipment/").status_code)
 print("ADD /admin/maintenance/equipment/add/ ->", c.get("/admin/maintenance/equipment/add/").status_code)
 ### DOSYA BİTİŞ: admin_smoke.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\list_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.urls import reverse, NoReverseMatch
+
+print("site.name:", getattr(admin.site, "name", None))
+
+# kritik üç reverse:
+for name, kwargs in [
+    ("admin:index", None),
+    ("admin:login", None),
+    ("admin:app_list", {"app_label":"maintenance"}),
+]:
+    try:
+        print(name, "->", reverse(name, kwargs=kwargs))
+    except NoReverseMatch as e:
+        print(name, "-> NoReverseMatch:", e)
+
+# model bazlı reverse'lar
+from maintenance.models import Equipment
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+nm_cl = admin_urlname(Equipment._meta, "changelist")
+nm_add = admin_urlname(Equipment._meta, "add")
+for nm in [nm_cl, nm_add]:
+    try:
+        print(nm, "->", reverse(nm))
+    except NoReverseMatch as e:
+        print(nm, "-> NoReverseMatch:", e)
+### DOSYA BİTİŞ: list_admin_urls.py
 
 ### DOSYA BAŞLANGIÇ: .\\_otokodlama\list_admin_urls.py
 import os, sys, django
@@ -1150,381 +1596,27 @@ print("reverse(changelist) ->", reverse(nm_cl))
 print("reverse(add)        ->", reverse(nm_add))
 ### DOSYA BİTİŞ: admin_namespace_probe.py
 
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe_ok.py
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_namespace_probe.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
 django.setup()
 
-from django.test import Client
-c = Client()
-r = c.get("/admin/"); print("GET /admin/ ->", r.status_code)  # 302 beklenir
-
-resp = c.post("/admin/login/?next=/admin/", {
-    "username":"admin","password":"admin123!",
-    "this_is_the_login_form":1,"next":"/admin/"
-}, follow=True)
-print("login final status:", resp.status_code)
-
-r1 = c.get("/admin/maintenance/equipment/"); print("CL status:", r1.status_code)  # 200
-r2 = c.get("/admin/maintenance/equipment/add/"); print("ADD status:", r2.status_code)  # 200
-### DOSYA BİTİŞ: admin_auth_probe_ok.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\dump_admin_names.py
-import os, sys, django
-from itertools import islice
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.urls import get_resolver
 from django.contrib import admin
+from django.urls import reverse
 from maintenance.models import Equipment
-
-res = get_resolver()
-names = []
-for k in res.reverse_dict.keys():
-    if isinstance(k, str) and ("admin" in k or "maintenance" in k):
-        names.append(k)
-
-print("~ İlk 50 isim ~")
-for n in islice(sorted(set(names)), 50):
-    print(n)
-
-# Ayrıca model bazlı isimleri üret ve tersine çevir
 from django.contrib.admin.templatetags.admin_urls import admin_urlname
+
+print("site.name =", getattr(admin.site, "name", None))
+print("admin:index  ->", reverse("admin:index"))
+print("admin:login  ->", reverse("admin:login"))
+print("admin:app_list(maintenance) ->", reverse("admin:app_list", kwargs={"app_label":"maintenance"}))
+
 nm_cl = admin_urlname(Equipment._meta, "changelist")
 nm_add = admin_urlname(Equipment._meta, "add")
-print("nm_cl:", nm_cl)
-print("nm_add:", nm_add)
-
-from django.urls import reverse
-print("reverse(cl):", reverse(nm_cl))
-print("reverse(add):", reverse(nm_add))
-### DOSYA BİTİŞ: dump_admin_names.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\check_admin_tuple.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.contrib import admin
-tpl = admin.site.urls  # (urlpatterns, app_name, namespace)
-print("app_name:", tpl[1], "| namespace:", tpl[2])
-### DOSYA BİTİŞ: check_admin_tuple.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe_after_reset.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.test import Client
-c = Client()
-
-# login sayfasına yönlendirme beklenen (302)
-r = c.get("/admin/")
-print("GET /admin/ ->", r.status_code)
-
-# giriş yap
-resp = c.post("/admin/login/?next=/admin/", {
-    "username":"admin", "password":"admin123!",
-    "this_is_the_login_form":1, "next":"/admin/"
-}, follow=True)
-print("login final status:", resp.status_code)
-
-# model sayfaları artık 200 olmalı
-r1 = c.get("/admin/maintenance/equipment/")
-r2 = c.get("/admin/maintenance/equipment/add/")
-print("CL status:", r1.status_code)
-print("ADD status:", r2.status_code)
-### DOSYA BİTİŞ: admin_auth_probe_after_reset.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_reverse_check_fixed.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.contrib import admin
-from django.urls import reverse, NoReverseMatch
-from django.contrib.admin.templatetags.admin_urls import admin_urlname
-from maintenance.models import Equipment
-
-print("Registered in default admin site:", Equipment in admin.site._registry)
-
-name_changelist = admin_urlname(Equipment._meta, "changelist")   # Örn: "admin:maintenance_equipment_changelist"
-name_add        = admin_urlname(Equipment._meta, "add")          # Örn: "admin:maintenance_equipment_add"
-print("Names ->", name_changelist, ",", name_add)
-
-try:
-    # DİKKAT: Burada ekstra "admin:" EKLEMİYORUZ
-    print("Reverse CL :", reverse(name_changelist))
-    print("Reverse ADD:", reverse(name_add))
-except NoReverseMatch as e:
-    print("NoReverseMatch:", e)
-### DOSYA BİTİŞ: admin_reverse_check_fixed.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\probe_admin_500.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-from django.test import Client
-c = Client()
-r = c.get("/admin/")
-print("status:", r.status_code)
-print((r.content[:800]).decode("utf-8","ignore"))
-### DOSYA BİTİŞ: probe_admin_500.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.test import Client
-
-c = Client()
-
-# 1) login sayfasına yönlendirme var mı?
-r = c.get("/admin/")
-print("GET /admin/ ->", r.status_code)  # 302 beklenir (login'e)
-
-# 2) admin kullanıcısı ile giriş
-resp = c.post("/admin/login/?next=/admin/", {
-    "username":"admin", "password":"admin123!",
-    "this_is_the_login_form":1, "next":"/admin/"
-}, follow=True)
-print("login final status:", resp.status_code)
-
-# 3) artık changelist/add kaç dönüyor?
-r1 = c.get("/admin/maintenance/equipment/")
-r2 = c.get("/admin/maintenance/equipment/add/")
-print("CL status:", r1.status_code)   # 200 beklenir
-print("ADD status:", r2.status_code)  # 200 beklenir
-### DOSYA BİTİŞ: admin_auth_probe.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_reverse_check.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.contrib import admin
-from django.urls import reverse, NoReverseMatch
-from django.contrib.admin.templatetags.admin_urls import admin_urlname
-from maintenance.models import Equipment
-
-print("Registered in default admin site:", Equipment in admin.site._registry)
-
-name_changelist = admin_urlname(Equipment._meta, "changelist")   # ör: "maintenance_equipment_changelist"
-name_add        = admin_urlname(Equipment._meta, "add")          # ör: "maintenance_equipment_add"
-print("Names ->", name_changelist, ",", name_add)
-
-try:
-    print("Reverse CL :", reverse(f"admin:{name_changelist}"))
-    print("Reverse ADD:", reverse(f"admin:{name_add}"))
-except NoReverseMatch as e:
-    print("NoReverseMatch:", e)
-### DOSYA BİTİŞ: admin_reverse_check.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\check_admin_urls.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-from django.contrib import admin
-from django.urls import reverse
-from maintenance.models import Equipment
-print("Registered:", Equipment in admin.site._registry)
-print("CL :", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_changelist"))
-print("ADD:", reverse(f"admin:{Equipment._meta.app_label}_{Equipment._meta.model_name}_add"))
-### DOSYA BİTİŞ: check_admin_urls.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\ensure_superuser.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-from django.contrib.auth import get_user_model
-User = get_user_model()
-u, _ = User.objects.get_or_create(username="admin",
-    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
-u.is_staff = True; u.is_superuser = True
-u.set_password("admin123!")
-u.save()
-print("ok ->", u.username, u.is_superuser, u.is_staff)
-### DOSYA BİTİŞ: ensure_superuser.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\resolve_admin_urls.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-from django.urls import resolve, Resolver404
-for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipment/add/"]:
-    try:
-        m = resolve(p)
-        print(p, "-> OK:", m.func.__module__)
-    except Resolver404:
-        print(p, "-> 404 (pattern yok)")
-### DOSYA BİTİŞ: resolve_admin_urls.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\diag_dupes.py
-import os, sys, django
-ROOT = os.path.abspath(".")
-if ROOT not in sys.path: sys.path.insert(0, ROOT)
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.db.models import Count
-from maintenance.models import Equipment
-
-dupes = (Equipment.objects
-         .values("serial_number")
-         .annotate(c=Count("id"))
-         .filter(c__gt=1))
-print("Kalan duplike sayısı:", dupes.count())
-print(list(dupes[:20]))
-### DOSYA BİTİŞ: diag_dupes.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\fix_serial_dupes_runner.py
-import os, sys, django
-
-# --- PROJE KÖKÜNÜ sys.path'E EKLE ---
-HERE = os.path.abspath(os.path.dirname(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, ".."))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.db import transaction
-from maintenance.models import Equipment
-
-MAX_LEN = 120
-SUFFIX_DUP = "__DUP__{id}"
-SUFFIX_EMPTY = "__EMPTY__{id}"
-
-def safe_unique_value(original: str, suffix: str) -> str:
-    room = MAX_LEN - len(suffix)
-    base = (original or "")[:room] if room > 0 else ""
-    return (base + suffix)[:MAX_LEN]
-
-# 1) Duplikeleri grupla (case-insensitive). Boş/whitespace -> özel anahtar.
-by_norm = {}
-for e in Equipment.objects.all().order_by("id"):
-    raw = e.serial_number
-    s = (raw or "")
-    norm = s.strip().lower()
-    key = norm if norm != "" else "__EMPTY__"
-    by_norm.setdefault(key, []).append((e.id, s))
-
-dupe_groups = {k:v for k,v in by_norm.items() if len(v) > 1}
-print("Duplike grup sayısı:", len(dupe_groups))
-
-changed = 0
-with transaction.atomic():
-    for key, rows in dupe_groups.items():
-        keeper_id, keeper_val = rows[0]  # ilk kaydı koru
-        for (pk, val) in rows[1:]:
-            if key == "__EMPTY__":
-                new_val = safe_unique_value("", SUFFIX_EMPTY.format(id=pk))
-            else:
-                new_val = safe_unique_value(val, SUFFIX_DUP.format(id=pk))
-            # ekstra güvenlik: yine çakışırsa hafif varyasyon
-            q = Equipment.objects.filter(serial_number=new_val).exclude(pk=pk)
-            if q.exists():
-                new_val = safe_unique_value(val, (SUFFIX_DUP.format(id=pk) + "_X"))
-            Equipment.objects.filter(pk=pk).update(serial_number=new_val)
-            changed += 1
-
-print("Güncellenen kayıt:", changed)
-### DOSYA BİTİŞ: fix_serial_dupes_runner.py
-
-### DOSYA BAŞLANGIÇ: .\\_otokodlama\dedupe_serials.py
-from django.db import transaction
-from maintenance.models import Equipment
-
-dupe_ids = []
-seen = set()
-
-qs = Equipment.objects.all().order_by('id')
-for e in qs:
-    sn = (e.serial_number or '').strip()
-    if not sn:
-        continue
-    key = sn.lower()
-    if key in seen:
-        dupe_ids.append(e.id)
-    else:
-        seen.add(key)
-
-with transaction.atomic():
-    for pk in dupe_ids:
-        Equipment.objects.filter(pk=pk).update(serial_number=None)
-
-print("Deduped:", len(dupe_ids), "records set to NULL")
-### DOSYA BİTİŞ: dedupe_serials.py
-
-### DOSYA BAŞLANGIÇ: .\\reporters\quarantine-reporter.js
-// reporters/quarantine-reporter.js (Karantina ve AI Kuyruk Yöneticisi - TAM İMPLEMENTASYON)
-const fs = require('fs');
-const path = require('path');
-
-const QUARANTINE_FILE = path.join(process.cwd(), 'quarantine.json');
-const AI_QUEUE_FILE = path.join(process.cwd(), 'ai_queue', 'failed_tests.jsonl');
-
-class QuarantineReporter {
-     constructor(options) {
-          this.quarantine = {};
-          this.loadQuarantine();
-     }
-
-     loadQuarantine() {
-          if (fs.existsSync(QUARANTINE_FILE)) {
-               try {
-                    this.quarantine = JSON.parse(fs.readFileSync(QUARANTINE_FILE, 'utf8'));
-                    console.log(`[REPORTER] Karantina durumu yüklendi: ${Object.keys(this.quarantine).length} öğe.`);
-               } catch (e) {
-                    console.error('[REPORTER HATA] Karantina dosyasını okurken hata oluştu, sıfırdan başlatılıyor.', e.message);
-                    this.quarantine = {};
-               }
-          }
-     }
-
-     onTestEnd(test, result) {
-          const testId = `${path.basename(test.location.file)} - ${test.title}`;
-
-          if (result.status === 'failed' || result.status === 'timedOut') {
-               this.quarantine[testId] = (this.quarantine[testId] || 0) + 1;
-
-               const errorMsg = result.errors[0]?.message || result.error?.message || 'Tanımsız veya süre aşımı hatası';
-               const aiReport = {
-                    id: testId,
-                    status: result.status,
-                    error: errorMsg.split('\n')[0],
-                    timestamp: new Date().toISOString()
-               };
-               fs.appendFileSync(AI_QUEUE_FILE, JSON.stringify(aiReport) + '\n');
-
-               if (this.quarantine[testId] >= 3) {
-                    console.log(`[KARANTİNA] Görev ${testId} 3. kez başarısız oldu ve karantinaya alındı.`);
-               }
-          } else if (result.status === 'passed' && this.quarantine[testId] && this.quarantine[testId] < 3) {
-               delete this.quarantine[testId];
-          }
-     }
-
-     onEnd(result) {
-          fs.writeFileSync(QUARANTINE_FILE, JSON.stringify(this.quarantine, null, 2));
-          console.log(`[RAPOR] Karantina durumu güncellendi. Başarısızlık sayısı: ${result.failures}.`);
-     }
-}
-
-module.exports = QuarantineReporter;
-### DOSYA BİTİŞ: quarantine-reporter.js
+print("nm_cl =", nm_cl)
+print("nm_add =", nm_add)
+print("reverse(changelist) ->", reverse(nm_cl))
+print("reverse(add)        ->", reverse(nm_add))
+### DOSYA BİTİŞ: admin_namespace_probe.py
 
