@@ -1,10 +1,10 @@
-﻿// Playwright yapılandırma
+// Playwright yapılandırma
 import { defineConfig } from '@playwright/test';
 
 // Oturum durumunun kaydedileceği yer
 const storageStatePath = 'storage/user.json'; 
 
-export default defineConfig({
+export default defineConfig({`n  globalSetup: require.resolve("./tests/ensure_tasks_json.cjs"),
      timeout: 30 * 1000, // Genel Test Zaman Aşımı 30 saniye
      retries: 2,
 
