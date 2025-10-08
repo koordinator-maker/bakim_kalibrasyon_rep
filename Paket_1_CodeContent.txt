@@ -1,34 +1,50 @@
-﻿### DOSYA BAŞLANGIÇ: .\\tests\admin-dashboard.spec.js
-// tests/admin-dashboard.spec.js
-import { test, expect } from "@playwright/test";
+﻿### DOSYA BAŞLANGIÇ: .\\playwright.config.js
+// Playwright yapÄ±landÄ±rma
+import { defineConfig } from '@playwright/test';
 
-test.describe("Admin Dashboard Tests", () => {
-    test("should access admin panel", async ({ page }) => {
-        const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+// Oturum durumunun kaydedileceÄŸi yer
+const storageStatePath = 'storage/user.json'; 
 
-        await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
+export default defineConfig({`n  globalSetup: require.resolve("./tests/ensure_tasks_json.cjs"),
+     timeout: 30 * 1000, // Genel Test Zaman AÅŸÄ±mÄ± 30 saniye
+     retries: 2,
 
-        // Login sayfasına redirect olmamalı
-        await expect(page).not.toHaveURL(/\/admin\/login/);
+     use: {
+          baseURL: 'http://localhost:8000',
+          actionTimeout: 5000,
+          navigationTimeout: 30000, // Navigasyon Zaman AÅŸÄ±mÄ± 30 saniye
+     },
 
-        // Admin panel içeriği görmeli
-        await expect(page.locator("text=Site administration, text=Django administration")).toBeVisible({ timeout: 5000 });
+     reporter: [
+          ['list'],
+          ['./reporters/quarantine-reporter.js'],
+     ],
 
-        console.log("[TEST PASSED] Authenticated admin access verified");
-    });
-
-    test("should list users in admin", async ({ page }) => {
-        const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
-
-        await page.goto(`${BASE}/admin/accounts/customuser/`, { waitUntil: "domcontentloaded" });
-
-        // User listesi tablosu görünmeli
-        await expect(page.locator("#result_list, .results")).toBeVisible({ timeout: 5000 });
-
-        console.log("[TEST PASSED] User list accessible");
-    });
+     // Projeleri tanÄ±mlama
+     projects: [
+          // 1. Kurulum Projesi: Oturum durumunu hazÄ±rlar.
+          {
+               name: 'setup',
+               testMatch: 'tests/_setup.spec.js',
+               timeout: 30 * 1000, // Kurulum projesi iÃ§in Ã¶zel 30 saniye
+               use: {
+                    baseURL: 'http://localhost:8000',
+                    storageState: storageStatePath, 
+               },
+          },
+          // 2. Ana Test Projesi: Kurulumdan gelen oturum durumunu kullanÄ±r.
+          {
+               name: 'chromium',
+               testIgnore: 'tests/_setup.spec.js', 
+               use: {
+                    browserName: 'chromium',
+                    storageState: storageStatePath, 
+               },
+               dependencies: ['setup'], 
+          },
+     ],
 });
-### DOSYA BİTİŞ: admin-dashboard.spec.js
+### DOSYA BİTİŞ: playwright.config.js
 
 ### DOSYA BAŞLANGIÇ: .\\tests\tasks.spec.js
 // tests/tasks.spec.js
@@ -163,7 +179,114 @@ for (const t of tasks){
     }
   });
 }
+
 ### DOSYA BİTİŞ: tasks.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\scripts\build-tasks.js
+/* Rev: 2025-10-08 r1 */
+const fs = require("fs");
+const path = require("path");
+
+function readCsvRows(p) {
+  if (!fs.existsSync(p)) return null;
+  const raw = fs.readFileSync(p, "utf8").split(/\r?\n/).filter(Boolean);
+  const hdr = raw.shift().split(",").map(s=>s.trim());
+  return raw.map(line=>{
+    const cols = line.split(",").map(s=>s.trim());
+    const obj={}; hdr.forEach((h,i)=>obj[h]=cols[i] ?? "");
+    return obj;
+  });
+}
+
+function makeDefaultPlan() {
+  return {
+    meta: { generatedAt: new Date().toISOString(), source: "default" },
+    jobs: [
+      {
+        id: "ADMIN_SMOKE",
+        title: "Admin login smoke",
+        steps: [
+          { action: "goto",   url: "/admin/login/" },
+          { action: "expect", selector: "input[name=username]" },
+          { action: "expect", selector: "input[name=password]" }
+        ]
+      }
+    ]
+  };
+}
+
+function csvToPlan(rows) {
+  // Beklenen en basit şema: id,title,action,selector,url
+  // Aynı id altındaki satırlar tek job’ın adımları olur.
+  const byId = new Map();
+  for (const r of rows) {
+    const id = r.id || "JOB";
+    if (!byId.has(id)) byId.set(id, { id, title: r.title || id, steps: [] });
+    byId.get(id).steps.push({
+      action: r.action || "goto",
+      selector: r.selector || "",
+      url: r.url || ""
+    });
+  }
+  return { meta: { generatedAt: new Date().toISOString(), source: "csv" },
+           jobs: Array.from(byId.values()) };
+}
+
+function ensureDirs() {
+  for (const d of ["build"]) {
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+  }
+}
+
+(function main(){
+  ensureDirs();
+  const csvPath = path.join("ops","ui_validate.csv"); // varsa bundan türet
+  let plan;
+  const rows = readCsvRows(csvPath);
+  if (rows && rows.length) plan = csvToPlan(rows);
+  else {
+    // ikinci şans: tasks_template.csv
+    const t = readCsvRows("tasks_template.csv");
+    plan = (t && t.length) ? csvToPlan(t) : makeDefaultPlan();
+  }
+  const out = JSON.stringify(plan, null, 2);
+  fs.writeFileSync("tasks.json", out);
+  fs.writeFileSync(path.join("build","tasks.json"), out);
+  console.log("Wrote tasks.json and build/tasks.json");
+})();
+### DOSYA BİTİŞ: build-tasks.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\admin-dashboard.spec.js
+// tests/admin-dashboard.spec.js
+import { test, expect } from "@playwright/test";
+
+test.describe("Admin Dashboard Tests", () => {
+    test("should access admin panel", async ({ page }) => {
+        const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+
+        await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
+
+        // Login sayfasına redirect olmamalı
+        await expect(page).not.toHaveURL(/\/admin\/login/);
+
+        // Admin panel içeriği görmeli
+        await expect(page.locator("text=Site administration, text=Django administration")).toBeVisible({ timeout: 5000 });
+
+        console.log("[TEST PASSED] Authenticated admin access verified");
+    });
+
+    test("should list users in admin", async ({ page }) => {
+        const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+
+        await page.goto(`${BASE}/admin/accounts/customuser/`, { waitUntil: "domcontentloaded" });
+
+        // User listesi tablosu görünmeli
+        await expect(page.locator("#result_list, .results")).toBeVisible({ timeout: 5000 });
+
+        console.log("[TEST PASSED] User list accessible");
+    });
+});
+### DOSYA BİTİŞ: admin-dashboard.spec.js
 
 ### DOSYA BAŞLANGIÇ: .\\tests\_setup.spec.js
 // tests/_setup.spec.js
@@ -209,14 +332,6 @@ setup("login state -> storage/user.json", async ({ page, context }) => {
 });
 ### DOSYA BİTİŞ: _setup.spec.js
 
-### DOSYA BAŞLANGIÇ: .\\tests\EQP-002.spec.js
-import { test, expect } from '@playwright/test';
-
-test('test', async ({ page }) => {
-  await page.goto('about:blank');
-});
-### DOSYA BİTİŞ: EQP-002.spec.js
-
 ### DOSYA BAŞLANGIÇ: .\\tests\EQP-003.spec.js
 // tests/EQP-003.spec.js
 import { test, expect } from '@playwright/test';
@@ -245,6 +360,14 @@ test.describe('EQP-003', () => {
 });
 ### DOSYA BİTİŞ: EQP-003.spec.js
 
+### DOSYA BAŞLANGIÇ: .\\tests\EQP-002.spec.js
+import { test, expect } from '@playwright/test';
+
+test('test', async ({ page }) => {
+  await page.goto('about:blank');
+});
+### DOSYA BİTİŞ: EQP-002.spec.js
+
 ### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\build-tasks.js
 // scripts/build-tasks.js (CSV'den JSON'a dönüştürücü)
 const fs = require('fs');
@@ -270,80 +393,6 @@ if (!fs.existsSync('build')) { fs.mkdirSync('build'); }
 fs.writeFileSync('build/tasks.json', JSON.stringify(tasks, null, 2));
 console.log(`[BUILD] ${tasks.length} görev tasks.json dosyasına başarıyla dönüştürüldü.`);
 ### DOSYA BİTİŞ: build-tasks.js
-
-### DOSYA BAŞLANGIÇ: .\\scripts\build-tasks.js
-// scripts/build-tasks.js (CSV'den JSON'a dönüştürücü)
-const fs = require('fs');
-const path = require('path');
-const csv = fs.readFileSync(path.join(process.cwd(), 'tasks_template.csv'), 'utf8');
-
-const lines = csv.trim().split('\r\n');
-const headers = lines[0].split(',');
-const tasks = [];
-
-for (let i = 1; i < lines.length; i++) {
-     const values = lines[i].split(',');
-     if (values.length === headers.length) {
-          let task = {};
-          for (let j = 0; j < headers.length; j++) {
-               task[headers[j].trim()] = values[j].trim().replace(/^"|"$/g, '');
-          }
-          tasks.push(task);
-     }
-}
-
-if (!fs.existsSync('build')) { fs.mkdirSync('build'); }
-fs.writeFileSync('build/tasks.json', JSON.stringify(tasks, null, 2));
-console.log(`[BUILD] ${tasks.length} görev tasks.json dosyasına başarıyla dönüştürüldü.`);
-### DOSYA BİTİŞ: build-tasks.js
-
-### DOSYA BAŞLANGIÇ: .\\playwright.config.js
-// Playwright yapılandırma
-import { defineConfig } from '@playwright/test';
-
-// Oturum durumunun kaydedileceği yer
-const storageStatePath = 'storage/user.json'; 
-
-export default defineConfig({
-     timeout: 30 * 1000, // Genel Test Zaman Aşımı 30 saniye
-     retries: 2,
-
-     use: {
-          baseURL: 'http://localhost:8000',
-          actionTimeout: 5000,
-          navigationTimeout: 30000, // Navigasyon Zaman Aşımı 30 saniye
-     },
-
-     reporter: [
-          ['list'],
-          ['./reporters/quarantine-reporter.js'],
-     ],
-
-     // Projeleri tanımlama
-     projects: [
-          // 1. Kurulum Projesi: Oturum durumunu hazırlar.
-          {
-               name: 'setup',
-               testMatch: 'tests/_setup.spec.js',
-               timeout: 30 * 1000, // Kurulum projesi için özel 30 saniye
-               use: {
-                    baseURL: 'http://localhost:8000',
-                    storageState: storageStatePath, 
-               },
-          },
-          // 2. Ana Test Projesi: Kurulumdan gelen oturum durumunu kullanır.
-          {
-               name: 'chromium',
-               testIgnore: 'tests/_setup.spec.js', 
-               use: {
-                    browserName: 'chromium',
-                    storageState: storageStatePath, 
-               },
-               dependencies: ['setup'], 
-          },
-     ],
-});
-### DOSYA BİTİŞ: playwright.config.js
 
 ### DOSYA BAŞLANGIÇ: .\\ops\run_suite.ps1
 param(

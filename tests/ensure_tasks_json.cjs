@@ -31,3 +31,4 @@ module.exports = async () => {
     writeFallback();
   }
 };
+console.log('[globalSetup] OK');

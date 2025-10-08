@@ -1,45 +1,31 @@
-// Playwright yapÄ±landÄ±rma
-import { defineConfig } from '@playwright/test';
+﻿import { defineConfig, devices } from '@playwright/test';
 
-// Oturum durumunun kaydedileceÄŸi yer
-const storageStatePath = 'storage/user.json'; 
+const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:8010';
 
-export default defineConfig({`n  globalSetup: require.resolve("./tests/ensure_tasks_json.cjs"),
-     timeout: 30 * 1000, // Genel Test Zaman AÅŸÄ±mÄ± 30 saniye
-     retries: 2,
+export default defineConfig({
+  testDir: './tests',
+  timeout: 30 * 1000,
+  retries: 2,
 
-     use: {
-          baseURL: 'http://localhost:8000',
-          actionTimeout: 5000,
-          navigationTimeout: 30000, // Navigasyon Zaman AÅŸÄ±mÄ± 30 saniye
-     },
+  // ESM configte düz string yol:
+  globalSetup: './tests/ensure_tasks_json.cjs',
 
-     reporter: [
-          ['list'],
-          ['./reporters/quarantine-reporter.js'],
-     ],
+  use: {
+    baseURL,
+    storageState: 'storage/user.json',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
 
-     // Projeleri tanÄ±mlama
-     projects: [
-          // 1. Kurulum Projesi: Oturum durumunu hazÄ±rlar.
-          {
-               name: 'setup',
-               testMatch: 'tests/_setup.spec.js',
-               timeout: 30 * 1000, // Kurulum projesi iÃ§in Ã¶zel 30 saniye
-               use: {
-                    baseURL: 'http://localhost:8000',
-                    storageState: storageStatePath, 
-               },
-          },
-          // 2. Ana Test Projesi: Kurulumdan gelen oturum durumunu kullanÄ±r.
-          {
-               name: 'chromium',
-               testIgnore: 'tests/_setup.spec.js', 
-               use: {
-                    browserName: 'chromium',
-                    storageState: storageStatePath, 
-               },
-               dependencies: ['setup'], 
-          },
-     ],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    // { name: 'webkit',  use: { ...devices['Desktop Safari'] } },
+  ],
+
+  reporter: [
+    ['line'],
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+  ],
 });

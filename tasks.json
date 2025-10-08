@@ -1,19 +1,11 @@
 {
-  "meta": {
-    "generatedAt": "2025-10-08T13:23:10.911Z",
-    "source": "csv"
-  },
-  "jobs": [
-    {
-      "id": "EQP-999-001",
-      "title": "Placeholder Test Başlığı",
-      "steps": [
-        {
-          "action": "goto",
-          "selector": "",
-          "url": ""
-        }
-      ]
-    }
-  ]
+    "id":  "EQP-999-001",
+    "title":  "Placeholder Test BaÃ…Å¸lÃ„Â±Ã„Å¸Ã„Â±",
+    "steps":  [
+                  {
+                      "action":  "goto",
+                      "selector":  "",
+                      "url":  ""
+                  }
+              ]
 }
