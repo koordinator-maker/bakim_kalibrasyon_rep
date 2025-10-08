@@ -8,6 +8,9 @@ on:
         required: true
         type: string
         default: "http://127.0.0.1:8010"
+  push:
+    branches:
+      - ci/add-e2e-dispatcher
 
 jobs:
   e2e:
@@ -37,8 +40,9 @@ jobs:
         shell: pwsh
         run: |
           "BASE_URL=${{ github.event.inputs.base_url }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "ADMIN_USER=admin"                             | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "ADMIN_PASS=admin"                             | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          if (-not "${{ github.event.inputs.base_url }}") { "BASE_URL=http://127.0.0.1:8010" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8 }
+          "ADMIN_USER=admin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ADMIN_PASS=admin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Start Django (bg)
         shell: pwsh
@@ -64,7 +68,7 @@ jobs:
         shell: pwsh
         run: |
           try {
-            $r = iwr "${{ github.event.inputs.base_url }}" -MaximumRedirection 0 -ErrorAction Stop
+            $r = iwr "$env:BASE_URL" -MaximumRedirection 0 -ErrorAction Stop
             "SMOKE $($r.StatusCode)" | Write-Host
           } catch {
             $code = [int]$_.Exception.Response.StatusCode
@@ -91,7 +95,9 @@ jobs:
         shell: pwsh
         run: |
           if (!(Test-Path tasks.json) -and !(Test-Path build/tasks.json)) { throw "tasks.json yok" }
-          "tasks.json hazÃƒâ€Ã‚Â±r" | Write-Host      - name: Assert tasks.json before tests (last guard)
+          Write-Host "tasks.json hazir"
+
+      - name: Assert tasks.json before tests (last guard)
         shell: pwsh
         run: |
           if (!(Test-Path "tasks.json") -and !(Test-Path "build/tasks.json")) {
@@ -110,7 +116,6 @@ jobs:
             }
           }
           if (!(Test-Path "tasks.json") -and !(Test-Path "build/tasks.json")) { throw "tasks.json yine yok" }
-
 
       - name: Run Playwright tests
         run: |
