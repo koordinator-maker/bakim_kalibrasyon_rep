@@ -1,4 +1,4 @@
-name: E2E (reusable)
+name: e2e (reusable)
 
 on:
   workflow_call:
@@ -6,29 +6,19 @@ on:
       base_url:
         type: string
         required: true
-    secrets: {}
-
-permissions:
-  contents: read
-  actions: write
-  checks: write
-  id-token: write
 
 jobs:
   e2e:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
@@ -48,13 +38,13 @@ jobs:
           "ADMIN_USER=admin"               | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "ADMIN_PASS=admin"               | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Start Django (background)
+      - name: Start Django (bg)
         shell: pwsh
         env:
-          DJANGO_SETTINGS_MODULE: "core.settings_maintenance"
+          DJANGO_SETTINGS_MODULE: core.settings_maintenance
         run: |
           if (Test-Path "manage.py") {
-            Start-Process -FilePath "python" -ArgumentList "manage.py","runserver","127.0.0.1:8010" -WindowStyle Hidden
+            Start-Process -FilePath python -ArgumentList "manage.py","runserver","127.0.0.1:8010" -WindowStyle Hidden
             $deadline = [DateTime]::UtcNow.AddSeconds(60)
             while ([DateTime]::UtcNow -lt $deadline) {
               try {
@@ -68,19 +58,15 @@ jobs:
             }
           }
 
-      - name: Tolerant smoke (302 OK kabul)
+      - name: Tolerant smoke
         shell: pwsh
         run: |
           try {
-            $r = Invoke-WebRequest -Uri "${{ inputs.base_url }}" -MaximumRedirection 0 -ErrorAction Stop
-            "SMOKE HTTP $($r.StatusCode)" | Write-Host
+            $r = iwr "${{ inputs.base_url }}" -MaximumRedirection 0 -ErrorAction Stop
+            "SMOKE $($r.StatusCode)" | Write-Host
           } catch {
             $code = [int]$_.Exception.Response.StatusCode
-            if ($code -in 301,302,303,307,308) {
-              "SMOKE Redirect $code kabul" | Write-Host
-            } else {
-              throw
-            }
+            if ($code -in 301,302,303,307,308) { "SMOKE Redirect $code (OK)" | Write-Host } else { throw }
           }
 
       - name: Build tasks (ensure tasks.json)
@@ -88,9 +74,6 @@ jobs:
         run: |
           if (Test-Path "scripts/build-tasks.js") {
             node scripts/build-tasks.js
-          } elseif (Test-Path "tools/tasks_from_csv.ps1") {
-            powershell -File tools/tasks_from_csv.ps1 -Csv "tasks_template.csv" -OutJson "build/tasks.json"
-            Copy-Item build/tasks.json tasks.json -Force
           } else {
             New-Item -Force -ItemType Directory -Path build | Out-Null
             $json = @"
@@ -102,25 +85,16 @@ jobs:
             Copy-Item tasks.json build/tasks.json -Force
           }
 
-      - name: Verify tasks.json exists
+      - name: Verify tasks.json
         shell: pwsh
         run: |
-          Write-Host "== ls =="
-          Get-ChildItem -Recurse -File tasks.json, build/tasks.json -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
-          if (!(Test-Path "tasks.json") -and !(Test-Path "build/tasks.json")) {
-            Write-Error "tasks.json HÂLÂ yok!"
-            exit 1
-          } else {
-            Write-Host "tasks.json mevcut ✅"
-            if (Test-Path "tasks.json") { Get-Content tasks.json | Select-Object -First 30 }
-          }
+          if (!(Test-Path tasks.json) -and !(Test-Path build/tasks.json)) { throw "tasks.json yok" }
+          "tasks.json hazır" | Write-Host
 
       - name: Run Playwright tests
         run: |
           npx playwright install --with-deps
           npx playwright test --reporter line,html
-          # İsterseniz yalnız smoke senaryosunu koşturmak için:
-          # npx playwright test tests/tasks.spec.js --reporter line,html
 
       - name: Upload Playwright report
         if: always()
