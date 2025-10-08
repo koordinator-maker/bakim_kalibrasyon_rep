@@ -35,9 +35,9 @@ jobs:
           else { throw "tasks_template.csv yok." }
           node .\scripts\build-tasks.js $csv .\tests\tasks.json 2>$null
           if (!(Test-Path .\tests\tasks.json) -and (Test-Path .\tasks.json)) { Copy-Item .\tasks.json .\tests\tasks.json -Force }
-          $j = Get-Content .\tests\tasks.json -Raw | ConvertFrom-Json
-          if (-not ($j -is [System.Collections.IEnumerable]) -or @($j).Count -le 0) { throw "tests\tasks.json boş!" }
-          Write-Host "OK tasks.json" 
+          $arr = Get-Content .\tests\tasks.json -Raw | ConvertFrom-Json
+          if (-not ($arr -is [System.Collections.IEnumerable]) -or @($arr).Count -le 0) { throw "tests\tasks.json boş!" }
+          Write-Host "OK tasks.json"
 
       - name: Start Django (bg)
         shell: pwsh
@@ -49,19 +49,28 @@ jobs:
           Start-Process -FilePath python -ArgumentList "manage.py","runserver","0.0.0.0:8010" -WindowStyle Hidden
           Start-Sleep -Seconds 5
 
-      - name: Run tests (files only, ignore tasks.spec.js)
+      - name: Run tests (files only; ignore tasks.spec.js)
         shell: pwsh
         run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference='Stop'
           $t = "${{ github.event.inputs.target }}"
           switch ($t) {
-            'eqp002' { $files = @('EQP-002.spec.js') }
-            'eqp003' { $files = @('EQP-003.spec.js') }
-            'admin'  { $files = @('admin-dashboard.spec.js') }
-            default  { $files = @('admin-dashboard.spec.js','EQP-002.spec.js','EQP-003.spec.js') }
+            'eqp002' { $files = @('.\EQP-002.spec.js') }
+            'eqp003' { $files = @('.\EQP-003.spec.js') }
+            'admin'  { $files = @('.\admin-dashboard.spec.js') }
+            default  { $files = @('.\admin-dashboard.spec.js','.\EQP-002.spec.js','.\EQP-003.spec.js') }
           }
-          # Playwright argümanları REGEX'tir; çıplak dosya adı zaten eşleşir.
-          # tasks.spec.js'in potansiyel sorunlarını önlemek için --test-ignore ekliyoruz:
-          npx playwright test @files --project=chromium --reporter "line,html" --test-ignore "tasks\.spec\.js"
+          # Dosyalar root'ta değilse bul ve tam yol kullan:
+          $exists = $files | Where-Object { Test-Path $_ }
+          if ($exists.Count -lt $files.Count) {
+            $missing = $files | Where-Object { -not (Test-Path $_) }
+            $found = Get-ChildItem -Recurse -Include ($missing | ForEach-Object { Split-Path $_ -Leaf }) -File | Select-Object -Expand FullName
+            $exists = @($exists + $found)
+          }
+          if (-not $exists -or $exists.Count -eq 0) { throw "Spec dosyası bulunamadı." }
+          Write-Host "Specs:"; $exists | ForEach-Object { Write-Host " - $_" }
+          npx --% playwright test @exists --project=chromium --reporter line,html --test-ignore "tasks\.spec\.js"
 
       - name: Upload playwright report
         if: always()
