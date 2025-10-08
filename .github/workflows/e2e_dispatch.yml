@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: "eqp002 | eqp003 | admin | both"
+        description: "both | eqp002 | eqp003 | admin"
         required: true
         default: "both"
 
@@ -24,16 +24,20 @@ jobs:
           npm ci
           npx playwright install --with-deps
 
-      - name: Build tasks.json
+      - name: Build tasks.json (robust)
         shell: pwsh
         run: |
-          if (Test-Path .\data\tasks_template.csv) {
-            node scripts/build-tasks.js data/tasks_template.csv tests/tasks.json
-          } elseif (Test-Path .\tests\tasks_template.csv) {
-            node scripts/build-tasks.js tests/tasks_template.csv tests/tasks.json
-          } else {
-            Write-Host "No CSV found, skipping tasks build."
-          }
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference='Stop'
+          $csv = $null
+          if (Test-Path .\data\tasks_template.csv) { $csv = '.\data\tasks_template.csv' }
+          elseif (Test-Path .\tests\tasks_template.csv) { $csv = '.\tests\tasks_template.csv' }
+          else { throw "tasks_template.csv yok." }
+          node .\scripts\build-tasks.js $csv .\tests\tasks.json 2>$null
+          if (!(Test-Path .\tests\tasks.json) -and (Test-Path .\tasks.json)) { Copy-Item .\tasks.json .\tests\tasks.json -Force }
+          $j = Get-Content .\tests\tasks.json -Raw | ConvertFrom-Json
+          if (-not ($j -is [System.Collections.IEnumerable]) -or @($j).Count -le 0) { throw "tests\tasks.json boş!" }
+          Write-Host "OK tasks.json" 
 
       - name: Start Django (bg)
         shell: pwsh
@@ -45,20 +49,19 @@ jobs:
           Start-Process -FilePath python -ArgumentList "manage.py","runserver","0.0.0.0:8010" -WindowStyle Hidden
           Start-Sleep -Seconds 5
 
-      - name: Load helpers
+      - name: Run tests (files only, ignore tasks.spec.js)
         shell: pwsh
         run: |
-          . .\tools\pw_helpers.ps1
-
-      - name: Run selected tests
-        shell: pwsh
-        run: |
-          switch ("${{ github.event.inputs.target }}") {
-            'eqp002' { eqp002; break }
-            'eqp003' { eqp003; break }
-            'admin'  { adminOnly; break }
-            default  { eqpBoth; break }
+          $t = "${{ github.event.inputs.target }}"
+          switch ($t) {
+            'eqp002' { $files = @('EQP-002.spec.js') }
+            'eqp003' { $files = @('EQP-003.spec.js') }
+            'admin'  { $files = @('admin-dashboard.spec.js') }
+            default  { $files = @('admin-dashboard.spec.js','EQP-002.spec.js','EQP-003.spec.js') }
           }
+          # Playwright argümanları REGEX'tir; çıplak dosya adı zaten eşleşir.
+          # tasks.spec.js'in potansiyel sorunlarını önlemek için --test-ignore ekliyoruz:
+          npx playwright test @files --project=chromium --reporter "line,html" --test-ignore "tasks\.spec\.js"
 
       - name: Upload playwright report
         if: always()
