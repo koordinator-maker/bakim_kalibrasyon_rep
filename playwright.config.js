@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 30 * 1000,
   retries: 2,
 
-  // ESM configte dÃ¼z string yol:
+  // ESM configte dÃƒÂ¼z string yol:
   globalSetup: './tests/global.setup.cjs',
 
   use: { actionTimeout: 10_000, navigationTimeout: 15_000,
