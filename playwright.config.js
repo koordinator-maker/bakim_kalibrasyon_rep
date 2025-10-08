@@ -7,8 +7,8 @@ export default defineConfig({
   timeout: 30 * 1000,
   retries: 2,
 
-  // ESM configte düz string yol:
-  globalSetup: './tests/ensure_tasks_json.cjs',
+  // ESM configte dÃ¼z string yol:
+  globalSetup: './tests/global.setup.cjs',
 
   use: { actionTimeout: 10_000, navigationTimeout: 15_000,
     baseURL,
@@ -29,3 +29,4 @@ export default defineConfig({
     ['html', { open: 'never', outputFolder: 'playwright-report' }],
   ],
 });
+
