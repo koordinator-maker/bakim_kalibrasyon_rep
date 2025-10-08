@@ -39,36 +39,36 @@ jobs:
       - name: Export env
         shell: pwsh
         run: |
-          "BASE_URL=${{ github.event.inputs.base_url }}" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          if (-not "${{ github.event.inputs.base_url }}") { "BASE_URL=http://127.0.0.1:8010" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8 }
-          "ADMIN_USER=admin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "ADMIN_PASS=admin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $base = "${{ github.event.inputs.base_url }}"
+          if ([string]::IsNullOrWhiteSpace($base)) { $base = "http://127.0.0.1:8010" }
+          "BASE_URL=$base"      | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ADMIN_USER=admin"    | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ADMIN_PASS=admin"    | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Start Django (bg)
+        if: ${{ hashFiles('manage.py') != '' }}
         shell: pwsh
         env:
           DJANGO_SETTINGS_MODULE: core.settings_maintenance
         run: |
-          if (Test-Path "manage.py") {
-            Start-Process -FilePath python -ArgumentList "manage.py","runserver","127.0.0.1:8010" -WindowStyle Hidden
-            $deadline = [DateTime]::UtcNow.AddSeconds(60)
-            while ([DateTime]::UtcNow -lt $deadline) {
-              try {
-                $c = New-Object Net.Sockets.TcpClient
-                $iar = $c.BeginConnect("127.0.0.1",8010,$null,$null)
-                $ok = $iar.AsyncWaitHandle.WaitOne(1000)
-                if ($ok -and $c.Connected) { $c.Close(); break }
-                $c.Close()
-              } catch {}
-              Start-Sleep -Milliseconds 500
-            }
+          Start-Process -FilePath python -ArgumentList "manage.py","runserver","127.0.0.1:8010" -WindowStyle Hidden
+          $deadline = [DateTime]::UtcNow.AddSeconds(60)
+          while ([DateTime]::UtcNow -lt $deadline) {
+            try {
+              $c = New-Object Net.Sockets.TcpClient
+              $iar = $c.BeginConnect("127.0.0.1",8010,$null,$null)
+              $ok = $iar.AsyncWaitHandle.WaitOne(1000)
+              if ($ok -and $c.Connected) { $c.Close(); break }
+              $c.Close()
+            } catch {}
+            Start-Sleep -Milliseconds 500
           }
 
       - name: Tolerant smoke
         shell: pwsh
         run: |
           try {
-            $r = iwr "$env:BASE_URL" -MaximumRedirection 0 -ErrorAction Stop
+            $r = iwr $env:BASE_URL -MaximumRedirection 0 -ErrorAction Stop
             "SMOKE $($r.StatusCode)" | Write-Host
           } catch {
             $code = [int]$_.Exception.Response.StatusCode
@@ -82,11 +82,7 @@ jobs:
             node scripts/build-tasks.js
           } else {
             New-Item -Force -ItemType Directory -Path build | Out-Null
-            $json = @"
-{ "meta": {"generatedAt":"$(Get-Date -Format s)","source":"fallback"},
-  "jobs":[{"id":"ADMIN_SMOKE","title":"Admin login smoke",
-           "steps":[{"action":"goto","url":"/admin/login/"}]}] }
-"@
+            $json = '{ "meta": { "generatedAt": "' + (Get-Date -Format s) + '", "source": "fallback" }, "jobs": [ { "id": "ADMIN_SMOKE", "title": "Admin login smoke", "steps": [ { "action": "goto", "url": "/admin/login/" } ] } ] }'
             $json | Set-Content tasks.json -Encoding UTF8
             Copy-Item tasks.json build/tasks.json -Force
           }
@@ -95,31 +91,11 @@ jobs:
         shell: pwsh
         run: |
           if (!(Test-Path tasks.json) -and !(Test-Path build/tasks.json)) { throw "tasks.json yok" }
-          Write-Host "tasks.json hazir"
-
-      - name: Assert tasks.json before tests (last guard)
-        shell: pwsh
-        run: |
-          if (!(Test-Path "tasks.json") -and !(Test-Path "build/tasks.json")) {
-            Write-Host "Last guard: rebuilding tasks.json"
-            if (Test-Path "scripts/build-tasks.js") {
-              node scripts/build-tasks.js
-            } else {
-              New-Item -Force -ItemType Directory -Path build | Out-Null
-              $json = @"
-{ "meta": {"generatedAt":"$(Get-Date -Format s)","source":"last-guard"},
-  "jobs":[{"id":"ADMIN_SMOKE","title":"Admin login smoke",
-           "steps":[{"action":"goto","url":"/admin/login/"}]}] }
-"@
-              $json | Set-Content tasks.json -Encoding UTF8
-              Copy-Item tasks.json build/tasks.json -Force
-            }
-          }
-          if (!(Test-Path "tasks.json") -and !(Test-Path "build/tasks.json")) { throw "tasks.json yine yok" }
+          Write-Host "tasks.json ready"
 
       - name: Run Playwright tests
         run: |
-          npx playwright install --with-deps
+          npx playwright install
           npx playwright test --reporter line,html
 
       - name: Upload Playwright report
