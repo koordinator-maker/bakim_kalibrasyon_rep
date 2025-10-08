@@ -1,24 +1,4 @@
-﻿### DOSYA BAŞLANGIÇ: .\\_otokodlama\admin_auth_probe_ok.py
-import os, sys, django
-sys.path.insert(0, os.getcwd())
-os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
-django.setup()
-
-from django.test import Client
-c = Client()
-r = c.get("/admin/"); print("GET /admin/ ->", r.status_code)  # 302 beklenir
-
-resp = c.post("/admin/login/?next=/admin/", {
-    "username":"admin","password":"admin123!",
-    "this_is_the_login_form":1,"next":"/admin/"
-}, follow=True)
-print("login final status:", resp.status_code)
-
-r1 = c.get("/admin/maintenance/equipment/"); print("CL status:", r1.status_code)  # 200
-r2 = c.get("/admin/maintenance/equipment/add/"); print("ADD status:", r2.status_code)  # 200
-### DOSYA BİTİŞ: admin_auth_probe_ok.py
-
-### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_auth_probe_ok.py
+﻿### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\admin_auth_probe_ok.py
 import os, sys, django
 sys.path.insert(0, os.getcwd())
 os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
@@ -1197,4 +1177,33 @@ foreach ($m in $matches) {
 }
 "[OK] Wrote $($written.Count) file(s)."
 ### DOSYA BİTİŞ: apply_codepack.ps1
+
+### DOSYA BAŞLANGIÇ: .\\tools\apply_runcard.ps1
+param(
+  [Parameter(Mandatory=$true)]
+  [string]$Card,
+  [switch]$NoConfirm
+)
+$ErrorActionPreference="Stop"
+
+if (!(Test-Path $Card)) { throw "Runcard not found: $Card" }
+$lines = Get-Content $Card
+
+foreach ($raw in $lines) {
+  $line = $raw.Trim()
+  if ($line -eq '' -or $line.StartsWith('#')) { continue }
+
+  if ($line -match '^\s*ps>\s*(.+)$') {
+    $cmd = $Matches[1]
+    Write-Host ">> $cmd"
+    Invoke-Expression $cmd
+    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
+      throw "Command failed (exit $LASTEXITCODE): $cmd"
+    }
+  } else {
+    Write-Host "[SKIP] $line"
+  }
+}
+Write-Host "[RUNCARD] done."
+### DOSYA BİTİŞ: apply_runcard.ps1
 
