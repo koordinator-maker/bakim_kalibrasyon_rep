@@ -1,8 +1,23 @@
-name: e2e (dispatch)
+name: E2E Dispatch
+
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Base URL for tests"
+        required: true
+        type: string
+        default: "http://127.0.0.1:8010"
+
+permissions:
+  contents: read
+  actions: write
+  checks: write
+  id-token: write
 
 jobs:
   call-e2e:
     uses: ./.github/workflows/e2e.yml
+    with:
+      base_url: ${{ inputs.base_url }}
     secrets: inherit
