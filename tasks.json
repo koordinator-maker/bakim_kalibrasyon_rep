@@ -1,11 +1,13 @@
-{
-    "id":  "EQP-999-001",
-    "title":  "Placeholder Test BaÃ…Å¸lÃ„Â±Ã„Å¸Ã„Â±",
-    "steps":  [
-                  {
-                      "action":  "goto",
-                      "selector":  "",
-                      "url":  ""
-                  }
-              ]
-}
+[
+  {
+    "id": "EQP-999-001",
+    "title": "Placeholder Test BaÃ…Å¸lÃ„Â±Ã„Å¸Ã„Â±",
+    "steps": [
+      {
+        "action": "goto",
+        "selector": "",
+        "url": ""
+      }
+    ]
+  }
+]
