@@ -91,7 +91,7 @@ jobs:
         shell: pwsh
         run: |
           if (!(Test-Path tasks.json) -and !(Test-Path build/tasks.json)) { throw "tasks.json yok" }
-          "tasks.json hazÄ±r" | Write-Host      - name: Assert tasks.json before tests (last guard)
+          "tasks.json hazÃ„Â±r" | Write-Host      - name: Assert tasks.json before tests (last guard)
         shell: pwsh
         run: |
           if (!(Test-Path "tasks.json") -and !(Test-Path "build/tasks.json")) {
