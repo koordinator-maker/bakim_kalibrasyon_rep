@@ -10,21 +10,6 @@ jobs:
   auto-pr:
     runs-on: ubuntu-latest
     steps:
-      - name: Django migrate + seed admin
-        shell: pwsh
-        env:
-          DJANGO_SETTINGS_MODULE: "core.settings_maintenance"
-        run: |
-          if (Test-Path "manage.py") {
-            python -m pip install --upgrade pip
-            if (Test-Path "requirements.txt") { pip install -r requirements.txt }
-            python manage.py migrate --settings=core.settings_maintenance
-            $u = "${env:ADMIN_USER}"; if (-not $u) { $u="admin" }
-            $p = "${env:ADMIN_PASS}"; if (-not $p) { $p="Admin!2345" }
-            python manage.py shell --settings=core.settings_maintenance -c "from django.contrib.auth import get_user_model as G; U=G(); u,created=U.objects.get_or_create(username='$u', defaults={'email':'admin@example.com','is_staff':True,'is_superuser':True}); u.is_staff=True; u.is_superuser=True; u.set_password('$p'); u.save(); print('created' if created else 'updated')"
-          }      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
       - name: Set git user
         run: |
           git config user.name "github-actions[bot]"
