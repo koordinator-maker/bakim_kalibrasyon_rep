@@ -28,7 +28,11 @@ jobs:
           python -m pip install --upgrade pip
           if (Test-Path "requirements.txt") { pip install -r requirements.txt }
           if (Test-Path "package-lock.json") { npm ci } elseif (Test-Path "package.json") { npm i }
-
+      - name: Install Playwright browsers (Node)
+        shell: pwsh
+        run: |
+          npx playwright install chromium
+          npx playwright --version
       - name: Django migrate + seed admin
         shell: pwsh
         env:
