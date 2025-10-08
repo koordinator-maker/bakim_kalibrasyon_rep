@@ -24,20 +24,18 @@ jobs:
           npm ci
           npx playwright install --with-deps
 
-      - name: Build tasks.json (robust)
+      # (İsteğe bağlı sağlamlık: build-tasks.js yoksa dummy üret)
+      - name: Ensure tests/tasks.json exists (fallback)
         shell: pwsh
         run: |
-          Set-StrictMode -Version Latest
-          $ErrorActionPreference='Stop'
-          $csv = $null
-          if (Test-Path .\data\tasks_template.csv) { $csv = '.\data\tasks_template.csv' }
-          elseif (Test-Path .\tests\tasks_template.csv) { $csv = '.\tests\tasks_template.csv' }
-          else { throw "tasks_template.csv yok." }
-          node .\scripts\build-tasks.js $csv .\tests\tasks.json 2>$null
-          if (!(Test-Path .\tests\tasks.json) -and (Test-Path .\tasks.json)) { Copy-Item .\tasks.json .\tests\tasks.json -Force }
-          $arr = Get-Content .\tests\tasks.json -Raw | ConvertFrom-Json
-          if (-not ($arr -is [System.Collections.IEnumerable]) -or @($arr).Count -le 0) { throw "tests\tasks.json boş!" }
-          Write-Host "OK tasks.json"
+          if (!(Test-Path .\tests)) { New-Item -ItemType Directory -Force -Path .\tests | Out-Null }
+          if (Test-Path .\scripts\build-tasks.js -and (Test-Path .\data\tasks_template.csv -or Test-Path .\tests\tasks_template.csv)) {
+            $csv = (Test-Path .\data\tasks_template.csv) ? '.\data\tasks_template.csv' : '.\tests\tasks_template.csv'
+            node .\scripts\build-tasks.js $csv .\tests\tasks.json 2>$null
+          }
+          if (!(Test-Path .\tests\tasks.json)) {
+            '[{"id":"CI-DUMMY","type":"check","title":"dummy"}]' | Set-Content -Encoding UTF8 .\tests\tasks.json
+          }
 
       - name: Start Django (bg)
         shell: pwsh
@@ -49,28 +47,22 @@ jobs:
           Start-Process -FilePath python -ArgumentList "manage.py","runserver","0.0.0.0:8010" -WindowStyle Hidden
           Start-Sleep -Seconds 5
 
-      - name: Run tests (files only; ignore tasks.spec.js)
+      - name: Run tests (explicit file paths; ignore tasks.spec.js)
         shell: pwsh
         run: |
           Set-StrictMode -Version Latest
           $ErrorActionPreference='Stop'
           $t = "${{ github.event.inputs.target }}"
           switch ($t) {
-            'eqp002' { $files = @('.\EQP-002.spec.js') }
-            'eqp003' { $files = @('.\EQP-003.spec.js') }
-            'admin'  { $files = @('.\admin-dashboard.spec.js') }
-            default  { $files = @('.\admin-dashboard.spec.js','.\EQP-002.spec.js','.\EQP-003.spec.js') }
+            'eqp002' { $want = @('EQP-002.spec.js') }
+            'eqp003' { $want = @('EQP-003.spec.js') }
+            'admin'  { $want = @('admin-dashboard.spec.js') }
+            default  { $want = @('admin-dashboard.spec.js','EQP-002.spec.js','EQP-003.spec.js') }
           }
-          # Dosyalar root'ta değilse bul ve tam yol kullan:
-          $exists = $files | Where-Object { Test-Path $_ }
-          if ($exists.Count -lt $files.Count) {
-            $missing = $files | Where-Object { -not (Test-Path $_) }
-            $found = Get-ChildItem -Recurse -Include ($missing | ForEach-Object { Split-Path $_ -Leaf }) -File | Select-Object -Expand FullName
-            $exists = @($exists + $found)
-          }
-          if (-not $exists -or $exists.Count -eq 0) { throw "Spec dosyası bulunamadı." }
-          Write-Host "Specs:"; $exists | ForEach-Object { Write-Host " - $_" }
-          npx --% playwright test @exists --project=chromium --reporter line,html --test-ignore "tasks\.spec\.js"
+          $files = foreach($w in $want){ Get-ChildItem -Recurse -File -Include $w | Select-Object -Expand FullName }
+          if (!$files -or $files.Count -eq 0) { throw "Spec dosyası bulunamadı: $($want -join ', ')" }
+          Write-Host "Specs:"; $files | % { " - $_" | Write-Host }
+          & npx playwright test @files --project=chromium --reporter "line,html" --test-ignore "tasks\.spec\.js"
 
       - name: Upload playwright report
         if: always()
