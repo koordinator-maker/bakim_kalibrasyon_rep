@@ -1,54 +1,71 @@
-name: Universal Suite Nightly
+name: Universal Suite (Nightly)
 on:
   schedule:
-    - cron: "0 0 * * *"        # her gece 00:00 UTC
-  workflow_dispatch:            # manuel tetikleme
+    # Nightly (00:00 UTC ~= 03:00 Türkiye)
+    - cron: "0 0 * * *"
+  workflow_dispatch:
 jobs:
-  test:
+  universal:
     runs-on: windows-latest
-    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      # (Opsiyonel) Playwright vb. gerekiyorsa Node kur
-      - name: Setup Node
+      - name: Setup Node (Playwright için, varsa)
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install deps (if present)
-        shell: pwsh
+      - name: Install NPM deps (if package.json)
         run: |
           if (Test-Path package.json) { npm ci }
+      - name: Install Playwright (if package.json)
+        run: |
           if (Test-Path package.json) { npx playwright install }
-      # 👇 Sunucunu burada başlat (örnek placeholder)
-      - name: Start app server (replace with real one)
-        shell: pwsh
-        run: |
-          Start-Job -ScriptBlock { python -m http.server 8010 } | Out-Null
-          Start-Sleep -Seconds 5
       - name: Run Universal Suite
-        shell: pwsh
         run: |
-          $repo = "$env:GITHUB_WORKSPACE"
-          & "$repo\ops\run_universal_suite.ps1" -Repo $repo -BaseUrl http://127.0.0.1:8010 -EntryPath /admin/ -GateOnFail:$false
-      # (Varsa) quick-links HTML üretimi
+          $repo = (Get-Location).Path
+          $base = "${{ secrets.UNIV_BASE_URL }}"
+          if (-not $base) { $base = "http://127.0.0.1:8010" }
+          & "$repo\ops\run_universal_suite.ps1" -Repo $repo -BaseUrl $base -EntryPath "/admin/" -GateOnFail:$false
       - name: Build quick-links HTML
-        if: always()
-        shell: pwsh
         run: |
-          & "$env:GITHUB_WORKSPACE\ops\diagnostics\build_quicklinks_html.ps1" -Repo "$env:GITHUB_WORKSPACE" -ReportsDir "_otokodlama\reports" -BundleDir "_otokodlama\bundle"
-      - name: Upload reports & bundle
-        if: always()
+          $repo = (Get-Location).Path
+          & "$repo\ops\diagnostics\build_quicklinks_html.ps1" -Repo $repo -ReportsDir "_otokodlama\reports" -BundleDir "_otokodlama\bundle"
+      - name: Job summary (PASS/WARN/FAIL)
+        run: |
+          $dash = Join-Path (Join-Path (Join-Path (Get-Location).Path "_otokodlama") "reports") "dashboard"
+          $tot = Get-ChildItem $dash -File -Filter "totals_*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($tot) {
+            $o = Import-Csv $tot.FullName | Select-Object -First 1
+$md = @"
+### Universal Suite Summary
+**Timestamp:** $($o.Timestamp)
+- **PASS:** $($o.PASS)
+- **WARN:** $($o.WARN)
+- **FAIL:** $($o.FAIL)
+Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
+"@
+            $md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          }
+      - name: Upload reports
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: reports-${{ github.run_number }}
+          name: universal-reports
           path: |
             _otokodlama/reports/**
-            _otokodlama/bundle/*.zip
-            build/tasks.json
             playwright-report/**
-      - name: Publish JUnit to summary
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
+      - name: Upload bundles
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
         with:
-          files: _otokodlama/reports/junit/*.xml
+          name: universal-bundles
+          path: _otokodlama/bundle/**
+      - name: Upload JUnit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-junit
+          path: _otokodlama/reports/junit/**/*.xml
