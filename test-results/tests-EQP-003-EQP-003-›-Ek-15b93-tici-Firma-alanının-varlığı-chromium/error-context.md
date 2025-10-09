@@ -27,12 +27,12 @@
         - link "Home" [ref=e20] [cursor=pointer]:
           - /url: /admin/
         - text: ›
-        - link "Bakım Modülü" [ref=e21] [cursor=pointer]:
-          - /url: /admin/maintenance/
+        - link "Authentication and Authorization" [ref=e21] [cursor=pointer]:
+          - /url: /admin/auth/
         - text: ›
-        - link "Equipments" [ref=e22] [cursor=pointer]:
-          - /url: /admin/maintenance/equipment/
-        - text: › Add equipment
+        - link "Groups" [ref=e22] [cursor=pointer]:
+          - /url: /admin/auth/group/
+        - text: › Add group
     - generic [ref=e23]:
       - button "Toggle navigation" [ref=e24] [cursor=pointer]: «
       - navigation "Sidebar" [ref=e25]:
@@ -80,18 +80,93 @@
                   - /url: /admin/maintenance/equipment/add/
       - main [ref=e62]:
         - generic [ref=e63]:
-          - heading "Add equipment" [level=1] [ref=e64]
+          - heading "Add group" [level=1] [ref=e64]
           - generic [ref=e67]:
             - group [ref=e68]:
               - generic [ref=e71]:
-                - generic [ref=e72]: "Ekipman AdÃƒÆ’Ã¢â‚¬Â\x9eÃƒâ€šÃ‚Â±:"
-                - 'textbox "Ekipman AdÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±:" [active] [ref=e73]'
-              - generic [ref=e76]:
-                - generic [ref=e77]: "Serial number:"
-                - textbox "Serial number:" [ref=e78]
-            - generic [ref=e79]:
-              - button "Save" [ref=e80] [cursor=pointer]
-              - button "Save and add another" [ref=e81] [cursor=pointer]
-              - button "Save and continue editing" [ref=e82] [cursor=pointer]
+                - generic [ref=e72]: "Name:"
+                - textbox "Name:" [active] [ref=e73]
+              - generic [ref=e75]:
+                - generic [ref=e76]:
+                  - generic [ref=e77]: "Permissions:"
+                  - generic [ref=e79]:
+                    - generic [ref=e80]:
+                      - generic [ref=e81]:
+                        - generic [ref=e82]: Available permissions
+                        - paragraph [ref=e83]: Choose permissions by selecting them and then select the "Choose" arrow button.
+                      - paragraph [ref=e84]:
+                        - textbox "Type into this box to filter down the list of available permissions." [ref=e87]
+                      - listbox "Available permissions Choose permissions by selecting them and then select the \"Choose\" arrow button." [ref=e88]:
+                        - option "Administration | log entry | Can add log entry" [ref=e89]
+                        - option "Administration | log entry | Can change log entry" [ref=e90]
+                        - option "Administration | log entry | Can delete log entry" [ref=e91]
+                        - option "Administration | log entry | Can view log entry" [ref=e92]
+                        - option "Authentication and Authorization | group | Can add group" [ref=e93]
+                        - option "Authentication and Authorization | group | Can change group" [ref=e94]
+                        - option "Authentication and Authorization | group | Can delete group" [ref=e95]
+                        - option "Authentication and Authorization | group | Can view group" [ref=e96]
+                        - option "Authentication and Authorization | permission | Can add permission" [ref=e97]
+                        - option "Authentication and Authorization | permission | Can change permission" [ref=e98]
+                        - option "Authentication and Authorization | permission | Can delete permission" [ref=e99]
+                        - option "Authentication and Authorization | permission | Can view permission" [ref=e100]
+                        - option "Authentication and Authorization | user | Can add user" [ref=e101]
+                        - option "Authentication and Authorization | user | Can change user" [ref=e102]
+                        - option "Authentication and Authorization | user | Can delete user" [ref=e103]
+                        - option "Authentication and Authorization | user | Can view user" [ref=e104]
+                        - option "Content Types | content type | Can add content type" [ref=e105]
+                        - option "Content Types | content type | Can change content type" [ref=e106]
+                        - option "Content Types | content type | Can delete content type" [ref=e107]
+                        - option "Content Types | content type | Can view content type" [ref=e108]
+                        - option "calibrationasset | Can add Kalibrasyon Cihazı" [ref=e109]
+                        - option "calibrationasset | Can change Kalibrasyon Cihazı" [ref=e110]
+                        - option "calibrationasset | Can delete Kalibrasyon Cihazı" [ref=e111]
+                        - option "calibrationasset | Can view Kalibrasyon Cihazı" [ref=e112]
+                        - option "calibrationrecord | Can add calibration record" [ref=e113]
+                        - option "calibrationrecord | Can change calibration record" [ref=e114]
+                        - option "calibrationrecord | Can delete calibration record" [ref=e115]
+                        - option "calibrationrecord | Can view calibration record" [ref=e116]
+                        - option "Bakım Modülü | Departman | Can add Departman" [ref=e117]
+                        - option "Bakım Modülü | Departman | Can change Departman" [ref=e118]
+                        - option "Bakım Modülü | Departman | Can delete Departman" [ref=e119]
+                        - option "Bakım Modülü | Departman | Can view Departman" [ref=e120]
+                        - option "Bakım Modülü | equipment | Can add equipment" [ref=e121]
+                        - option "Bakım Modülü | equipment | Can change equipment" [ref=e122]
+                        - option "Bakım Modülü | equipment | Can delete equipment" [ref=e123]
+                        - option "Bakım Modülü | equipment | Can view equipment" [ref=e124]
+                        - option "maintenancechecklistitem | Can add maintenance checklist item" [ref=e125]
+                        - option "maintenancechecklistitem | Can change maintenance checklist item" [ref=e126]
+                        - option "maintenancechecklistitem | Can delete maintenance checklist item" [ref=e127]
+                        - option "maintenancechecklistitem | Can view maintenance checklist item" [ref=e128]
+                        - option "maintenanceorder | Can add maintenance order" [ref=e129]
+                        - option "maintenanceorder | Can change maintenance order" [ref=e130]
+                        - option "maintenanceorder | Can delete maintenance order" [ref=e131]
+                        - option "maintenanceorder | Can view maintenance order" [ref=e132]
+                        - option "sparepart | Can add spare part" [ref=e133]
+                        - option "sparepart | Can change spare part" [ref=e134]
+                        - option "sparepart | Can delete spare part" [ref=e135]
+                        - option "sparepart | Can view spare part" [ref=e136]
+                        - option "Sessions | session | Can add session" [ref=e137]
+                        - option "Sessions | session | Can change session" [ref=e138]
+                        - option "Sessions | session | Can delete session" [ref=e139]
+                        - option "Sessions | session | Can view session" [ref=e140]
+                      - button "Choose all permissions" [ref=e141]
+                    - list [ref=e142]:
+                      - listitem [ref=e143]:
+                        - button "Choose selected permissions" [disabled] [ref=e144]
+                      - listitem [ref=e145]:
+                        - button "Remove selected permissions" [disabled] [ref=e146]
+                    - generic [ref=e147]:
+                      - generic [ref=e148]:
+                        - generic [ref=e149]: Chosen permissions
+                        - paragraph [ref=e150]: Remove permissions by selecting them and then select the "Remove" arrow button.
+                      - paragraph [ref=e151]:
+                        - textbox "Type into this box to filter down the list of selected permissions." [ref=e154]
+                      - listbox "Chosen permissions Remove permissions by selecting them and then select the \"Remove\" arrow button." [ref=e155]
+                      - button "Remove all permissions" [disabled] [ref=e156]
+                - generic [ref=e158]: Hold down “Control”, or “Command” on a Mac, to select more than one.
+            - generic [ref=e159]:
+              - button "Save" [ref=e160] [cursor=pointer]
+              - button "Save and add another" [ref=e161] [cursor=pointer]
+              - button "Save and continue editing" [ref=e162] [cursor=pointer]
     - contentinfo
 ```
