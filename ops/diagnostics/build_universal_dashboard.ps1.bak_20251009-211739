@@ -1,11 +1,11 @@
+chcp 65001 > $null
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding            = [Text.UTF8Encoding]::new($false)
 param(
   [string]$Repo = ".",
   [string]$ReportsDir = "_otokodlama\reports"
 )
 
-chcp 65001 > $null
-[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-$OutputEncoding            = [Text.UTF8Encoding]::new($false)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
