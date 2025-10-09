@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-
-test('test', async ({ page }) => {
-  await page.goto('about:blank');
+import { test, expect } from "@playwright/test";
+test("test", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle(/.*/);
 });
