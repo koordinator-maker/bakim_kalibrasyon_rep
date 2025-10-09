@@ -1,10 +1,10 @@
-[
+﻿[
   {
     "id": "SMOKE-001",
     "type": "check",
-    "title": "Admin açılıyor",
-    "description": "Django admin sayfası yüklenir",
-    "job_definition": "\"open:/admin/;expect:Django administration\"",
+    "title": "Admin aÃ§Ä±lÄ±yor",
+    "description": "Django admin sayfasÄ± yÃ¼klenir",
+    "job_definition": "\"open:/admin/;expect:Django administration",
     "design_ref": "N/A",
     "visual_threshold": "0.9"
   }
