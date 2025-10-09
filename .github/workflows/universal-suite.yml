@@ -1,0 +1,54 @@
+name: Universal Suite Nightly
+on:
+  schedule:
+    - cron: "0 0 * * *"        # her gece 00:00 UTC
+  workflow_dispatch:            # manuel tetikleme
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # (Opsiyonel) Playwright vb. gerekiyorsa Node kur
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps (if present)
+        shell: pwsh
+        run: |
+          if (Test-Path package.json) { npm ci }
+          if (Test-Path package.json) { npx playwright install }
+      # 👇 Sunucunu burada başlat (örnek placeholder)
+      - name: Start app server (replace with real one)
+        shell: pwsh
+        run: |
+          Start-Job -ScriptBlock { python -m http.server 8010 } | Out-Null
+          Start-Sleep -Seconds 5
+      - name: Run Universal Suite
+        shell: pwsh
+        run: |
+          $repo = "$env:GITHUB_WORKSPACE"
+          & "$repo\ops\run_universal_suite.ps1" -Repo $repo -BaseUrl http://127.0.0.1:8010 -EntryPath /admin/ -GateOnFail:$false
+      # (Varsa) quick-links HTML üretimi
+      - name: Build quick-links HTML
+        if: always()
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE\ops\diagnostics\build_quicklinks_html.ps1" -Repo "$env:GITHUB_WORKSPACE" -ReportsDir "_otokodlama\reports" -BundleDir "_otokodlama\bundle"
+      - name: Upload reports & bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.run_number }}
+          path: |
+            _otokodlama/reports/**
+            _otokodlama/bundle/*.zip
+            build/tasks.json
+            playwright-report/**
+      - name: Publish JUnit to summary
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: _otokodlama/reports/junit/*.xml

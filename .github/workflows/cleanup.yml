@@ -1,4 +1,4 @@
-﻿name: Cleanup Merged Branches
+name: Cleanup Merged Branches
 on:
   workflow_dispatch: {}
   schedule:
@@ -10,7 +10,6 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - uses: cli/cli@v2
         with:
           version: latest

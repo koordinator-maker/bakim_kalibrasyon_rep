@@ -1,0 +1,2 @@
+id,type,title,description,job_definition,design_ref,visual_threshold
+SMOKE-001,check,Admin açılıyor,Django admin sayfası yüklenir,"open:/admin/;expect:Django administration",N/A,0.9
