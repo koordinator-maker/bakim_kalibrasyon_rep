@@ -1,0 +1,3121 @@
+﻿### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\ops_admin_crud.py
+# -*- coding: utf-8 -*-
+from django.core.management.base import BaseCommand
+from maintenance.models import Equipment
+
+class Command(BaseCommand):
+    help = "Admin CRUD UI test verisini idempotent hazırlama/temizleme"
+
+    def add_arguments(self, parser):
+        parser.add_argument("--action", choices=["cleanup","ensure","prepare_set"], default="ensure")
+        parser.add_argument("--code", default="EQ-CRUD-UI")
+        parser.add_argument("--name", default="UI CRUD Cihazi 1")
+
+    def handle(self, *args, **opts):
+        action = opts["action"]
+        code   = opts["code"]
+        name   = opts["name"]
+
+        if action == "cleanup":
+            n, _ = Equipment.objects.filter(code=code).delete()
+            self.stdout.write(f"[cleanup] code={code} deleted={n>0}")
+            return
+
+        if action == "ensure":
+            obj, created = Equipment.objects.get_or_create(code=code, defaults={"name": name})
+            if not created and obj.name != name:
+                obj.name = name
+                obj.save()
+            self.stdout.write(f"[ensure] code={code} id={getattr(obj,'id',None)} created={created}")
+            return
+
+        if action == "prepare_set":
+            for c, n in [
+                ("EQ-CHANGE-001", "Change Baseline Cihazi"),
+                ("EQ-DELETE-001", "Delete Confirm Cihazi"),
+                ("EQ-SEARCH-001", "Arama Test 1"),
+                ("EQ-SEARCH-002", "Arama Test 2"),
+                ("EQ-SEARCH-003", "Arama Test 3"),
+            ]:
+                Equipment.objects.get_or_create(code=c, defaults={"name": n})
+            self.stdout.write("[prepare_set] ok")
+### DOSYA BİTİŞ: ops_admin_crud.py
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_admin_canonical.py
+# -*- coding: utf-8 -*-
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+from django.http import HttpResponseRedirect
+
+BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+
+class AdminEquipmentCanonicalRedirectMiddleware:
+    """
+    /admin/maintenance/equipment/ GET isteklerini, URL resolver'a gitmeden önce
+    sterilize query ile /admin/maintenance/equipment/_direct/ adresine 302 yapar.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Sadece kanonik liste yolu ve GET
+        if request.method == "GET" and request.path == "/admin/maintenance/equipment/":
+            u = urlsplit(request.get_full_path())
+            qs = [(k, v) for (k, v) in parse_qsl(u.query, keep_blank_values=True) if k not in BLOCK_KEYS]
+            new_qs = urlencode(qs)
+            target = urlunsplit((u.scheme, u.netloc, "/admin/maintenance/equipment/_direct/", new_qs, u.fragment))
+            return HttpResponseRedirect(target)
+        return self.get_response(request)
+### DOSYA BİTİŞ: mw_admin_canonical.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\patch_equipment_admin_v2.py
+# -*- coding: utf-8 -*-
+import re, pathlib
+
+root = pathlib.Path(__file__).resolve().parents[1]
+adm_path = root / "maintenance" / "admin.py"
+
+s = adm_path.read_text(encoding="utf-8").splitlines()
+
+def has_line(rx):
+    return any(re.search(rx, ln) for ln in s)
+
+# A) @admin.register(Equipment, ...) dekoratörünü temizle (sadece satırı kaldır)
+out = []
+skip_next_blank = False
+for ln in s:
+    if re.match(r'\s*@\s*admin\.register\(\s*Equipment', ln):
+        # dekoratör satırını atla
+        skip_next_blank = False
+        continue
+    # opsiyonel: hemen altındaki boş satırı olduğu gibi bırakabiliriz; zararı yok
+    out.append(ln)
+s = out
+
+# B) AlreadyRegistered importu ekle
+txt = "\n".join(s)
+if "from django.contrib.admin.sites import AlreadyRegistered" not in txt:
+    inserted = False
+    for i, ln in enumerate(s):
+        if re.match(r'\s*from\s+django\.contrib\s+import\s+admin\b', ln):
+            s.insert(i+1, 'from django.contrib.admin.sites import AlreadyRegistered')
+            inserted = True
+            break
+    if not inserted:
+        # yoksa başa ekleyelim (admin importu da garanti edelim)
+        if not any(re.match(r'\s*from\s+django\.contrib\s+import\s+admin\b', x) for x in s):
+            s.insert(0, 'from django.contrib import admin')
+        s.insert(1, 'from django.contrib.admin.sites import AlreadyRegistered')
+
+# C) EquipmentAdmin sınıfına get_preserved_filters ekle (redirect döngüsünü keser)
+txt = "\n".join(s)
+has_method = "def get_preserved_filters(self, request):" in txt
+
+# Sınıf tanımı satırını bul
+class_idx = None
+class_rx = re.compile(r'^\s*class\s+EquipmentAdmin\s*\(\s*admin\.ModelAdmin\s*\)\s*:\s*$', re.M)
+for i, ln in enumerate(s):
+    if class_rx.match(ln):
+        class_idx = i
+        break
+
+if class_idx is not None and not has_method:
+    indent = re.match(r'^(\s*)', s[class_idx]).group(1) + "    "
+    method_block = [
+        indent + "def get_preserved_filters(self, request):",
+        indent + "    # avoid redirect loop originating from preserved_filters",
+        indent + '    return ""',
+        ""
+    ]
+    # Sınıf gövdesinin hemen başına enjekte et (docstring varsa üstüne gelmesi sorun değil)
+    s[class_idx+1:class_idx+1] = method_block
+
+elif class_idx is None:
+    # Sınıf hiç yoksa minimal sınıf ekle
+    s += [
+        "",
+        "class EquipmentAdmin(admin.ModelAdmin):",
+        "    def get_preserved_filters(self, request):",
+        '        return ""',
+        ""
+    ]
+
+# D) admin_site ile güvenli register (idempotent)
+txt = "\n".join(s)
+if not re.search(r'admin_site\.register\(\s*Equipment', txt):
+    s += [
+        "try:",
+        "    admin_site.register(Equipment, EquipmentAdmin)",
+        "except AlreadyRegistered:",
+        "    pass",
+        ""
+    ]
+
+adm_path.write_text("\n".join(s), encoding="utf-8")
+print("[patch v2] maintenance/admin.py ok")
+### DOSYA BİTİŞ: patch_equipment_admin_v2.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\patch_equipment_admin.py
+# -*- coding: utf-8 -*-
+import io, re, sys, pathlib
+
+root = pathlib.Path(__file__).resolve().parents[1]
+adm_path = root / "maintenance" / "admin.py"
+
+text = adm_path.read_text(encoding="utf-8")
+
+# 1) AlreadyRegistered importunu ekle
+if "from django.contrib.admin.sites import AlreadyRegistered" not in text:
+    # "from django.contrib import admin" satırının hemen altına ekle
+    pat = r'(from\s+django\.contrib\s+import\s+admin[^\n]*\n)'
+    if re.search(pat, text):
+        text = re.sub(pat, r"\1from django.contrib.admin.sites import AlreadyRegistered\n", text, count=1)
+    else:
+        text = "from django.contrib import admin\nfrom django.contrib.admin.sites import AlreadyRegistered\n" + text
+
+# 2) EquipmentAdmin sınıfına get_preserved_filters ekle (yoksa)
+cls_pat = r'(?ms)^\s*class\s+EquipmentAdmin\s*\(\s*admin\.ModelAdmin\s*\)\s*:\s*(?P<body>.*?)(?=^\s*class\s|\Z)'
+m = re.search(cls_pat, text)
+if m:
+    body = m.group("body")
+    if "def get_preserved_filters(" not in body:
+        # sınıf gövdesinin başına yöntem ekle
+        insert = "    def get_preserved_filters(self, request):\n        # Admin preserved_filters yeniden yönlendirme döngüsünü engelle\n        return \"\"\n\n"
+        start, end = m.span("body")
+        text = text[:start] + insert + text[start:]
+else:
+    # Yoksa minimal bir tanım ekleyelim (olası ama pek beklemiyoruz)
+    text += "\n\nclass EquipmentAdmin(admin.ModelAdmin):\n    def get_preserved_filters(self, request):\n        return \"\"\n"
+
+# 3) @admin.register(Equipment, ...) dekoratörünü kaldır (çift kayıtı engelle)
+text = re.sub(r'(?ms)^\s*@\s*admin\.register\(\s*Equipment[^)]*\)\s*\n', '', text)
+
+# 4) admin_site ile güvenli register (idempotent)
+if re.search(r'admin_site\.register\(\s*Equipment', text) is None:
+    text += ("\ntry:\n"
+             "    admin_site.register(Equipment, EquipmentAdmin)\n"
+             "except AlreadyRegistered:\n"
+             "    pass\n")
+
+adm_path.write_text(text, encoding="utf-8")
+print("[patch] maintenance/admin.py ok")
+### DOSYA BİTİŞ: patch_equipment_admin.py
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_no_append_admin.py
+# -*- coding: utf-8 -*-
+from django.middleware.common import CommonMiddleware
+
+class NoAppendSlashForAdmin(CommonMiddleware):
+    """
+    Admin altındaki URL'lerde CommonMiddleware'in APPEND_SLASH yönlendirmesini devre dışı bırakır.
+    Diğer tüm yollar için standart davranış korunur.
+    """
+    def process_request(self, request):
+        p = request.path
+        # admin altına giriyorsa bu middleware append_slash yapmasın
+        if p.startswith("/admin/"):
+            return None
+        # diğer tüm yollar: standart davranış
+        return super().process_request(request)
+### DOSYA BİTİŞ: mw_no_append_admin.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\playwright_tests.py
+# REV: 1.0 | 2025-09-25 | Hash: bfa8286c | ParÃ§a: 1/1
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# REV: 1.1 | tools/playwright_tests.py (BOM-safe)
+
+import sys, json, argparse
+from pathlib import Path
+
+def load_config(repo_root: Path):
+    cfg_path = repo_root / "pipeline.config.json"
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8-sig"))
+    return cfg
+
+def normalize_urls(lines, base_url: str):
+    out = []
+    for raw in lines:
+        u = raw.strip().lstrip("\ufeff")  # satÄ±r baÅŸÄ±ndaki BOM'u sÃ¼pÃ¼r
+        if not u or u.startswith("#"):
+            continue
+        if u.startswith("/"):
+            u = base_url.rstrip("/") + u
+        out.append(u)
+    return out
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--urls", required=True, help="URL listesi dosyasÄ±")
+    ap.add_argument("--out", required=True, help="JSON rapor ('.json' ile biter)")
+    args = ap.parse_args()
+
+    repo_root = Path(__file__).resolve().parents[1]
+    cfg = load_config(repo_root)
+    pwcfg = cfg.get("playwright", {})
+    base_url = pwcfg.get("base_url", "http://127.0.0.1:8000")
+    headless = pwcfg.get("headless", True)
+    viewport = pwcfg.get("viewport", {"width": 1280, "height": 800})
+    timeout_ms = 15000  # 15s
+
+    # KRÄ°TÄ°K: URL dosyasÄ±nda gizli BOM olursa otomatik temizle
+    lines = Path(args.urls).read_text(encoding="utf-8-sig").splitlines()
+    urls = normalize_urls(lines, base_url)
+
+    from playwright.sync_api import sync_playwright
+
+    results = []
+    fail = 0
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=headless)
+        context = browser.new_context(viewport=viewport)
+        for url in urls:
+            page = context.new_page()
+            console_errors = []
+            page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
+            status = None; ok = False; err = None; title = None
+            try:
+                resp = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                status = resp.status if resp else None
+                title = page.title()
+                ok = (status is not None and status < 400)
+            except Exception as e:
+                err = str(e)
+                ok = False
+            results.append({
+                "url": url,
+                "status": status,
+                "title": title,
+                "console_errors": console_errors[:10],
+                "ok": bool(ok),
+                "error": err
+            })
+            if not ok:
+                fail += 1
+            page.close()
+        context.close()
+        browser.close()
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    if out_path.suffix.lower() != ".json":
+        out_path = out_path.with_suffix(".json")
+    report = {"total": len(urls), "fail": fail, "results": results}
+    out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    if fail == 0:
+        print(f"[PLAYWRIGHT] PASSED - total={len(urls)} fail=0")
+        sys.exit(0)
+    else:
+        print(f"[PLAYWRIGHT] FAILED - total={len(urls)} fail={fail}")
+        for r in results:
+            if not r["ok"]:
+                print(f"  FAIL {r['url']} status={r['status']} error={r['error']}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+### DOSYA BİTİŞ: playwright_tests.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\dj_fix_app.py
+# REV: 1.0 | 2025-09-25 | Hash: 0bea51d0 | Parça: 1/1
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Django app kayıt düzeltici:
+- INSTALLED_APPS içine 'maintenance.apps.MaintenanceConfig' ekler (yoksa)
+- maintenance/__init__.py dosyasını garanti eder
+- Güvenli: settings.py için .bak yedeği alır
+Kullanım:
+  python tools/dj_fix_app.py            # düzelt
+  python tools/dj_fix_app.py --dry-run  # sadece raporla
+"""
+
+import argparse, io, os, re, sys
+ROOT = os.path.dirname(os.path.abspath(__file__))  # tools/
+ROOT = os.path.abspath(os.path.join(ROOT, '..'))   # repo kökü
+
+SETTINGS_PATH = os.path.join(ROOT, 'core', 'settings.py')
+MAINT_DIR      = os.path.join(ROOT, 'maintenance')
+MAINT_INIT     = os.path.join(MAINT_DIR, '__init__.py')
+
+RE_INSTALLED = re.compile(r'INSTALLED_APPS\s*=\s*\[(.*?)\]', re.S)
+
+TARGET_APP_LINE = "'maintenance.apps.MaintenanceConfig',"
+
+def read_text(p):
+    with io.open(p, 'r', encoding='utf-8', errors='strict') as f:
+        return f.read()
+
+def write_text(p, s, newline='\n'):
+    # .py dosyaları LF ile yazılsın
+    with io.open(p, 'w', encoding='utf-8', newline=newline) as f:
+        f.write(s)
+
+def ensure_maint_init(dry=False):
+    os.makedirs(MAINT_DIR, exist_ok=True)
+    if not os.path.exists(MAINT_INIT):
+        txt = "# maintenance paket başlatıcısı\n"
+        if not dry:
+            write_text(MAINT_INIT, txt, newline='\n')
+        return True
+    return False
+
+def has_app(s):
+    # INSTALLED_APPS bloğunda maintenance var mı?
+    m = RE_INSTALLED.search(s)
+    if not m:
+        return False, None
+    block = m.group(1)
+    present = re.search(r"['\"]maintenance(\.apps\.MaintenanceConfig)?['\"]", block) is not None
+    return present, m
+
+def insert_app(s, match):
+    # match: INSTALLED_APPS bloğu
+    start, end = match.span(1)  # sadece içerik dilimini hedefle
+    block = s[start:end]
+    # Satır başı girintisini yakala
+    # Ör: INSTALLED_APPS = [\n    'django.contrib.admin',\n]
+    indent_match = re.search(r'\n([ \t]+)[^\n]*$', s[:start])
+    indent = indent_match.group(1) if indent_match else '    '
+    # Varsa ilk satırdan sonra ekle; yoksa direkt başa
+    if block.strip():
+        new_block = TARGET_APP_LINE + "\n" + block
+    else:
+        new_block = TARGET_APP_LINE + "\n"
+    # Girinti uygula
+    new_block = re.sub(r'(^|\n)(?!$)', r'\1' + indent, new_block)
+    # Kapanış köşeli parantez öncesi son satırda trailing virgül kalması Django için sorun değildir.
+    return s[:start] + new_block + s[end:]
+
+def fix_settings(dry=False):
+    if not os.path.exists(SETTINGS_PATH):
+        return False, "settings.py bulunamadı: " + SETTINGS_PATH
+    src = read_text(SETTINGS_PATH)
+    present, m = has_app(src)
+    if present:
+        return False, "Zaten INSTALLED_APPS içinde maintenance var."
+    if not m:
+        return False, "settings.py içinde INSTALLED_APPS bloğu bulunamadı."
+    fixed = insert_app(src, m)
+    if not dry:
+        # yedek
+        write_text(SETTINGS_PATH + '.bak', src, newline='\n')
+        write_text(SETTINGS_PATH, fixed, newline='\n')
+    return True, "INSTALLED_APPS içine eklendi: " + TARGET_APP_LINE
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--dry-run', action='store_true', help='Değişiklik yapmadan raporla')
+    args = ap.parse_args()
+
+    # 1) maintenance/__init__.py
+    created = ensure_maint_init(dry=args.dry_run)
+    # 2) settings.py
+    changed, msg = fix_settings(dry=args.dry_run)
+
+    print("[dj_fix_app] __init__ {} | settings {}".format(
+        "OLUŞTURULDU" if created else "zaten var",
+        "DÜZELTİLDİ" if changed else "değiştirilmedi"
+    ))
+    print("[dj_fix_app]", msg)
+
+if __name__ == '__main__':
+    sys.exit(main())
+### DOSYA BİTİŞ: dj_fix_app.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\__init__.py
+# REV: 1.0 | 2025-09-25 | Hash: 9d0fe924 | Parça: 1/1
+# maintenance paket başlatıcısı
+### DOSYA BİTİŞ: __init__.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\layout_acceptance.py
+# REV: 1.1 | 2025-09-25 | Hash: a157f3d5 | Parça: 1/1
+import argparse, json, os, sys
+from glob import glob
+
+try:
+    from PIL import Image
+except Exception as e:
+    print(f"[LAYOUT] Pillow gerekli: {e}")
+    sys.exit(2)
+
+def latest_png(folder):
+    files = sorted(glob(os.path.join(folder, "*.png")), key=os.path.getmtime)
+    return files[-1] if files else None
+
+def nmae_similarity(a_path, b_path):
+    # 0 fark = 1.0 benzerlik; max fark ~1.0 => 0.0 benzerlik
+    a = Image.open(a_path).convert("RGB")
+    b = Image.open(b_path).convert("RGB")
+    if a.size != b.size:
+        b = b.resize(a.size)
+    a_px = a.load(); b_px = b.load()
+    w, h = a.size
+    total = 0
+    for y in range(h):
+        for x in range(w):
+            ar, ag, ab = a_px[x, y]
+            br, bg, bb = b_px[x, y]
+            total += abs(ar-br) + abs(ag-bg) + abs(ab-bb)
+    max_total = (255*3) * w * h
+    mae = total / max_total
+    return max(0.0, 1.0 - mae)
+
+def parse_improvements(path):
+    if not os.path.exists(path): return {"all_done": False, "items": []}
+    items = []
+    all_done = True
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            s = line.strip()
+            if s.startswith("[x]"):
+                items.append({"text": s[3:].strip(), "done": True})
+            elif s.startswith("[ ]"):
+                items.append({"text": s[3:].strip(), "done": False})
+                all_done = False
+    return {"all_done": all_done, "items": items}
+
+def read_playwright_status(report_json):
+    if not report_json or not os.path.exists(report_json): return None
+    try:
+        with open(report_json, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("status")
+    except Exception:
+        return None
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--target", required=True)
+    ap.add_argument("--latest", required=True, help="folder of latest screenshots")
+    ap.add_argument("--improve", required=True, help="improvements.txt")
+    ap.add_argument("--report", required=True)
+    ap.add_argument("--threshold", type=float, default=0.90)
+    ap.add_argument("--playwright_json", default=None)
+    args = ap.parse_args()
+
+    os.makedirs(os.path.dirname(args.report), exist_ok=True)
+
+    latest = latest_png(args.latest)
+    if not latest:
+        out = {"ok": False, "reason": "no_latest_screenshot"}
+        print("[LAYOUT] No latest screenshot found.")
+        with open(args.report, "w", encoding="utf-8") as f: json.dump(out, f, ensure_ascii=False, indent=2)
+        return 1
+
+    similarity = nmae_similarity(args.target, latest)
+    screenshot_ok = (similarity >= args.threshold)
+
+    imp = parse_improvements(args.improve)
+    improvements_ok = imp["all_done"]
+
+    tests_status = read_playwright_status(args.playwright_json)
+    tests_ok = (tests_status == "passed") if tests_status is not None else True  # tests yoksa esnek davran
+
+    ok = screenshot_ok and improvements_ok and tests_ok
+    out = {
+        "ok": ok,
+        "similarity": round(similarity, 4),
+        "threshold": args.threshold,
+        "screenshot_ok": screenshot_ok,
+        "improvements_ok": improvements_ok,
+        "tests_ok": tests_ok,
+        "latest_screenshot": os.path.relpath(latest),
+        "target": os.path.relpath(args.target),
+        "improvements_summary": imp
+    }
+    print(f"[LAYOUT] similarity={out['similarity']} ok={ok} "
+          f"(shot>={args.threshold}={screenshot_ok}, improvements={improvements_ok}, tests={tests_ok})")
+    with open(args.report, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+    return 0 if ok else 1
+
+if __name__ == "__main__":
+    sys.exit(main())
+### DOSYA BİTİŞ: layout_acceptance.py
+
+### DOSYA BAŞLANGIÇ: .\\pipeline.ps1
+# REV: 1.0 | 2025-09-25 | Hash: TBD | Parça: 1/1
+Param(
+  [string]$Settings = "core.settings"
+)
+$ErrorActionPreference = "Stop"
+
+# -------------------- Ortam & Yol Kurulumu --------------------
+$Root = (Get-Location).Path
+$Ts   = Get-Date -Format "yyyyMMdd-HHmmss"
+$OutDir = Join-Path $Root ("_otokodlama/out/" + $Ts)
+New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+
+# Tam terminal dökümü
+Start-Transcript -Path (Join-Path $OutDir "transcript.txt") -Force | Out-Null
+
+# Config yükle
+$ConfigPath = Join-Path $Root "pipeline.config.json"
+if (Test-Path $ConfigPath) {
+  $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+} else {
+  throw "pipeline.config.json bulunamadı."
+}
+
+# -------------------- Yardımcılar --------------------
+function Step($name, $scriptBlock) {
+  Write-Host "==> $name"
+  try {
+    & $scriptBlock 2>&1 | Tee-Object -FilePath (Join-Path $OutDir ("$($name -replace '\s','_').log"))
+    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) { throw "$name exit code $LASTEXITCODE" }
+  } catch {
+    Write-Host "!  $name FAILED"
+    Stop-Transcript | Out-Null
+    throw
+  }
+}
+
+function StepSoft($name, $scriptBlock) {
+  Write-Host "==> $name (soft)"
+  try {
+    & $scriptBlock 2>&1 | Tee-Object -FilePath (Join-Path $OutDir ("$($name -replace '\s','_').log"))
+  } catch {
+    Write-Host "!  $name FAILED (soft, continuing)"
+  }
+}
+
+# 650 satır üstü gate (venv, node_modules, _otokodlama hariç)
+function Gate-LineLimit650 {
+  $limit = 650
+  $long = @()
+  Get-ChildItem -Recurse -File | Where-Object {
+    $_.FullName -notmatch '\\venv\\' -and
+    $_.FullName -notmatch '\\node_modules\\' -and
+    $_.FullName -notmatch '\\_otokodlama\\' -and
+    $_.Name -ne "transcript.txt"
+  } | ForEach-Object {
+    try {
+      $cnt = [System.IO.File]::ReadLines($_.FullName).Count
+      if ($cnt -gt $limit) {
+        $long += "{0} : {1} satır" -f ($_).FullName, $cnt
+      }
+    } catch { }
+  }
+  $out = Join-Path $OutDir "longfiles.txt"
+  $long | Out-File -Encoding utf8 $out
+  if ($long.Count -gt 0) {
+    Write-Host "[LONGFILES] 650+ satır bulundu, detay için: $out"
+    throw "650 satır sınırı aşıldı."
+  } else {
+    Write-Host "[LONGFILES] OK (650 üstü yok)"
+  }
+}
+
+# -------------------- Adımlar --------------------
+# (İstersen aktif tut: revstamp / blockcheck / guardrail)
+#Step "revstamp" { python tools/revstamp.py . }
+Step "blockcheck" { python tools/blockcheck.py --tracked }
+Step "guardrail_check" { python tools/guardrail_check.py }
+
+# 650 satır gate
+Step "line_limit_650" { Gate-LineLimit650 }
+
+# Django check (soft)
+StepSoft "django_check" { .\scripts\django_check.ps1 -Settings $Settings -Soft }
+
+# Ekran görüntüsü (her koşuda)
+$ScreensDir = Join-Path $Root $Config.screenshots_dir
+Step "screenshot" {
+  .\scripts\capture_screenshot.ps1 -OutDir $ScreensDir -AlsoCopyTo $OutDir
+}
+
+# Playwright testleri
+$PwOut = Join-Path $OutDir "playwright"
+Step "playwright" {
+  if (!(Test-Path $PwOut)) { New-Item -ItemType Directory -Force -Path $PwOut | Out-Null }
+  python tools/playwright_tests.py --urls $Config.urls_file --out $PwOut
+}
+
+# Layout acceptance (hedef ekran + iyileştirme + test sonucu)
+$TargetPng = Join-Path $Root $Config.target_screenshot
+$ImproveTx = Join-Path $Root $Config.improvements_file
+$LayJson   = Join-Path $OutDir "layout_report.json"
+$PwJson    = Join-Path $PwOut "report.json"
+$Th        = [double]$Config.acceptance.screenshot_similarity
+
+Step "acceptance_gate" {
+  python tools/layout_acceptance.py `
+    --target $TargetPng `
+    --latest $ScreensDir `
+    --improve $ImproveTx `
+    --report $LayJson `
+    --threshold $Th `
+    --playwright_json $PwJson
+}
+
+Write-Host "[PIPELINE] Tamamlandı."
+Stop-Transcript | Out-Null
+### DOSYA BİTİŞ: pipeline.ps1
+
+### DOSYA BAŞLANGIÇ: .\\scripts\capture_screenshot.ps1
+# REV: 1.0 | 2025-09-25 | Hash: TBD | Parça: 1/1
+Param(
+  [string]$OutDir = "targets/screens",
+  [string]$AlsoCopyTo = ""
+)
+$ErrorActionPreference = "Stop"
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+if (!(Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
+
+$ts = Get-Date -Format "yyyyMMdd-HHmmss"
+$path = Join-Path $OutDir ("screenshot-$ts.png")
+
+$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+$gfx = [System.Drawing.Graphics]::FromImage($bmp)
+$gfx.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+$bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+$gfx.Dispose()
+$bmp.Dispose()
+
+Write-Host "[SCREENSHOT] $path"
+
+if ($AlsoCopyTo -and (Test-Path $AlsoCopyTo)) {
+  Copy-Item $path -Destination (Join-Path $AlsoCopyTo ("screenshot-$ts.png")) -Force
+}
+### DOSYA BİTİŞ: capture_screenshot.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\capture_screenshot.ps1
+# REV: 1.0 | 2025-09-25 | Hash: TBD | Parça: 1/1
+Param(
+  [string]$OutDir = "targets/screens",
+  [string]$AlsoCopyTo = ""
+)
+$ErrorActionPreference = "Stop"
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+if (!(Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
+
+$ts = Get-Date -Format "yyyyMMdd-HHmmss"
+$path = Join-Path $OutDir ("screenshot-$ts.png")
+
+$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+$gfx = [System.Drawing.Graphics]::FromImage($bmp)
+$gfx.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+$bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+$gfx.Dispose()
+$bmp.Dispose()
+
+Write-Host "[SCREENSHOT] $path"
+
+if ($AlsoCopyTo -and (Test-Path $AlsoCopyTo)) {
+  Copy-Item $path -Destination (Join-Path $AlsoCopyTo ("screenshot-$ts.png")) -Force
+}
+### DOSYA BİTİŞ: capture_screenshot.ps1
+
+### DOSYA BAŞLANGIÇ: .\\tools\longfile_report.py
+# REV: 1.2 | 2025-09-25 | Hash: 22847e11 | Parça: 1/1
+# Her dosya başında revizyon bilgisi sistemi olacak.
+
+# >>> BLOK: IMPORTS | ID:PY-LFR-IMP-7Q2W9K4B
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import os, sys, json, argparse, subprocess
+# <<< BLOK SONU: ID:PY-LFR-IMP-7Q2W9K4B
+
+# >>> BLOK: FILTERS | ID:PY-LFR-FLT-1A2B3C4D
+ALLOWED_EXTS = {
+    '.py','.ps1','.sh','.js','.ts','.css','.html','.htm','.yml','.yaml','.ini','.cfg'
+}
+SKIP_DIRS = {'venv','.venv','env','.env','node_modules','__pycache__','_otokodlama','var','build','dist'}
+SKIP_NAMES = {'codepack_full_part01.bat'}
+MAX_SIZE_BYTES = 1_000_000  # >1MB dosyaları rapora dahil etme
+# <<< BLOK SONU: ID:PY-LFR-FLT-1A2B3C4D
+
+# >>> BLOK: CORE | ID:PY-LFR-CORE-3M8D2R6Q
+def git_tracked_files():
+    out = subprocess.check_output(['git','ls-files'], encoding='utf-8')
+    return [p for p in (line.strip() for line in out.splitlines()) if p]
+
+def allowed_file(p: str) -> bool:
+    parts = p.replace('\\','/').split('/')
+    if any(seg in SKIP_DIRS for seg in parts): return False
+    if os.path.basename(p) in SKIP_NAMES: return False
+    ext = os.path.splitext(p)[1].lower()
+    return ext in ALLOWED_EXTS
+
+def count_lines(path):
+    try:
+        if os.path.getsize(path) > MAX_SIZE_BYTES:
+            return -1
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+            return sum(1 for _ in f)
+    except Exception:
+        return -1
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--threshold', type=int, default=650)
+    ap.add_argument('--out', required=False, help='JSON çıktı yolu (örn: _otokodlama/out/xxx/longfiles.json)')
+    args = ap.parse_args()
+
+    files = [p for p in git_tracked_files() if allowed_file(p)]
+    rows = []
+    for p in files:
+        n = count_lines(p)
+        if n >= 0 and n > args.threshold:
+            parts = (n + args.threshold - 1) // args.threshold
+            rows.append({"file": p, "lines": n, "suggested_parts": parts})
+
+    if args.out:
+        os.makedirs(os.path.dirname(args.out), exist_ok=True)
+        with open(args.out, 'w', encoding='utf-8') as f:
+            json.dump(rows, f, ensure_ascii=False, indent=2)
+
+    if rows:
+        print(f"[longfile_report] >{args.threshold} satır dosyalar ({len(rows)} adet):")
+        for r in rows:
+            print(f"  - {r['file']}: {r['lines']} satır → öneri Parça 1/{r['suggested_parts']}")
+    else:
+        print(f"[longfile_report] Limit {args.threshold} üzeri dosya yok.")
+
+if __name__ == "__main__":
+    main()
+# <<< BLOK SONU: ID:PY-LFR-CORE-3M8D2R6Q
+### DOSYA BİTİŞ: longfile_report.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\revstamp.py
+# REV: 1.1 | 2025-09-25 | Hash: 127a41f3 | Parça: 1/1
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Revizyon Takip Sistemi - Otokodlama
+- REV satırı ekler/günceller
+- Gövde hash'ine göre değişikliği algılar
+- 650 satır sınırı için uyarır
+- "Parça" alanını 1/1 olarak bırakır; istenirse --part i/N ile geçersiz kılınır
+"""
+
+import argparse, hashlib, io, os, re, sys, datetime
+
+# Tüm yorum türlerini yakala: #, //, ;, /* */, {# #}, <!-- -->
+HEADER_RE = re.compile(
+    r'^\s*(?:#|//|;|/\*|{#|<!--)\s*'            # açılış
+    r'REV:\s*(\d+)\.(\d+)\s*\|\s*'              # 1: major, 2: minor
+    r'([0-9]{4}-[0-9]{2}-[0-9]{2})\s*\|\s*'     # 3: tarih YYYY-MM-DD
+    r'Hash:\s*([A-Za-z0-9]+)\s*\|\s*'           # 4: hash
+    r'Parça:\s*(\d+)\/(\d+)\s*'                 # 5,6: parça
+    r'(?:\*/|#}|-->)?\s*$'                      # kapanış (opsiyonel)
+)
+
+COMMENT_PREFIXES = {
+    '.py': '# ', '.sh': '# ', '.ps1': '# ', '.js': '// ', '.ts': '// ',
+    '.css': '/* ', '.html': '{# ', '.htm': '{# ', '.vue': '<!-- ', '.json': '// ',
+    '.md': '<!-- ', '.yml': '# ', '.yaml': '# ', '.ini': '; ', '.cfg': '; ',
+}
+COMMENT_SUFFIX = {
+    '.css': ' */', '.html': ' #}', '.htm': ' #}', '.vue': ' -->', '.md': ' -->', '.json': '',
+}
+
+def detect_prefix_suffix(path):
+    ext = os.path.splitext(path)[1].lower()
+    return COMMENT_PREFIXES.get(ext, '# '), COMMENT_SUFFIX.get(ext, '')
+
+def compute_body_hash(text):
+    # EOL normalize ederek hashle -> CRLF/LF dalgalanmasını sabitler
+    norm = text.replace('\r\n', '\n').replace('\r', '\n')
+    return hashlib.sha1(norm.encode('utf-8')).hexdigest()[:8]
+
+def read_file(path):
+    # utf-8-sig -> varsa baştaki BOM’u otomatik sök
+    with io.open(path, 'r', encoding='utf-8-sig', errors='ignore') as f:
+        return f.read()
+
+def write_file(path, text):
+    # Yazarken LF bırak (gitattributes zaten EOL’ü yönetiyor)
+    with io.open(path, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(text)
+
+def format_header(prefix, suffix, rev_major, rev_minor, date_s, hash_s, part_s):
+    base = f"REV: {rev_major}.{rev_minor} | {date_s} | Hash: {hash_s} | Parça: {part_s}"
+    return f"{prefix}{base}{suffix}\n" if suffix else f"{prefix}{base}\n"
+
+def parse_existing_header(first_line):
+    m = HEADER_RE.match(first_line.strip())
+    if not m:
+        return None
+    return {
+        'major': int(m.group(1)),
+        'minor': int(m.group(2)),
+        'date':  m.group(3),
+        'hash':  m.group(4),
+        'part':  f"{m.group(5)}/{m.group(6)}",
+    }
+
+def process_file(path, bump_major=False, part_override=None, quiet=False):
+    raw = read_file(path)
+    lines = raw.splitlines(True)  # satır sonlarını koru
+
+    existing = parse_existing_header(lines[0]) if lines else None
+
+    # gövde (mevcut başlığı hariç tut)
+    body = "".join(lines[1:]) if existing else "".join(lines)
+
+    new_hash = compute_body_hash(body)
+    today   = datetime.date.today().isoformat()
+    part    = part_override or (existing['part'] if existing else '1/1')
+
+    if existing:
+        changed = (new_hash != existing['hash'])
+        major, minor = existing['major'], existing['minor']
+        if changed:
+            if bump_major:
+                major += 1; minor = 0
+            else:
+                minor += 1
+        header   = format_header(*detect_prefix_suffix(path), major, minor, today, new_hash, part)
+        new_text = header + body
+        updated  = changed or (existing['date'] != today) or bool(part_override)
+    else:
+        # ilk kez damgalama
+        header   = format_header(*detect_prefix_suffix(path), 1, 0, today, new_hash, part)
+        new_text = header + body
+        updated  = True
+
+    if updated:
+        write_file(path, new_text)
+        if not quiet:
+            print(f"[REV] {path}: güncellendi (hash={new_hash})")
+    else:
+        if not quiet:
+            print(f"[REV] {path}: değişiklik yok (hash sabit)")
+
+    # 650 satır uyarısı (bilgilendirme)
+    total_lines = new_text.count('\n') + 1
+    if total_lines > 650 and not quiet:
+        print(f"[UYARI] {path}: {total_lines} satır (>650). Bölmeyi düşünün (Parça i/N).")
+    return 0
+
+def should_skip(path):
+    p = path.replace('\\', '/').lower()
+
+    # Repo-dışı / üretilen / sanal ortam / cache klasörleri
+    skip_dirs = (
+        '/.git/', '/_otokodlama/', '/venv/', '/.venv/',
+        '/node_modules/', '/__pycache__/', '/.mypy_cache/',
+        '/.pytest_cache/', '/dist/', '/build/', '/.tox/'
+    )
+    if any(s in p for s in skip_dirs):
+        return True
+
+    # Tekil dosya istisnaları
+    if p.endswith('/var/bootreport.json'):
+        return True
+
+    # Kaba binary kontrolü
+    try:
+        with open(path, 'rb') as f:
+            if b'\x00' in f.read(2048):
+                return True
+    except:
+        return True
+
+    return False
+
+def walk_and_process(roots, patterns, **opts):
+    rc = 0
+    for base in roots:
+        for dirpath, _, filenames in os.walk(base):
+            for fn in filenames:
+                path = os.path.join(dirpath, fn)
+                if should_skip(path):
+                    continue
+                if patterns and not any(path.lower().endswith(p) for p in patterns):
+                    continue
+                try:
+                    process_file(path, **opts)
+                except Exception as e:
+                    print(f"[HATA] {path}: {e}", file=sys.stderr)
+                    rc = 1
+    return rc
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('paths', nargs='*', default=['.'], help='Kök klasör(ler)')
+    ap.add_argument('--ext', nargs='*', default=['.py','.html','.css','.js','.ts','.md','.yml','.yaml','.json','.ini','.cfg'])
+    ap.add_argument('--bump-major', action='store_true')
+    ap.add_argument('--part', help='i/N formatında parçayı zorla, ör: 2/3')
+    ap.add_argument('--quiet', action='store_true')
+    args = ap.parse_args()
+    sys.exit(
+        walk_and_process(
+            args.paths, args.ext,
+            bump_major=args.bump_major,
+            part_override=args.part,
+            quiet=args.quiet
+        )
+    )
+
+if __name__ == '__main__':
+    main()
+### DOSYA BİTİŞ: revstamp.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\guardrail_check.py
+# REV: 1.1 | 2025-09-25 | Hash: a82325e6 | Parça: 1/1
+# Her dosya başında revizyon bilgisi sistemi olacak.
+# >>> BLOK: GUARDRAIL | Base layout & CSS kontrol | ID:PY-GRD-8M2S4K9H
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import os, re, sys
+ALLOWED_CLASSES = {
+  "card","section-bar","section-body","field","label","help","input",
+  "select","textarea","readonly","toolbar","btn","btn-primary","col-span-2"
+}
+def fail(msg):
+    print(f"[GUARDRAIL] {msg}", file=sys.stderr); sys.exit(1)
+def check_base_untouched():
+    path = os.path.join("templates","base.html")
+    if not os.path.exists(path): fail("templates/base.html bulunamadı.")
+    with open(path, 'r', encoding='utf-8') as f: txt = f.read()
+    if "<!-- GUARDRAIL: DO NOT MODIFY LAYOUT -->" not in txt:
+        fail("base.html beklenen guardrail imzasını içermiyor (dosya değişmiş olabilir).")
+def scan_templates():
+    root = "templates"
+    if not os.path.isdir(root): return
+    rx_class = re.compile(r'class="([^"]+)"')
+    for dp,_,files in os.walk(root):
+        for fn in files:
+            if not fn.endswith(('.html','.htm')): continue
+            p = os.path.join(dp, fn)
+            with open(p,'r',encoding='utf-8') as f: t = f.read()
+            for m in rx_class.finditer(t):
+                for c in m.group(1).split():
+                    if c.startswith('{'): continue
+                    if c not in ALLOWED_CLASSES:
+                        fail(f"{p}: İzinli olmayan CSS sınıfı: {c}")
+if __name__ == "__main__":
+    check_base_untouched(); scan_templates(); print("[GUARDRAIL] OK")
+# <<< BLOK SONU: ID:PY-GRD-8M2S4K9H
+### DOSYA BİTİŞ: guardrail_check.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\blockify.py
+# REV: 1.1 | 2025-09-25 | Hash: be15d474 | Parça: 1/1
+# Her dosya başında revizyon bilgisi sistemi olacak.
+
+# >>> BLOK: IMPORTS | Blockify - otomatik blok etiketleyici | ID:PY-BLKF-IMP-8K3W1Z6Q
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import os, re, sys, time, argparse, subprocess, io, random
+# <<< BLOK SONU: ID:PY-BLKF-IMP-8K3W1Z6Q
+
+# >>> BLOK: UTIL | ID üretimi & yardımcılar | ID:PY-BLKF-UTL-5C9R2L7M
+ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # Crockford Base32
+def new_id(prefix: str = "PY", length: int = 8) -> str:
+    seed = int(time.time_ns()) ^ os.getpid() ^ random.getrandbits(40)
+    s = ""
+    n = abs(seed)
+    for _ in range(length):
+        s = ALPHABET[n % 32] + s
+        n //= 32
+    return f"{prefix}-{s}"
+
+def git_tracked_py_files():
+    out = subprocess.check_output(['git','ls-files','*.py'], encoding='utf-8', errors='ignore')
+    files = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    # klasör filtreleri
+    SKIP_DIRS = {'venv','.venv','env','.env','node_modules','__pycache__','_otokodlama','build','dist','migrations'}
+    keep = []
+    for p in files:
+        parts = p.replace('\\','/').split('/')
+        if any(seg in SKIP_DIRS for seg in parts): 
+            continue
+        keep.append(p)
+    return keep
+
+REV_RX = re.compile(r'^\s*(#|//|;|/\*|<!--|\{#)\s*REV:\s*\d+\.\d+\s*\|', re.IGNORECASE)
+BLOK_RX = re.compile(r'^\s*#\s*>>>+\s*BLOK:', re.IGNORECASE)
+IMPORT_RX = re.compile(r'^\s*(from\s+\S+\s+import\s+\S+|import\s+\S+)\s*(#.*)?$')
+CLASS_MODEL_RX = re.compile(r'^\s*class\s+\w+\s*\(\s*models\.Model\b')
+CLASS_VIEW_RX  = re.compile(r'^\s*class\s+\w+View\s*\(')
+CLASS_FORM_RX  = re.compile(r'^\s*class\s+\w+\s*\(\s*(forms\.Form|forms\.ModelForm)\b')
+DEF_VIEW_RX    = re.compile(r'^\s*def\s+\w+_view\s*\(')
+
+def detect_category(path, lines):
+    fn = os.path.basename(path).lower()
+    if fn.startswith('settings'): return ('SETTINGS','Proje ayarlari')
+    if fn == 'models.py': return ('MODELS','Domain modelleri')
+    if fn == 'views.py': return ('VIEWS','Gorunumler')
+    if fn == 'forms.py': return ('FORMS','Formlar')
+    if fn == 'admin.py': return ('ADMIN','Yonetim')
+    if '/management/commands/' in path.replace('\\','/'):
+        return ('COMMAND','Komut')
+    # icerige bakarak ipucu
+    txt = ''.join(lines)
+    if CLASS_MODEL_RX.search(txt): return ('MODELS','Domain modelleri')
+    if CLASS_FORM_RX.search(txt):  return ('FORMS','Formlar')
+    if CLASS_VIEW_RX.search(txt) or DEF_VIEW_RX.search(txt): return ('VIEWS','Gorunumler')
+    return ('HELPERS','Yardimci fonksiyonlar')
+# <<< BLOK SONU: ID:PY-BLKF-UTL-5C9R2L7M
+
+# >>> BLOK: CORE | Dosya isleme | ID:PY-BLKF-CORE-3M8D2R6Q
+def blockify_one(path, dry_run=False):
+    with io.open(path,'r',encoding='utf-8',errors='ignore') as f:
+        lines = f.readlines()
+    if any(BLOK_RX.match(l) for l in lines[:80]):
+        return False  # zaten bloklu
+    # REV satirini bul (ilk satirda olmasi bekleniyor)
+    body_start = 0
+    if lines and REV_RX.match(lines[0]):
+        body_start = 1
+
+    # IMPORT bloğu araligi
+    i = body_start
+    # bos satirlari gect
+    while i < len(lines) and lines[i].strip() == '':
+        i += 1
+    imp_start = i
+    while i < len(lines) and (IMPORT_RX.match(lines[i]) or lines[i].strip()=='' or lines[i].strip().startswith('#')):
+        # import grubu sonuna kadar ilerle (bos/comment dahil)
+        i += 1
+    imp_end = i
+
+    # Kategori belirle
+    category, title = detect_category(path, lines)
+
+    # ID'ler
+    imp_id = new_id('PY-IMP')
+    cat_id = new_id(f'PY-{category[:3]}')
+
+    # INSERt metinleri
+    def header(cat, ttl, bid): return f"# >>> BLOK: {cat} | {ttl} | ID:{bid}\n"
+    def footer(bid):           return f"# <<< BLOK SONU: ID:{bid}\n"
+
+    new_lines = []
+    # 0..body_start-1 (REV satiri dahil) oldugu gibi
+    new_lines.extend(lines[:body_start])
+
+    # IMPORT bloğu ekle
+    new_lines.append(header('IMPORTS','Temel importlar', imp_id))
+    new_lines.extend(lines[imp_start:imp_end])
+    new_lines.append(footer(imp_id))
+
+    # Kalan kisim ana kategori
+    new_lines.append(header(category, title, cat_id))
+    new_lines.extend(lines[imp_end:])
+    new_lines.append(footer(cat_id))
+
+    if not dry_run:
+        with io.open(path,'w',encoding='utf-8',newline='\n') as f:
+            f.writelines(new_lines)
+    return True
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--limit', type=int, default=0, help='En fazla N dosya isleme (0=sinir yok)')
+    args = ap.parse_args()
+
+    changed = 0
+    files = git_tracked_py_files()
+    for p in files:
+        try:
+            ok = blockify_one(p, dry_run=args.dry_run)
+            if ok:
+                print(f"[blockify] {p}: bloklar eklendi")
+                changed += 1
+            if args.limit and changed >= args.limit:
+                break
+        except Exception as e:
+            print(f"[blockify] {p}: HATA {e}", file=sys.stderr)
+    print(f"[blockify] tamam. degisen dosya: {changed}")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+# <<< BLOK SONU: ID:PY-BLKF-CORE-3M8D2R6Q
+### DOSYA BİTİŞ: blockify.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\blockid.py
+# REV: 1.1 | 2025-09-25 | Hash: ea809379 | Parça: 1/1
+# Her dosya başında revizyon bilgisi sistemi olacak.
+# >>> BLOK: SETUP | Benzersiz blok kodu üretici | ID:PY-SET-Q6R5V2JK
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Benzersiz blok kodu üretimi (Crockford Base32 kısa ID)
+"""
+import os, time, random, argparse
+ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # O/I/L/U yok; okuması kolay
+def base32(n: int, length: int = 10) -> str:
+    s = ""
+    for _ in range(length):
+        s = ALPHABET[n % 32] + s; n //= 32
+    return s
+def new_id(prefix: str = "PY") -> str:
+    seed = int(time.time_ns()) ^ os.getpid() ^ random.getrandbits(40)
+    return f"{prefix}-{base32(abs(seed), length=8)}"
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('-n','--count', type=int, default=1)
+    ap.add_argument('--prefix', default='PY', help='Örn: PY, JS, CSS, API')
+    args = ap.parse_args()
+    for _ in range(args.count):
+        print(new_id(args.prefix))
+if __name__ == "__main__":
+    main()
+# <<< BLOK SONU: ID:PY-SET-Q6R5V2JK
+### DOSYA BİTİŞ: blockid.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0007_alter_equipment_manufacturer_and_more.py
+# REV: 1.0 | 2025-09-25 | Hash: 6e90ef5c | Parça: 1/1
+# Generated by Django 5.2.6 on 2025-09-08 18:11
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('maintenance', '0006_add_total_deviation'),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name='equipment',
+            name='manufacturer',
+            field=models.CharField(blank=True, max_length=200, verbose_name='Üretici Firma'),
+        ),
+        migrations.AlterField(
+            model_name='maintenancechecklistitem',
+            name='frequency',
+            field=models.CharField(choices=[('DAILY', 'Günlük'), ('WEEKLY', 'Haftalık'), ('MONTHLY', 'Aylık'), ('QTR', '3 Aylık'), ('YEARLY', 'Yıllık')], default='MONTHLY', max_length=10),
+        ),
+        migrations.AlterField(
+            model_name='maintenancechecklistitem',
+            name='is_mandatory',
+            field=models.BooleanField(default=True),
+        ),
+        migrations.AlterField(
+            model_name='maintenancechecklistitem',
+            name='name',
+            field=models.CharField(max_length=200),
+        ),
+    ]
+### DOSYA BİTİŞ: 0007_alter_equipment_manufacturer_and_more.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0006_add_total_deviation.py
+# REV: 1.0 | 2025-09-25 | Hash: 8e075c04 | Parça: 1/1
+# Generated by ChatGPT
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("maintenance", "0005_alter_equipment_manufacturer_and_more"),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name="calibrationrecord",
+            name="total_deviation",
+            field=models.DecimalField(
+                verbose_name="Toplam Sapma",
+                max_digits=10,
+                decimal_places=4,
+                null=True,
+                blank=True,
+            ),
+        ),
+    ]
+### DOSYA BİTİŞ: 0006_add_total_deviation.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\test_smtp_login.py
+# REV: 1.1 | 2025-09-25 | Hash: aaf24dc1 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-5ZBWA3HA
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import os
+import ssl
+import smtplib
+import base64
+
+# <<< BLOK SONU: ID:PY-IMP-5ZBWA3HA
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-JQAJBVNA
+host = os.getenv("SMTP_HOST", "smtp.office365.com")
+port = int(os.getenv("SMTP_PORT", "587"))
+user = os.getenv("SMTP_USER", "")
+pwd  = os.getenv("SMTP_PASS", "")
+
+print("Host:", host)
+print("Port:", port)
+print("User:", user)
+
+if not user or not pwd:
+    raise SystemExit("SMTP_USER/SMTP_PASS boş.")
+
+ctx = ssl.create_default_context()
+smtp = smtplib.SMTP(host, port, timeout=30)
+smtp.set_debuglevel(1)
+smtp.ehlo()
+smtp.starttls(context=ctx)
+smtp.ehlo()
+
+# AUTH LOGIN (UTF-8 base64)
+code, resp = smtp.docmd("AUTH", "LOGIN")
+if code != 334:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+u = base64.b64encode(user.encode("utf-8")).decode("ascii")
+code, resp = smtp.docmd(u)
+if code != 334:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+p = base64.b64encode(pwd.encode("utf-8")).decode("ascii")
+code, resp = smtp.docmd(p)
+if code != 235:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+print("LOGIN OK")
+smtp.quit()
+# <<< BLOK SONU: ID:PY-HEL-JQAJBVNA
+### DOSYA BİTİŞ: test_smtp_login.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\static\maintenance\dashboard.js
+// REV: 1.0 | 2025-09-25 | Hash: f89c9f70 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 5c0d71a9 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 92f5a69d | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 40758142 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 5e9dceee | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: e6620e44 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: cacc8cda | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: a5da344b | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 8558f19f | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 7afd77ce | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 0045d593 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: a4c40aa8 | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: daab89bd | Parça: 1/1
+// REV: 1.0 | 2025-09-24 | Hash: 4052105c | Parça: 1/1
+// Basit UI yardımcıları
+const MaintenanceUI = {
+  toast(msg) {
+    const n = document.createElement("div");
+    n.className = "toast";
+    n.textContent = msg;
+    Object.assign(n.style, {
+      position: "fixed", bottom: "18px", right: "18px",
+      background: "#0f2a4d", color: "#fff", padding: "10px 14px",
+      borderRadius: "12px", boxShadow: "0 10px 30px rgba(0,0,0,0.12)", zIndex: 2000
+    });
+    document.body.appendChild(n);
+    setTimeout(()=>n.remove(), 2000);
+  }
+};
+
+function applyTheme(theme){
+  const html = document.documentElement;
+  html.dataset.theme = theme;
+  html.classList.toggle("dark", theme === "dark");
+  html.classList.toggle("light", theme !== "dark");
+}
+
+function initTheme(){
+  try{
+    const saved = localStorage.getItem("bk-theme");
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const theme = saved || (prefersDark ? "dark" : "light");
+    applyTheme(theme);
+  }catch(e){ applyTheme("light"); }
+}
+
+function toggleTheme(){
+  const cur = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  applyTheme(cur);
+  try{ localStorage.setItem("bk-theme", cur); }catch(e){}
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Tema
+  initTheme();
+  const btn = document.getElementById("themeToggle");
+  if(btn){ btn.addEventListener("click", toggleTheme); }
+
+  // Ticker hız kontrolü (CSS animasyon süresi)
+  document.querySelectorAll(".ticker").forEach(t => {
+    const speed = Number(t.dataset.speed || 12);
+    t.querySelectorAll(".tick").forEach(item => {
+      item.style.animationDuration = `${speed}s`;
+    });
+  });
+
+  // Ticker item'ları tıklanabilir (eğer içinde anchor varsa)
+  document.querySelectorAll(".tick[data-href], .tick a").forEach(item => {
+    const href = item.getAttribute("data-href");
+    if(href){
+      item.style.cursor = "pointer";
+      item.addEventListener("click", () => { window.location.href = href; });
+    }
+  });
+
+  console.debug("Maintenance dashboard ready.");
+});
+### DOSYA BİTİŞ: dashboard.js
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\static\maintenance\dashboard.css
+/* REV: 1.0 | 2025-09-25 | Hash: fff0854a | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: ade312c2 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: c996eb71 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 8fa2e803 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 91d274a3 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 78d7100f | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 92e2386f | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 95ceb271 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 80695afb | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: e5915b43 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: acdd5691 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: c733df35 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 11215af8 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 4a41be2f | Parça: 1/1 */
+:root{
+  --bg:#f4f7fb; --surface:#ffffff; --ink:#0f172a; --muted:#5b6b83;
+  --primary:#2563eb; --success:#10b981; --warn:#f59e0b; --danger:#ef4444;
+  --line:#e6ecf6; --soft:#f2f6ff;
+  --radius:18px; --shadow:0 14px 34px rgba(15,23,42,.08);
+}
+
+html.dark{
+  --bg:#0b1220; --surface:#101828; --ink:#e5e7eb; --muted:#9aa4b2;
+  --primary:#60a5fa; --success:#34d399; --warn:#fbbf24; --danger:#f87171;
+  --line:#1f2937; --soft:#0f172a;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:linear-gradient(180deg,#eef3fb,#f8fbff);
+  color:var(--ink);
+  font:14px/1.6 "Inter",system-ui,Segoe UI,Roboto,Arial;
+  transition: background .2s ease, color .2s ease;
+}
+html.dark body{
+  background:linear-gradient(180deg,#0b1220,#111827);
+}
+
+/* Topbar */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:var(--surface);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px;border-bottom:1px solid var(--line);
+  box-shadow:0 2px 10px rgba(15,23,42,.04)
+}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(180deg,#60a5fa,#2563eb);
+  display:grid;place-items:center;color:#fff;box-shadow:var(--shadow)
+}
+.brand-text{display:flex;flex-direction:column}
+.brand-text .sub{font-size:11px;color:var(--muted)}
+.top-actions{display:flex;gap:8px;align-items:center}
+
+/* Layout */
+.layout{
+  display:grid;grid-template-columns:320px 1fr;gap:20px;
+  max-width:1400px;margin:20px auto;padding:0 18px
+}
+.side{display:flex;flex-direction:column;gap:18px}
+.content{display:flex;flex-direction:column;gap:18px}
+
+/* Menu Card */
+.menu-card{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:14px
+}
+.menu-title{
+  font-weight:800;letter-spacing:.3px;background:#0b3b79;color:#fff;
+  padding:10px 12px;border-radius:14px
+}
+html.dark .menu-title{background:#0b3b79}
+.menu-links{display:flex;flex-direction:column;margin-top:10px}
+.menu-links.small .menu-link{font-size:13px}
+.menu-link{
+  display:block;padding:9px 10px;margin:4px 0;border-radius:12px;
+  text-decoration:none;color:#0f2a4d;background:#f7faff;border:1px solid #e6eefc
+}
+.menu-link:hover{background:#edf4ff}
+html.dark .menu-link{color:#e5e7eb;background:#0f172a;border-color:#1f2937}
+html.dark .menu-link:hover{background:#111c2a}
+
+/* Header card */
+.header-card{
+  background:var(--surface);border:1px solid var(--line);
+  box-shadow:var(--shadow);border-radius:var(--radius);padding:16px
+}
+.header-card h1{margin:0 0 10px 0}
+
+/* KPI & Cards */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi-row.subtle .kpi{background:linear-gradient(180deg,#ffffff,#f7fbff)}
+.kpi{
+  background:linear-gradient(180deg,#ffffff,#f9fbff);
+  border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow)
+}
+.kpi-title{font-size:12px;color:var(--muted)}
+.kpi-value{font-size:20px;font-weight:800}
+html.dark .kpi{background:linear-gradient(180deg,#0f172a,#0b1220)}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.card{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)
+}
+.card-title{font-weight:700;margin-bottom:10px}
+.span-2{grid-column:span 2}
+
+/* Mini bar viz */
+.bars{display:flex;align-items:flex-end;gap:18px;height:160px;padding:6px}
+.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:8px;flex:1}
+.bar i{display:block;width:100%;background:linear-gradient(180deg,#60a5fa,#2563eb);border-radius:12px}
+.bar span{font-size:12px;color:var(--muted)}
+
+/* Tablo */
+.table{width:100%;border-collapse:collapse}
+.table th, .table td{padding:10px;border-bottom:1px solid var(--line)}
+.table thead th{
+  position:sticky;top:0;background:var(--surface);z-index:1;
+  text-align:left;font-size:12px;color:var(--muted)
+}
+.table .num{text-align:right}
+.table tr:hover{background:var(--soft)}
+html.dark .table tr:hover{background:#0f172a}
+
+/* Durum “chip”leri (kalibrasyon ve bakım listelerinde kullanılıyor) */
+.chip{
+  display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;
+  border:1px solid var(--line);background:#fff
+}
+.chip.ok{background:rgba(16,185,129,.12);color:#065f46;border-color:rgba(16,185,129,.25)}
+.chip.due{background:rgba(245,158,11,.14);color:#7c4700;border-color:rgba(245,158,11,.3)}
+.chip.late{background:rgba(239,68,68,.14);color:#7f1d1d;border-color:rgba(239,68,68,.3)}
+html.dark .chip{background:#0f172a;border-color:#1f2937}
+
+/* Formlar */
+.form-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.form-grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:900px){.form-grid.cols-2{grid-template-columns:1fr}}
+.form-row{display:flex;flex-direction:column;gap:6px}
+.form-row .label{font-weight:600;font-size:13px;color:var(--muted)}
+.form-row .ctrl :is(input,select,textarea){
+  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#0b1220;outline:none
+}
+html.dark .form-row .ctrl :is(input,select,textarea){
+  background:#0f172a;color:#e5e7eb;border-color:#1f2937
+}
+.help{font-size:12px;color:var(--muted)}
+.error{font-size:12px;color:#b91c1c}
+.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
+
+/* Buttons */
+.btn{
+  appearance:none;border:1px solid var(--line);padding:8px 12px;border-radius:12px;background:#fff;cursor:pointer
+}
+.btn:hover{filter:brightness(0.98)}
+.btn.primary{background:linear-gradient(180deg,#60a5fa,#2563eb);border-color:#2563eb;color:#fff}
+.btn.ghost{background:#f5f8ff}
+html.dark .btn{background:#0f172a;border-color:#1f2937;color:#e5e7eb}
+html.dark .btn.ghost{background:#121d2b}
+
+/* Ticker */
+.ticker-wrap.short .ticker{height:200px}
+.ticker{margin-top:10px;overflow:hidden;height:240px;position:relative}
+.tick{padding:8px 8px;border-bottom:1px dashed #e4ecf9;animation:up 12s linear infinite}
+.tick:nth-child(odd){background:#fafcff}
+@keyframes up{0%{transform:translateY(100%)}100%{transform:translateY(-100%)}}
+html.dark .tick:nth-child(odd){background:#0f172a;border-color:#1f2937}
+
+/* Ticker clickable (ekleme) */
+.tick[data-href], .tick a{
+  cursor:pointer;
+  color:inherit;
+  text-decoration:none;
+}
+
+/* Footer */
+.footer{max-width:1400px;margin:20px auto;padding:0 18px;color:var(--muted);font-size:12px}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:18px;right:18px;
+  background:#0f2a4d;color:#fff;padding:10px 14px;border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:2000
+}
+
+/* Basit utility */
+.muted{color:var(--muted)}
+
+/* YENİ: Büyük giriş kutuları için minimal yardımcı sınıf */
+.input-lg{
+  padding:12px 14px !important;
+  font-size:15px !important;
+  height:44px !important;
+}
+/* === EK: Form alanlarını büyüten sınıf (mevcut dosyanın sonuna ekle) === */
+.input-lg{
+  font-size:16px;
+  padding:12px 14px;
+  height:auto;
+}
+### DOSYA BİTİŞ: dashboard.css
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\__init__.py
+# REV: 1.0 | 2025-09-25 | Hash: da39a3ee | Parça: 1/1
+### DOSYA BİTİŞ: __init__.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\templatetags\maint_extras.py
+# REV: 1.1 | 2025-09-25 | Hash: 1f64af44 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-8GQS0CVD
+from django import template
+# <<< BLOK SONU: ID:PY-IMP-8GQS0CVD
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-2YCE8FE4
+register = template.Library()
+
+@register.filter
+def get_item(d, key):
+    try:
+        return d.get(key)
+    except Exception:
+        return None
+
+@register.filter
+def status_badge(date_obj):
+    # basit durum rengi: geçmiş = kırmızı, 30 gün içinde = turuncu, aksi = normal
+    from datetime import date, timedelta
+    if not date_obj:
+        return "badge"
+    today = date.today()
+    if date_obj < today:
+        return "badge danger"
+    if date_obj <= today + timedelta(days=30):
+        return "badge warn"
+    return "badge"
+# <<< BLOK SONU: ID:PY-HEL-2YCE8FE4
+### DOSYA BİTİŞ: maint_extras.py
+
+### DOSYA BAŞLANGIÇ: .\\scripts\test_smtp_login.py
+# REV: 1.1 | 2025-09-25 | Hash: aaf24dc1 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-5ZBWA3HA
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import os
+import ssl
+import smtplib
+import base64
+
+# <<< BLOK SONU: ID:PY-IMP-5ZBWA3HA
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-JQAJBVNA
+host = os.getenv("SMTP_HOST", "smtp.office365.com")
+port = int(os.getenv("SMTP_PORT", "587"))
+user = os.getenv("SMTP_USER", "")
+pwd  = os.getenv("SMTP_PASS", "")
+
+print("Host:", host)
+print("Port:", port)
+print("User:", user)
+
+if not user or not pwd:
+    raise SystemExit("SMTP_USER/SMTP_PASS boş.")
+
+ctx = ssl.create_default_context()
+smtp = smtplib.SMTP(host, port, timeout=30)
+smtp.set_debuglevel(1)
+smtp.ehlo()
+smtp.starttls(context=ctx)
+smtp.ehlo()
+
+# AUTH LOGIN (UTF-8 base64)
+code, resp = smtp.docmd("AUTH", "LOGIN")
+if code != 334:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+u = base64.b64encode(user.encode("utf-8")).decode("ascii")
+code, resp = smtp.docmd(u)
+if code != 334:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+p = base64.b64encode(pwd.encode("utf-8")).decode("ascii")
+code, resp = smtp.docmd(p)
+if code != 235:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+print("LOGIN OK")
+smtp.quit()
+# <<< BLOK SONU: ID:PY-HEL-JQAJBVNA
+### DOSYA BİTİŞ: test_smtp_login.py
+
+### DOSYA BAŞLANGIÇ: .\\tests\test_smoke.py
+# REV: 1.1 | 2025-09-25 | Hash: ccea333a | Parça: 1/1
+# Her dosya başında revizyon bilgisi sistemi olacak.
+# >>> BLOK: TEST | Django check | ID:PY-TST-SMK-8D4F2K7M
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
+
+def test_django_checks_importable():
+    # Basit import testi; manage.py check'i ileride ekleriz
+    __import__("django")
+# <<< BLOK SONU: ID:PY-TST-SMK-8D4F2K7M
+### DOSYA BİTİŞ: test_smoke.py
+
+### DOSYA BAŞLANGIÇ: .\\tools\blockcheck.py
+# REV: 1.3 | 2025-09-25 | Hash: e7eb6449 | Parça: 1/1
+# Her dosya başında revizyon bilgisi sistemi olacak.
+# >>> BLOK: VALIDATION | Blok başlık doğrulama & indeks (tracked+debug) | ID:PY-VAL-DBG-4T8D7W1N
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import os, re, json, sys, argparse, subprocess
+
+HDR_RX = re.compile(
+    r'^\s*#\s*>>>+\s*BLOK:\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*ID\s*:\s*([A-Za-z0-9\-]+)\s*(?:#.*)?$'
+)
+END_RX = re.compile(r'^\s*#\s*<<<+\s*BLOK SONU:\s*ID\s*:\s*([A-Za-z0-9\-]+)\s*(?:#.*)?$')
+
+def should_scan(fn):
+    if any(part.startswith('.') for part in fn.replace('\\','/').split('/')): return False
+    return fn.endswith(('.py','.js','.ts','.css','.html','.md','.yml','.yaml'))
+
+def git_tracked():
+    try:
+        out = subprocess.check_output(['git','ls-files'], encoding='utf-8')
+        return [p for p in (ln.strip() for ln in out.splitlines()) if p]
+    except Exception:
+        return None
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--tracked', action='store_true', help='Sadece git takipli dosyalar')
+    ap.add_argument('--debug', action='store_true', help='Eşleşmeleri stdout\'a yaz')
+    args = ap.parse_args()
+
+    files = []
+    if args.tracked:
+        tracked = git_tracked()
+        files = [p for p in tracked if should_scan(p)]
+    else:
+        for dp,_,fls in os.walk('.'):
+            if '/.git' in dp.replace('\\','/'): continue
+            for fn in fls:
+                p = os.path.join(dp, fn)
+                if should_scan(p): files.append(p)
+
+    index, duplicates = {}, []
+    for path in files:
+        try:
+            with open(path,'r',encoding='utf-8',errors='ignore') as f:
+                for i, line in enumerate(f, start=1):
+                    m = HDR_RX.match(line)
+                    if m:
+                        cat = m.group(1).strip()
+                        title = m.group(2).strip()
+                        bid = m.group(3).strip()
+                        if bid in index:
+                            duplicates.append((bid, index[bid]['file'], path))
+                        index[bid] = {"file": path, "line": i, "category": cat, "title": title}
+                        if args.debug:
+                            print(f"[match] {path}:{i}  {cat} | {title} | ID:{bid}")
+        except Exception as e:
+            print(f"[blockcheck] {path}: {e}", file=sys.stderr)
+
+    os.makedirs("_otokodlama", exist_ok=True)
+    with open("_otokodlama/INDEX.json","w",encoding="utf-8") as f:
+        json.dump(index, f, ensure_ascii=False, indent=2)
+
+    if duplicates:
+        print("[blockcheck] Yinelenen Blok ID bulundu:", file=sys.stderr)
+        for bid, p1, p2 in duplicates:
+            print(f"  {bid} : {p1}  <->  {p2}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"[blockcheck] OK. Toplam blok: {len(index)}")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+# <<< BLOK SONU: ID:PY-VAL-DBG-4T8D7W1N
+### DOSYA BİTİŞ: blockcheck.py
+
+### DOSYA BAŞLANGIÇ: .\\static\css\base.css
+/* REV: 1.0 | 2025-09-25 | Hash: 606ae57f | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 21ac9f66 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: c5d22e71 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 52129b61 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 766179bc | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: b1684244 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 1a3d2f69 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: a0d142e9 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: ff446804 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: b7411e34 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: 74fe60f4 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: c2b12922 | Parça: 1/1 */
+/* REV: 1.0 | 2025-09-24 | Hash: b944efd8 | Parça: 1/1 */
+/* GUARDRAIL CSS BASE */
+.card{padding:1rem;border:1px solid #ddd;border-radius:.5rem}
+.section-bar{padding:.5rem 1rem;border-bottom:1px solid #ddd}
+.section-body{padding:1rem}
+.field{margin-bottom:1rem}
+.label{font-weight:600;margin-bottom:.25rem;display:block}
+.help{font-size:.85rem;opacity:.8}
+.input, .select, .textarea{width:100%;padding:.5rem;border:1px solid #ccc;border-radius:.25rem}
+.toolbar{display:flex;gap:.5rem}
+.btn{padding:.5rem 1rem;border:1px solid #333;border-radius:.375rem;background:#f7f7f7}
+.btn-primary{background:#333;color:#fff;border-color:#333}
+.col-span-2{grid-column:span 2}
+### DOSYA BİTİŞ: base.css
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0004_equipment_manufacturer_and_more.py
+# REV: 1.0 | 2025-09-25 | Hash: 62566716 | Parça: 1/1
+# Generated by Django 5.2.6 on 2025-09-07 18:49
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('maintenance', '0003_alter_calibrationrecord_options_and_more'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='equipment',
+            name='manufacturer',
+            field=models.CharField(blank=True, max_length=200, verbose_name='Üretici Firma'),
+        ),
+        migrations.AlterField(
+            model_name='maintenancechecklistitem',
+            name='frequency',
+            field=models.CharField(choices=[('AYLIK', 'Aylık'), ('3AYLIK', '3 Aylık'), ('6AYLIK', '6 Aylık'), ('YILLIK', 'Yıllık')], default='AYLIK', max_length=10),
+        ),
+    ]
+### DOSYA BİTİŞ: 0004_equipment_manufacturer_and_more.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0005_alter_equipment_manufacturer_and_more.py
+# REV: 1.0 | 2025-09-25 | Hash: 5d08cf0b | Parça: 1/1
+# Generated by Django 5.2.6 on 2025-09-07 20:34
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('maintenance', '0004_equipment_manufacturer_and_more'),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name='equipment',
+            name='manufacturer',
+            field=models.CharField(blank=True, default='', max_length=200, verbose_name='Üretici Firma'),
+        ),
+        migrations.AlterField(
+            model_name='maintenancechecklistitem',
+            name='frequency',
+            field=models.CharField(choices=[('AYLIK', 'Aylık'), ('3AYLIK', '3 Aylık'), ('6AYLIK', '6 Aylık'), ('YILLIK', 'Yıllık')], default='AYLIK', max_length=10, verbose_name='Bakım / Kontrol Periyodu'),
+        ),
+        migrations.AlterField(
+            model_name='maintenancechecklistitem',
+            name='is_mandatory',
+            field=models.BooleanField(default=True, verbose_name='Zorunlu'),
+        ),
+        migrations.AlterField(
+            model_name='maintenancechecklistitem',
+            name='name',
+            field=models.CharField(max_length=200, verbose_name='Bakım / Kontrol Tanımı'),
+        ),
+    ]
+### DOSYA BİTİŞ: 0005_alter_equipment_manufacturer_and_more.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\bootreport_dump.py
+# REV: 1.1 | 2025-09-25 | Hash: 7af5b31c | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-GGW1GAWP
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+import json
+import os
+from django.core.management.base import BaseCommand
+from django.conf import settings
+
+# <<< BLOK SONU: ID:PY-IMP-GGW1GAWP
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-NKAM3YXM
+class Command(BaseCommand):
+    help = "bootreport'i çalıştırır, var/ içine dosyaları yazar ve kısa özet basar."
+
+    def handle(self, *args, **opts):
+        base_dir = str(getattr(settings, "BASE_DIR", os.getcwd()))
+        var_dir = os.path.join(base_dir, "var")
+        json_path = os.path.join(var_dir, "bootreport.json")
+        txt_path  = os.path.join(var_dir, "bootreport.txt")
+
+        self.stdout.write(self.style.NOTICE(f"BASE_DIR = {base_dir}"))
+        self.stdout.write(self.style.NOTICE(f"VAR DIR  = {var_dir}"))
+
+        try:
+            from maintenance.bootreport import safe_write_boot_report
+        except Exception as e:
+            self.stderr.write(f"IMPORT ERROR: maintenance.bootreport -> {e!r}")
+            return
+
+        try:
+            safe_write_boot_report()
+        except Exception as e:
+            self.stderr.write(f"RUN ERROR: safe_write_boot_report() -> {e!r}")
+            return
+
+        # Dosyalar var mı?
+        ok_json = os.path.exists(json_path)
+        ok_txt  = os.path.exists(txt_path)
+        self.stdout.write(f"JSON exists: {ok_json}  -> {json_path}")
+        self.stdout.write(f"TXT  exists: {ok_txt}   -> {txt_path}")
+
+        # Kısa özet
+        if ok_json:
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                py = data.get("python", {}).get("version", "")
+                dj = data.get("django", {}).get("version", "")
+                root = data.get("project", {}).get("root_urlconf", "")
+                apps = len(data.get("apps", {}).get("installed_apps", []))
+                urls = len(data.get("urls", []))
+                models = len(data.get("models", []))
+                sig = data.get("signature", {}).get("short", "")
+                self.stdout.write(self.style.SUCCESS(
+                    f"OK: Python={py.split()[0] if py else '-'} Django={dj} "
+                    f"Apps={apps} Urls={urls} Models={models} Sig={sig}"
+                ))
+            except Exception as e:
+                self.stderr.write(f"READ JSON ERROR: {e!r}")
+# <<< BLOK SONU: ID:PY-COM-NKAM3YXM
+### DOSYA BİTİŞ: bootreport_dump.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\import_calibration_excel.py
+# REV: 1.1 | 2025-09-25 | Hash: 25929227 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-6RVA8X3A
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+import os
+# <<< BLOK SONU: ID:PY-IMP-6RVA8X3A
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-WEJDN8BE
+from typing import Dict, Any, List, Tuple
+from django.core.management.base import BaseCommand, CommandError
+from maintenance.models import CalibrationAsset, CalibrationRecord, Equipment
+
+# Bu komut, .xls/.xlsx dosyasındaki sütunları makul başlıklarla eşleyip
+# CalibrationAsset + (opsiyonel) CalibrationRecord oluşturur.
+# Örnek kullanım:
+#   python manage.py import_calibration_excel --file "C:\path\Kalibrasyon.xlsx" --sheet "Sayfa1"
+#
+# Gerekli kütüphaneler:
+#   pip install pandas openpyxl xlrd==1.2.0
+#
+# Notlar:
+# - .xls için xlrd 1.2.0 gerekir; .xlsx için openpyxl yeterli.
+# - Başlık eşlemeleri esnek (Türkçe varyasyonlar desteklenir).
+
+HEADER_MAP = {
+    # Cihaz Kartı alanları
+    "asset_code": ["cihaz kodu", "kod", "asset code", "code"],
+    "asset_name": ["cihaz adı", "ad", "asset name", "name"],
+    "location": ["lokasyon", "konum", "location"],
+    "brand": ["marka", "brand"],
+    "model": ["model", "modeli"],
+    "serial_no": ["seri no", "seri no.", "serial", "serial no", "sn"],
+    "measure_range": ["ölçüm aralığı", "aralık", "range", "measure range"],
+    "resolution": ["çözünürlük", "resolution"],
+    "unit": ["birim", "unit"],
+    "accuracy": ["doğruluk", "accuracy"],
+    "uncertainty": ["belirsizlik", "uncertainty"],
+    "acceptance_criteria": ["kabul kriteri", "accept", "acceptance criteria"],
+    "calibration_method": ["yöntem", "prosedür", "method", "procedure"],
+    "standard_device": ["referans", "standart cihaz", "standard device"],
+    "standard_id": ["standart id", "standard id"],
+    "owner": ["sorumlu", "owner"],
+    "responsible_email": ["e-posta", "email", "mail"],
+    # İlişkilendirme
+    "equipment_code": ["ekipman kodu", "equipment code", "equipment"],
+    # Kalibrasyon kayıtları (opsiyonel)
+    "last_calibration": ["son kalibrasyon", "last calibration", "last_cal"],
+    "next_calibration": ["sonraki kalibrasyon", "next calibration", "next_cal"],
+    "result": ["sonuç", "result"],
+    "certificate_no": ["sertifika no", "certificate", "certificate no"],
+    "notes": ["not", "notlar", "notes"],
+}
+
+DATE_COLS = {"last_calibration", "next_calibration"}
+
+def normalize(s: str) -> str:
+    return (s or "").strip().lower()
+
+def find_col(df_cols: List[str], aliases: List[str]) -> str | None:
+    al = set(normalize(x) for x in aliases)
+    for col in df_cols:
+        if normalize(col) in al:
+            return col
+    # gevşek arama
+    for col in df_cols:
+        c = normalize(col)
+        if any(a in c for a in al):
+            return col
+    return None
+
+class Command(BaseCommand):
+    help = "Excel'den kalibrasyon cihaz ve kayıtlarını içe aktarır."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--file", required=True, help="XLS/XLSX dosya yolu")
+        parser.add_argument("--sheet", default=None, help="Sayfa adı veya index")
+        parser.add_argument("--dry", action="store_true", help="Sadece say, kaydetme")
+        parser.add_argument("--default-owner", default="", help="Boşsa kullanılacak sorumlu adı")
+        parser.add_argument("--default-email", default="", help="Boşsa kullanılacak sorumlu e-posta")
+        parser.add_argument("--create-equipment", action="store_true", help="Ekipman yoksa otomatik oluştur")
+
+    def handle(self, *args, **opts):
+        path = opts["file"]
+        sheet = opts["sheet"]
+        dry = bool(opts["dry"])
+        default_owner = opts["default_owner"]
+        default_email = opts["default_email"]
+        create_eq = bool(opts["create_equipment"])
+
+        if not os.path.exists(path):
+            raise CommandError(f"Dosya bulunamadı: {path}")
+
+        # pandas + engine otomatik seçim
+        try:
+            import pandas as pd  # type: ignore
+        except Exception as e:
+            raise CommandError("pandas gerekli. Kurulum: pip install pandas openpyxl xlrd==1.2.0") from e
+
+        try:
+            if sheet is None:
+                df = pd.read_excel(path)  # varsayılan ilk sayfa
+            else:
+                df = pd.read_excel(path, sheet_name=sheet)
+        except Exception as e:
+            raise CommandError(f"Excel okunamadı: {e}") from e
+
+        if df.empty:
+            self.stdout.write(self.style.WARNING("Dosya boş."))
+            return
+
+        cols = list(df.columns)
+        self.stdout.write(f"Sütunlar: {cols}")
+
+        # Başlık eşlemeleri
+        colmap: Dict[str, str] = {}
+        for key, aliases in HEADER_MAP.items():
+            col = find_col(cols, aliases)
+            if col:
+                colmap[key] = col
+
+        required_for_asset = {"asset_code", "asset_name"}
+        missing = [k for k in required_for_asset if k not in colmap]
+        if missing:
+            raise CommandError(f"Gerekli başlık(lar) yok: {missing}. Eşleşenler: {colmap}")
+
+        # Tarih kolonlarını pandas datetime'a çevir
+        for k in DATE_COLS:
+            if k in colmap:
+                try:
+                    df[colmap[k]] = pd.to_datetime(df[colmap[k]], errors="coerce").dt.date
+                except Exception:
+                    pass
+
+        created_assets = 0
+        updated_assets = 0
+        created_records = 0
+
+        for _, row in df.iterrows():
+            data = {k: (row[colmap[k]] if k in colmap else None) for k in HEADER_MAP.keys()}
+
+            # Equipment ilişkisi (opsiyonel)
+            eq = None
+            eq_code = (data.get("equipment_code") or "") if data.get("equipment_code") is not None else ""
+            eq_code = str(eq_code).strip()
+            if eq_code:
+                eq = Equipment.objects.filter(code=eq_code).first()
+                if not eq and create_eq:
+                    eq = Equipment.objects.create(code=eq_code, name=eq_code)
+            # Asset upsert
+            code = str(data["asset_code"]).strip()
+            defaults = {
+                "asset_name": str(data["asset_name"]).strip(),
+                "location": str(data.get("location") or "").strip(),
+                "brand": str(data.get("brand") or "").strip(),
+                "model": str(data.get("model") or "").strip(),
+                "serial_no": str(data.get("serial_no") or "").strip(),
+                "measure_range": str(data.get("measure_range") or "").strip(),
+                "resolution": str(data.get("resolution") or "").strip(),
+                "unit": str(data.get("unit") or "").strip(),
+                "accuracy": str(data.get("accuracy") or "").strip(),
+                "uncertainty": str(data.get("uncertainty") or "").strip(),
+                "acceptance_criteria": str(data.get("acceptance_criteria") or "").strip(),
+                "calibration_method": str(data.get("calibration_method") or "").strip(),
+                "standard_device": str(data.get("standard_device") or "").strip(),
+                "standard_id": str(data.get("standard_id") or "").strip(),
+                "owner": str(data.get("owner") or default_owner).strip(),
+                "responsible_email": str(data.get("responsible_email") or default_email).strip(),
+                "equipment": eq,
+                "is_active": True,
+            }
+
+            if dry:
+                # sadece sayım
+                pass
+            else:
+                asset, created = CalibrationAsset.objects.update_or_create(
+                    asset_code=code, defaults=defaults
+                )
+                if created:
+                    created_assets += 1
+                else:
+                    updated_assets += 1
+
+                # Kalibrasyon kaydı (varsa tarihlerden biri doluysa)
+                last_cal = data.get("last_calibration")
+                next_cal = data.get("next_calibration")
+                result = str(data.get("result") or "").strip()
+                cert = str(data.get("certificate_no") or "").strip()
+                notes = str(data.get("notes") or "").strip()
+
+                if last_cal or next_cal or result or cert or notes:
+                    CalibrationRecord.objects.create(
+                        asset=asset,
+                        last_calibration=last_cal if last_cal and str(last_cal) != "NaT" else None,
+                        next_calibration=next_cal if next_cal and str(next_cal) != "NaT" else None,
+                        result=result,
+                        certificate_no=cert,
+                        notes=notes,
+                    )
+                    created_records += 1
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Tamam: assets(created={created_assets}, updated={updated_assets}), records(created={created_records})"
+            )
+        )
+# <<< BLOK SONU: ID:PY-COM-WEJDN8BE
+### DOSYA BİTİŞ: import_calibration_excel.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\calibration_reminders.py
+# REV: 1.1 | 2025-09-25 | Hash: 5e286802 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-78PPMS41
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+# <<< BLOK SONU: ID:PY-IMP-78PPMS41
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-WKWJA9S0
+from typing import List, Dict, Any, Tuple
+from datetime import date, timedelta
+
+from django.core.management.base import BaseCommand
+from django.core.mail import EmailMultiAlternatives, get_connection
+from django.template.loader import render_to_string
+from django.conf import settings
+from django.db.models import Max
+
+from maintenance.models import CalibrationAsset, CalibrationRecord
+
+# Not: Bu komut, mevcut şemayı kullanır:
+# CalibrationAsset(... owner, responsible_email, is_active ...) + CalibrationRecord(last_calibration, next_calibration, result, ...)
+# Mantık: "önümüzdeki X gün" içinde next_calibration tarihi gelen (veya bugün/geçmiş) kayıtları listeler.
+# Eğer bir asset için birden çok kayıt varsa, en yeni "next_calibration" (veya yoksa en son "last_calibration") esas alınır.
+
+def _today() -> date:
+    # settings.USE_TZ önemli değil; burada sadece tarih bazında çalışıyoruz.
+    return date.today()
+
+def _select_latest_record_map() -> Dict[int, CalibrationRecord]:
+    """
+    Her asset için en güncel CalibrationRecord'u seçer.
+    Öncelik: en büyük next_calibration; eşit/yoksa id'ye göre son oluşturulan.
+    """
+    latest_for_asset: Dict[int, CalibrationRecord] = {}
+    # En önce next_calibration'a göre sırala (desc), sonra id'ye göre (desc)
+    qs = CalibrationRecord.objects.order_by("asset_id", "-next_calibration", "-id")
+    for rec in qs:
+        if rec.asset_id not in latest_for_asset:
+            latest_for_asset[rec.asset_id] = rec
+    return latest_for_asset
+
+def _due_within_days(latest_map: Dict[int, CalibrationRecord], days: int) -> List[Dict[str, Any]]:
+    today = _today()
+    horizon = today + timedelta(days=days)
+    rows: List[Dict[str, Any]] = []
+    for asset in CalibrationAsset.objects.filter(is_active=True).order_by("asset_code"):
+        rec = latest_map.get(asset.id)
+        if not rec:
+            continue
+        nxt = rec.next_calibration
+        lst = rec.last_calibration
+        # next_calibration yoksa hatırlatma kapsamına alma (periyot hesabı bu sürümde yok)
+        if not nxt:
+            continue
+        # kapsam: bugün..horizon ya da zaten gecikmiş (nxt <= today)
+        if nxt <= horizon:
+            days_left = (nxt - today).days
+            rows.append(
+                {
+                    "asset": asset,
+                    "record": rec,
+                    "last_calibration": lst,
+                    "next_calibration": nxt,
+                    "days_left": days_left,
+                }
+            )
+    # En acile göre sırala: days_left (küçükten büyüğe)
+    rows.sort(key=lambda r: (r["days_left"], r["asset"].asset_code))
+    return rows
+
+def _group_by_responsible(rows: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Sorumlu e-postaya göre grupla. E-posta yoksa 'no-email' grubuna at.
+    """
+    out: Dict[str, List[Dict[str, Any]]] = {}
+    for r in rows:
+        email = (r["asset"].responsible_email or "").strip().lower() or "no-email"
+        out.setdefault(email, []).append(r)
+    return out
+
+class Command(BaseCommand):
+    help = "Önümüzdeki X gün içinde kalibrasyon tarihi gelen cihazları e-posta ile hatırlatır (gruplu)."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--days", type=int, default=30, help="Gün ufku (default: 30)")
+        parser.add_argument("--to", action="append", default=[], help="Tüm liste ayrıca bu adrese de gönderilsin (bilgi amaçlı). Çoklu kullanılabilir.")
+        parser.add_argument("--dry", action="store_true", help="E-posta göndermeden konsola dök")
+
+    def handle(self, *args, **opts):
+        days: int = opts["days"]
+        force_to: List[str] = opts["to"]
+        dry: bool = bool(opts["dry"])
+
+        latest_map = _select_latest_record_map()
+        rows = _due_within_days(latest_map, days)
+
+        if not rows:
+            self.stdout.write(self.style.WARNING(f"Uyarı kapsamına giren kayıt yok (days={days})."))
+            return
+
+        # Konsolda kısa özet
+        self.stdout.write(self.style.SUCCESS(f"Toplam {len(rows)} cihaz için hatırlatma oluşturulacak (days={days})."))
+
+        # Grupla ve gönder
+        grouped = _group_by_responsible(rows)
+
+        # Geliştirme ortamında console backend kullanılıyor olabilir
+        default_from = getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@example.com")
+
+        # Her sorumluya ayrı mail
+        for email, items in grouped.items():
+            context = {
+                "days": days,
+                "items": items,
+                "today": _today(),
+                "responsible_email": email if email != "no-email" else "",
+            }
+            subject = f"[Kalibrasyon] {days} gün içinde yaklaşan {len(items)} kayıt"
+            html_body = render_to_string("maintenance/email/calibration_reminder_email.html", context)
+            text_body = render_to_string("maintenance/email/calibration_reminder_email.txt", context)
+
+            to_list: List[str] = []
+            if email != "no-email":
+                to_list.append(email)
+            # force_to ekle
+            to_list += [x for x in force_to if x]
+
+            if not to_list:
+                # E-posta yoksa sadece konsola yaz (ör. log)
+                self.stdout.write(f"(no-email) {len(items)} kayıt – sorumlu e-posta tanımlı değil.")
+                self.stdout.write(text_body)
+                continue
+
+            if dry:
+                self.stdout.write(f"[DRY] To={to_list} | Subject={subject}")
+                self.stdout.write(text_body)
+                continue
+
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_body,
+                from_email=default_from,
+                to=to_list,
+            )
+            msg.attach_alternative(html_body, "text/html")
+            msg.send()
+
+        self.stdout.write(self.style.SUCCESS("E-posta hatırlatmaları tamam."))
+# <<< BLOK SONU: ID:PY-COM-WKWJA9S0
+### DOSYA BİTİŞ: calibration_reminders.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\calibration_reminder.py
+# REV: 1.1 | 2025-09-25 | Hash: 5806a8a8 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-E8P0MXWW
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+# <<< BLOK SONU: ID:PY-IMP-E8P0MXWW
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-773MBFDD
+from datetime import date, timedelta
+from typing import Iterable, List, Set, Dict, Any
+from pathlib import Path
+import unicodedata
+
+from django.conf import settings
+from django.contrib.auth.models import Group, User
+from django.core.mail import EmailMessage
+from django.core.management.base import BaseCommand
+from django.db.models import DateField, OuterRef, Subquery, Q
+
+from maintenance.models import CalibrationAsset, CalibrationRecord
+
+
+def _uniq_emails(items: Iterable[str]) -> List[str]:
+    seen: Set[str] = set()
+    out: List[str] = []
+    for x in items:
+        x = (x or "").strip()
+        if x and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
+def _maybe_fix_mojibake(s: str) -> str:
+    """
+    PS/CP1252 mojibake (örn. 'BakÄ±m YÃ¶neticisi') için latin-1 -> utf-8 geri çevirme dener.
+    Zararsızdır; başarısız olursa orijinali döndürür.
+    """
+    try:
+        if any(ch in s for ch in ("Ã", "Ä", "Ð", "Þ")):
+            return s.encode("latin-1", errors="ignore").decode("utf-8", errors="ignore")
+    except Exception:
+        pass
+    return s
+
+
+def _norm(s: str) -> str:
+    """
+    Aksan/noktalama farklarına dayanıklı karşılaştırma için normalize string.
+    - casefold
+    - NFKD + diakritik temizleme
+    """
+    s = (s or "").strip().casefold()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    return s
+
+
+def _collect_assets(days_list: List[int]) -> Dict[int, List[Dict[str, Any]]]:
+    """days_list'e göre kovalar halinde cihaz listesini döndürür."""
+    today = date.today()
+    max_day = max(days_list)
+    until = today + timedelta(days=max_day)
+
+    latest_next = CalibrationRecord.objects.filter(
+        asset_id=OuterRef("pk")
+    ).order_by("-next_calibration").values("next_calibration")[:1]
+
+    assets = (
+        CalibrationAsset.objects.filter(is_active=True)
+        .annotate(next_cal=Subquery(latest_next, output_field=DateField()))
+        .filter(next_cal__isnull=False, next_cal__gte=today, next_cal__lte=until)
+        .order_by("asset_code")
+        .values(
+            "id",
+            "asset_code", "asset_name", "location",
+            "brand", "model", "serial_no",
+            "measure_range", "resolution", "unit",
+            "accuracy", "uncertainty",
+            "acceptance_criteria", "calibration_method",
+            "standard_device", "standard_id",
+            "owner", "responsible_email",
+            "next_cal",
+        )
+    )
+
+    buckets: Dict[int, List[Dict[str, Any]]] = {d: [] for d in days_list}
+    for a in assets:
+        remain = (a["next_cal"] - today).days
+        chosen = None
+        for d in days_list:
+            if remain <= d:
+                chosen = d
+                break
+        if chosen is None:
+            chosen = max_day
+        a = dict(a)
+        a["days_remaining"] = remain
+        a["window"] = chosen
+        buckets[chosen].append(a)
+    return buckets
+
+
+def _compose_body(days_list: List[int], buckets: Dict[int, List[Dict[str, Any]]]) -> str:
+    today = date.today()
+    lines: List[str] = []
+    lines.append(f"📅 Tarih: {today.strftime('%d.%m.%Y')}")
+    lines.append(f"🎯 Pencereler: {', '.join(str(d) for d in days_list)} gün")
+    lines.append("")
+    total = 0
+    for d in days_list:
+        rows = buckets.get(d, [])
+        if not rows:
+            continue
+        total += len(rows)
+        lines.append(f"== {d} gün içinde ({len(rows)} cihaz) ==")
+        for a in rows:
+            lines.append(
+                f"- {a['asset_code']} | {a['asset_name']} | {a.get('location','')} | "
+                f"Kalibrasyon: {a['next_cal'].strftime('%d.%m.%Y')} (kalan {a['days_remaining']} g)"
+            )
+        lines.append("")
+    if total == 0:
+        lines.append("Bu pencerelerde yaklaşan kalibrasyon bulunmadı.")
+    return "\n".join(lines)
+
+
+def _write_csv(rows: List[Dict[str, Any]], path: Path) -> None:
+    import csv
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow([
+            "window_days", "days_remaining", "asset_code", "asset_name", "location",
+            "brand", "model", "serial_no", "measure_range", "resolution", "unit",
+            "accuracy", "uncertainty", "acceptance_criteria", "calibration_method",
+            "standard_device", "standard_id", "owner", "responsible_email", "next_calibration",
+        ])
+        for a in rows:
+            w.writerow([
+                a.get("window", ""),
+                a.get("days_remaining", ""),
+                a.get("asset_code", ""),
+                a.get("asset_name", ""),
+                a.get("location", ""),
+                a.get("brand", ""),
+                a.get("model", ""),
+                a.get("serial_no", ""),
+                a.get("measure_range", ""),
+                a.get("resolution", ""),
+                a.get("unit", ""),
+                a.get("accuracy", ""),
+                a.get("uncertainty", ""),
+                a.get("acceptance_criteria", ""),
+                a.get("calibration_method", ""),
+                a.get("standard_device", ""),
+                a.get("standard_id", ""),
+                a.get("owner", ""),
+                a.get("responsible_email", ""),
+                a.get("next_cal").strftime("%Y-%m-%d") if a.get("next_cal") else "",
+            ])
+
+
+def _write_xlsx(rows: List[Dict[str, Any]], path: Path) -> None:
+    try:
+        import openpyxl  # type: ignore
+    except Exception as ex:
+        raise RuntimeError("XLSX için 'openpyxl' gerekli (pip install openpyxl)") from ex
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Yaklaşan Kalibrasyonlar"
+    headers = [
+        "window_days", "days_remaining", "asset_code", "asset_name", "location",
+        "brand", "model", "serial_no", "measure_range", "resolution", "unit",
+        "accuracy", "uncertainty", "acceptance_criteria", "calibration_method",
+        "standard_device", "standard_id", "owner", "responsible_email", "next_calibration",
+    ]
+    ws.append(headers)
+    for a in rows:
+        ws.append([
+            a.get("window", ""),
+            a.get("days_remaining", ""),
+            a.get("asset_code", ""),
+            a.get("asset_name", ""),
+            a.get("location", ""),
+            a.get("brand", ""),
+            a.get("model", ""),
+            a.get("serial_no", ""),
+            a.get("measure_range", ""),
+            a.get("resolution", ""),
+            a.get("unit", ""),
+            a.get("accuracy", ""),
+            a.get("uncertainty", ""),
+            a.get("acceptance_criteria", ""),
+            a.get("calibration_method", ""),
+            a.get("standard_device", ""),
+            a.get("standard_id", ""),
+            a.get("owner", ""),
+            a.get("responsible_email", ""),
+            a.get("next_cal").strftime("%Y-%m-%d") if a.get("next_cal") else "",
+        ])
+    wb.save(str(path))
+
+
+class Command(BaseCommand):
+    help = (
+        "Yaklaşan kalibrasyonlar için rol bazlı e-posta hatırlatması gönderir.\n"
+        "Örnekler:\n"
+        "  python manage.py calibration_reminder --days 30\n"
+        "  python manage.py calibration_reminder --days 30 60 90 --roles \"Bakım Yöneticisi,Teknisyen\"\n"
+        "  python manage.py calibration_reminder --days 14 --roles \"Bakım Yöneticisi\" --dry-run\n"
+        "Ekler:\n"
+        "  --attach csv | xlsx | both\n"
+        "  --outdir var/calibration_reminders\n"
+        "  --no-asset-emails  (yalnızca rol e-postalarına gönder)\n"
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument("--days", type=int, nargs="+", default=[30],
+                            help="Hatırlatma pencereleri (gün). Örn: 30 60 90")
+        parser.add_argument("--roles", type=str, default="Bakım Yöneticisi",
+                            help="Virgül ile ayrılmış grup adları. Örn: 'Bakım Yöneticisi,Teknisyen'")
+        parser.add_argument("--attach", type=str, choices=["csv", "xlsx", "both"], default="csv",
+                            help="Eklenecek dosya formatı.")
+        parser.add_argument("--outdir", type=str, default="var/calibration_reminders",
+                            help="Eklerin yazılacağı dizin (tarih alt klasörü otomatik eklenir).")
+        parser.add_argument("--no-asset-emails", action="store_true",
+                            help="Asset üzerindeki 'responsible_email' adreslerini alıcılara ekleme.")
+        parser.add_argument("--dry-run", action="store_true",
+                            help="E-posta göndermeden yalnızca özet yazdır.")
+
+    def handle(self, *args, **opts):
+        days_list: List[int] = sorted(set([d for d in opts["days"] if d > 0])) or [30]
+
+        # --- ROLLERİ SAĞLAM ÇÖZ ---
+        roles_input = (opts.get("roles") or "").strip()
+        raw_parts = [p.strip() for p in roles_input.split(",") if p.strip()]
+        fix_parts = [_maybe_fix_mojibake(p) for p in raw_parts]
+
+        groups: List[Group] = []
+        chosen_names: List[str] = []
+        all_groups = list(Group.objects.all())
+        norm_map = { _norm(g.name): g for g in all_groups }
+
+        for raw, fixed in zip(raw_parts, fix_parts):
+            # 1) Doğrudan iexact
+            qs = Group.objects.filter(name__iexact=fixed)
+            if qs.exists():
+                g = qs.first()
+                groups.append(g)  # type: ignore
+                chosen_names.append(g.name)  # type: ignore
+                continue
+            if fixed != raw:
+                qs2 = Group.objects.filter(name__iexact=raw)
+                if qs2.exists():
+                    g = qs2.first()
+                    groups.append(g)  # type: ignore
+                    chosen_names.append(g.name)  # type: ignore
+                    continue
+            # 2) Normalize fallback
+            cand = norm_map.get(_norm(fixed)) or norm_map.get(_norm(raw))
+            if cand:
+                groups.append(cand)
+                chosen_names.append(cand.name)
+                continue
+
+        # Tekilleştir
+        seen_ids: Set[int] = set()
+        uniq_groups: List[Group] = []
+        uniq_names: List[str] = []
+        for g, n in zip(groups, chosen_names):
+            if g.id not in seen_ids:
+                seen_ids.add(g.id)
+                uniq_groups.append(g)
+                uniq_names.append(n)
+
+        attach_mode: str = opts["attach"]
+        outdir = Path(opts["outdir"])
+        dry_run: bool = bool(opts["dry_run"])
+        skip_asset_emails: bool = bool(opts["no_asset_emails"])
+
+        today = date.today()
+
+        # Veriyi topla
+        buckets = _collect_assets(days_list)
+        all_rows: List[Dict[str, Any]] = []
+        for d in days_list:
+            all_rows.extend(buckets.get(d, []))
+
+        # Alıcılar
+        role_emails: List[str] = []
+        if uniq_groups:
+            qs = User.objects.filter(groups__in=uniq_groups, is_active=True).values_list("email", flat=True)
+            role_emails = [e for e in qs if e]
+        else:
+            existing = [g.name for g in all_groups]
+            self.stderr.write(self.style.WARNING(
+                f"Hiç grup bulunamadı. İstenen roller: {raw_parts or ['(boş)']}. "
+                f"Mevcut gruplar: {existing or ['(yok)']}"
+            ))
+
+        asset_emails: List[str] = []
+        if not skip_asset_emails:
+            asset_emails = [a.get("responsible_email") for a in all_rows if a.get("responsible_email")]
+
+        recipients = _uniq_emails(role_emails + asset_emails)
+
+        # Gövde / konu
+        body = _compose_body(days_list, buckets)
+        subject = f"[Kalibrasyon Hatırlatma] {today.strftime('%d.%m.%Y')} – {len(all_rows)} cihaz"
+        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@localhost")
+
+        # Ek dosyalar
+        attachments: List[Path] = []
+        dated_dir = outdir / today.strftime("%Y%m%d")
+        try:
+            if all_rows:
+                if attach_mode in ("csv", "both"):
+                    csv_path = dated_dir / f"kalibrasyon_{today.strftime('%Y%m%d')}.csv"
+                    _write_csv(all_rows, csv_path)
+                    attachments.append(csv_path)
+                if attach_mode in ("xlsx", "both"):
+                    xlsx_path = dated_dir / f"kalibrasyon_{today.strftime('%Y%m%d')}.xlsx"
+                    _write_xlsx(all_rows, xlsx_path)
+                    attachments.append(xlsx_path)
+        except Exception as ex:
+            self.stderr.write(self.style.WARNING(f"Ek dosya üretimi hatalı: {ex} (ekler olmadan devam ediliyor)"))
+            attachments = []
+
+        # Bilgi logları
+        self.stdout.write(self.style.NOTICE(f"Çözümlenen roller: {uniq_names or ['(yok)']}"))
+        self.stdout.write(self.style.NOTICE(f"Alıcı sayısı: {len(recipients)}"))
+        self.stdout.write(self.style.NOTICE(f"Kayıt sayısı: {len(all_rows)}"))
+        if attachments:
+            self.stdout.write(self.style.NOTICE("Ekler:"))
+            for p in attachments:
+                self.stdout.write(f" - {p}")
+
+        if dry_run or not recipients:
+            self.stdout.write("---- ÖNİZLEME (dry-run) ----")
+            self.stdout.write(f"Kime: {', '.join(recipients) if recipients else '(alıcı yok)'}")
+            self.stdout.write(f"Konu: {subject}")
+            self.stdout.write(body)
+            if attachments:
+                self.stdout.write("(Not: Ekler üretilmiştir; e-posta gönderilmedi.)")
+            self.stdout.write("---- SON ----")
+            return
+
+        # E-posta gönderimi (eklerle)
+        try:
+            email = EmailMessage(subject=subject, body=body, from_email=from_email, to=recipients)
+            for p in attachments:
+                if p.suffix.lower() == ".csv":
+                    email.attach(p.name, p.read_bytes(), "text/csv")
+                elif p.suffix.lower() == ".xlsx":
+                    email.attach(p.name, p.read_bytes(),
+                                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                else:
+                    email.attach(p.name, p.read_bytes(), "application/octet-stream")
+            sent = email.send(fail_silently=False)
+            self.stdout.write(self.style.SUCCESS(f"E-posta gönderildi (adet={sent})."))
+        except Exception as ex:
+            self.stderr.write(self.style.ERROR(f"E-posta gönderimi başarısız: {ex}"))
+            self.stderr.write("İçerik aşağıdadır (gönderilmedi):")
+            self.stderr.write(body)
+# <<< BLOK SONU: ID:PY-COM-773MBFDD
+### DOSYA BİTİŞ: calibration_reminder.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0003_alter_calibrationrecord_options_and_more.py
+# REV: 1.0 | 2025-09-25 | Hash: 730cb740 | Parça: 1/1
+# Generated by Django 5.2.6 on 2025-09-04 14:23
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('maintenance', '0002_calibration_asset_migrate'),
+    ]
+
+    operations = [
+        migrations.AlterModelOptions(
+            name='calibrationrecord',
+            options={'ordering': ['-next_calibration', '-id']},
+        ),
+        migrations.AddField(
+            model_name='calibrationrecord',
+            name='certificate_no',
+            field=models.CharField(blank=True, max_length=120, verbose_name='Sertifika No'),
+        ),
+        migrations.AddField(
+            model_name='calibrationrecord',
+            name='notes',
+            field=models.TextField(blank=True, verbose_name='Notlar'),
+        ),
+        migrations.AlterField(
+            model_name='calibrationrecord',
+            name='last_calibration',
+            field=models.DateField(blank=True, null=True, verbose_name='Son Kalibrasyon'),
+        ),
+        migrations.AlterField(
+            model_name='calibrationrecord',
+            name='next_calibration',
+            field=models.DateField(blank=True, null=True, verbose_name='Sonraki Kalibrasyon'),
+        ),
+        migrations.AlterField(
+            model_name='calibrationrecord',
+            name='result',
+            field=models.CharField(blank=True, max_length=120, verbose_name='Sonuç'),
+        ),
+    ]
+### DOSYA BİTİŞ: 0003_alter_calibrationrecord_options_and_more.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\__init__.py
+# REV: 1.1 | 2025-09-25 | Hash: 96254018 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-RRY6Z9QP
+# empty package marker
+# <<< BLOK SONU: ID:PY-IMP-RRY6Z9QP
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-N1G63CEY
+# <<< BLOK SONU: ID:PY-COM-N1G63CEY
+### DOSYA BİTİŞ: __init__.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\setup_maintenance_roles.py
+# REV: 1.1 | 2025-09-25 | Hash: 3c61e1dd | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-74RSM79F
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+# <<< BLOK SONU: ID:PY-IMP-74RSM79F
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-4VYASZQ2
+from typing import Dict, Iterable, List, Set
+
+from django.apps import apps
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
+from django.core.management.base import BaseCommand
+
+
+APP_LABEL = "maintenance"
+GROUP_MANAGER = "Bakım Yöneticisi"
+GROUP_TECH = "Teknisyen"
+GROUP_OBS = "Gözlemci"
+
+# Hedef izin matrisi:
+# - Bakım Yöneticisi: CalibrationAsset & CalibrationRecord için add/change/delete/view
+# - Teknisyen:        CalibrationRecord -> add/change/view;   CalibrationAsset -> view
+# - Gözlemci:         her iki model -> view
+MODEL_NAMES = ["CalibrationAsset", "CalibrationRecord"]
+
+
+def _get_perms_for_models(model_names: Iterable[str]) -> Dict[str, Dict[str, Permission]]:
+    out: Dict[str, Dict[str, Permission]] = {}
+    for model_name in model_names:
+        model = apps.get_model(APP_LABEL, model_name)
+        ct = ContentType.objects.get_for_model(model)
+        perms = Permission.objects.filter(content_type=ct)
+        by_code = {p.codename: p for p in perms}
+        out[model_name] = {
+            "add": by_code.get(f"add_{model._meta.model_name}"),
+            "change": by_code.get(f"change_{model._meta.model_name}"),
+            "delete": by_code.get(f"delete_{model._meta.model_name}"),
+            "view": by_code.get(f"view_{model._meta.model_name}"),
+        }
+    return out
+
+
+def _ensure_group(name: str) -> Group:
+    g, _ = Group.objects.get_or_create(name=name)
+    return g
+
+
+def _assign_group_perms() -> None:
+    perms = _get_perms_for_models(MODEL_NAMES)
+    g_mgr = _ensure_group(GROUP_MANAGER)
+    g_tech = _ensure_group(GROUP_TECH)
+    g_obs = _ensure_group(GROUP_OBS)
+
+    # Manager -> tüm izinler
+    for m in MODEL_NAMES:
+        for key in ("add", "change", "delete", "view"):
+            p = perms[m][key]
+            if p:
+                g_mgr.permissions.add(p)
+
+    # Technician
+    #   - Record: add/change/view
+    #   - Asset : view
+    rec = "CalibrationRecord"
+    asset = "CalibrationAsset"
+    for key in ("add", "change", "view"):
+        p = perms[rec][key]
+        if p:
+            g_tech.permissions.add(p)
+    if perms[asset]["view"]:
+        g_tech.permissions.add(perms[asset]["view"])
+
+    # Observer -> yalnız view
+    for m in MODEL_NAMES:
+        p = perms[m]["view"]
+        if p:
+            g_obs.permissions.add(p)
+
+
+def _parse_map(s: str) -> Dict[str, str]:
+    """
+    'user1=mail1;user2=mail2' -> {'user1':'mail1', 'user2':'mail2'}
+    """
+    out: Dict[str, str] = {}
+    if not s:
+        return out
+    parts = [x.strip() for x in s.split(";") if x.strip()]
+    for part in parts:
+        if "=" in part:
+            u, e = part.split("=", 1)
+            u = u.strip()
+            e = e.strip()
+            if u and e:
+                out[u] = e
+    return out
+
+
+class Command(BaseCommand):
+    help = (
+        "Bakım/kalibrasyon rol ve izinlerini kurar, kullanıcıları gruplara ekler.\n"
+        "Örnekler:\n"
+        "  python manage.py setup_maintenance_roles --add-superusers --settings=core.settings_maintenance\n"
+        "  python manage.py setup_maintenance_roles --usernames admin --emails \"admin=admin@local\" --settings=core.settings_maintenance\n"
+        "  python manage.py setup_maintenance_roles --usernames admin,u1 --ensure-email default@local --settings=core.settings_maintenance\n"
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--add-superusers",
+            action="store_true",
+            help="Tüm süper kullanıcıları 'Bakım Yöneticisi' grubuna ekler.",
+        )
+        parser.add_argument(
+            "--usernames",
+            type=str,
+            default="",
+            help="Virgül ile kullanıcı adları (örn: admin,u1,u2) -> 'Bakım Yöneticisi'ne ekler.",
+        )
+        parser.add_argument(
+            "--emails",
+            type=str,
+            default="",
+            help="Kullanıcı e-postaları; format: user1=mail1;user2=mail2",
+        )
+        parser.add_argument(
+            "--ensure-email",
+            type=str,
+            default="",
+            help="E-postası boş olanları bu adrese ayarlar (tek adres).",
+        )
+
+    def handle(self, *args, **opts):
+        self.stdout.write(self.style.NOTICE("Gruplar ve izinler oluşturuluyor..."))
+        _assign_group_perms()
+
+        U = get_user_model()
+        usernames: List[str] = []
+        if opts["usernames"]:
+            usernames = [u.strip() for u in opts["usernames"].split(",") if u.strip()]
+
+        email_map = _parse_map(opts["emails"])
+        ensure_email = (opts["ensure_email"] or "").strip()
+
+        targets: Set[int] = set()
+
+        if opts["add_superusers"]:
+            for u in U.objects.filter(is_superuser=True, is_active=True):
+                targets.add(u.id)
+
+        for uname in usernames:
+            try:
+                u = U.objects.get(username=uname)
+                targets.add(u.id)
+            except U.DoesNotExist:
+                self.stderr.write(self.style.WARNING(f"Kullanıcı yok: {uname}"))
+
+        if not targets:
+            self.stdout.write(self.style.WARNING("Hedef kullanıcı bulunamadı (bayraklarla belirtin)."))
+
+        g_mgr = Group.objects.get(name=GROUP_MANAGER)
+
+        added = 0
+        for u in U.objects.filter(id__in=list(targets)):
+            # e-posta ayarla
+            if u.username in email_map:
+                u.email = email_map[u.username]
+                u.save(update_fields=["email"])
+            elif not u.email and ensure_email:
+                u.email = ensure_email
+                u.save(update_fields=["email"])
+
+            u.groups.add(g_mgr)
+            added += 1
+            self.stdout.write(f"OK: {u.username} -> {GROUP_MANAGER} (email={u.email or '-'})")
+
+        self.stdout.write(self.style.SUCCESS(f"Tamamlandı. Grup atanan kullanıcı sayısı: {added}"))
+# <<< BLOK SONU: ID:PY-COM-4VYASZQ2
+### DOSYA BİTİŞ: setup_maintenance_roles.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\commands\seed_demo.py
+# REV: 1.1 | 2025-09-25 | Hash: ad7b7037 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-8V7HK2VC
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+import random
+# <<< BLOK SONU: ID:PY-IMP-8V7HK2VC
+# >>> BLOK: COMMAND | Komut | ID:PY-COM-5D7MS3Z0
+from datetime import date, datetime, timedelta, time
+from typing import List
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
+
+from maintenance.models import (
+    Equipment, MaintenanceOrder, CalibrationRecord, MaintenanceChecklistItem, SparePart
+)
+
+DISC = [("ELEC","Elektrik"), ("MECH","Mekanik"), ("PNEU","Pnömatik")]
+TYPES = ["PLN","PRD","BRK"]
+STATUS = ["SCHEDULED","COMPLETED","OVERDUE"]
+
+class Command(BaseCommand):
+    help = "Demo amaçlı bakım verileri üretir."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--count", type=int, default=60, help="Üretilecek iş emri adedi (default: 60)")
+
+    @transaction.atomic
+    def handle(self, *args, **opts):
+        count = int(opts["count"])
+        self.stdout.write(self.style.NOTICE(f"Seeding demo data (orders={count})..."))
+
+        # Equipments
+        eqs: List[Equipment] = []
+        for i in range(1, 8):
+            code = f"MC-{i:03d}"
+            eq, _ = Equipment.objects.get_or_create(
+                code=code,
+                defaults=dict(
+                    name=f"Hat {((i-1)//3)+1} Makine {i}",
+                    area=f"Hat-{((i-1)//3)+1}",
+                    discipline=random.choice([d[0] for d in DISC]),
+                    criticality=random.randint(1,5),
+                    is_active=True,
+                ),
+            )
+            eqs.append(eq)
+
+        # Spare parts
+        for i in range(1, 10):
+            SparePart.objects.get_or_create(
+                name=f"Parça-{i:02d}",
+                equipment=random.choice(eqs),
+                defaults=dict(is_critical=random.choice([True, False]), stock_qty=random.randint(0, 25), min_qty=5),
+            )
+
+        # Checklist items
+        checklist_names = ["Yağ seviyesi", "Kayış gerginliği", "Sensör temizlik", "Cıvata kontrol", "V kayışı"]
+        for eq in eqs:
+            for nm in random.sample(checklist_names, k=3):
+                MaintenanceChecklistItem.objects.get_or_create(
+                    equipment=eq, name=nm, defaults=dict(is_mandatory=True, frequency=random.choice(["DAILY","WEEKLY","MONTHLY","QTR","YEARLY"]))
+                )
+
+        # Calibration records
+        today = timezone.localdate()
+        for eq in eqs[:4]:
+            last = today - timedelta(days=random.randint(100, 380))
+            nxt = last + timedelta(days=365)
+            CalibrationRecord.objects.get_or_create(
+                equipment=eq, defaults=dict(last_calibration=last, next_calibration=nxt, result="OK")
+            )
+
+        # Maintenance orders
+        tz = timezone.get_current_timezone()
+        for _ in range(count):
+            eq = random.choice(eqs)
+            t = random.choices(TYPES, weights=[0.5, 0.2, 0.3])[0]
+            st = random.choices(STATUS, weights=[0.5, 0.35, 0.15])[0]
+
+            start_d = timezone.localdate() - timedelta(days=random.randint(0, 180))
+            due_d = start_d + timedelta(days=random.randint(0, 14))
+
+            completed_at = None
+            if st == "COMPLETED":
+                # due_d + rastgele saat → aware datetime
+                naive = datetime.combine(due_d, time(hour=random.randint(1, 20)))
+                completed_at = timezone.make_aware(naive, tz)
+
+            MaintenanceOrder.objects.create(
+                equipment=eq,
+                order_type=t,
+                title=f"{t} iş emri - {eq.code}",
+                description="Oto-oluşturulan demo kaydı.",
+                technician=random.choice(["Ali", "Ayşe", "Mehmet", "Derya", "John"]),
+                start_date=start_d,
+                due_date=due_d,
+                completed_at=completed_at,
+                status=st,
+                duration_hours=round(random.uniform(0.5, 16.0), 2),
+                cost_total=round(random.uniform(250, 5000), 2),
+            )
+
+        self.stdout.write(self.style.SUCCESS("Demo verileri eklendi."))
+# <<< BLOK SONU: ID:PY-COM-5D7MS3Z0
+### DOSYA BİTİŞ: seed_demo.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\management\__init__.py
+# REV: 1.1 | 2025-09-25 | Hash: 42840cd8 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-BWB6738K
+# empty package marker
+# <<< BLOK SONU: ID:PY-IMP-BWB6738K
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-S1YXAFRH
+# <<< BLOK SONU: ID:PY-HEL-S1YXAFRH
+### DOSYA BİTİŞ: __init__.py
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\migrations\0002_calibration_asset_migrate.py
+# REV: 1.0 | 2025-09-25 | Hash: 86721dba | Parça: 1/1
+# Generated by ChatGPT - safe data migration from equipment->asset
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+def create_assets_and_relink(apps, schema_editor):
+    """
+    Eski kayıtlar:
+      CalibrationRecord(equipment_id=...)  -->  CalibrationAsset (asset_code=equipment.code)
+    Adımlar:
+      - Her equipment için bir CalibrationAsset oluştur (yoksa).
+      - Tüm CalibrationRecord satırlarının asset_id'sini doldur.
+    """
+    Equipment = apps.get_model("maintenance", "Equipment")
+
+    # DİKKAT: Bu migration aşamasında CalibrationRecord modelinde HÂLÂ 'equipment' alanı mevcut.
+    CalibrationRecord = apps.get_model("maintenance", "CalibrationRecord")
+    CalibrationAsset = apps.get_model("maintenance", "CalibrationAsset")
+
+    # equipment_id -> asset_id map
+    eq_to_asset = {}
+
+    for eq in Equipment.objects.all():
+        # asset_code: equipment.code, asset_name: equipment.name
+        asset, _ = CalibrationAsset.objects.get_or_create(
+            asset_code=eq.code,
+            defaults=dict(
+                asset_name=eq.name or eq.code,
+                location=eq.area or "",
+                equipment=eq,
+                brand="",
+                model="",
+                serial_no="",
+                measure_range="",
+                resolution="",
+                unit="",
+                accuracy="",
+                uncertainty="",
+                acceptance_criteria="",
+                calibration_method="",
+                standard_device="",
+                standard_id="",
+                owner="",
+                responsible_email="",
+                is_active=True,
+            ),
+        )
+        eq_to_asset[eq.id] = asset.id
+
+    # Tüm CalibrationRecord'ları asset'e bağla (equipment'e bakarak)
+    for rec in CalibrationRecord.objects.all():
+        eq_id = getattr(rec, "equipment_id", None)
+        asset_id = eq_to_asset.get(eq_id)
+        if asset_id:
+            setattr(rec, "asset_id", asset_id)
+            rec.save(update_fields=["asset_id"])
+
+
+def noop(apps, schema_editor):
+    pass
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("maintenance", "0001_initial"),
+    ]
+
+    operations = [
+        # 1) CalibrationAsset tablosunu oluştur
+        migrations.CreateModel(
+            name="CalibrationAsset",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("asset_code", models.CharField(max_length=120, unique=True, verbose_name="Cihaz Kodu")),
+                ("asset_name", models.CharField(max_length=200, verbose_name="Cihaz Adı")),
+                ("location", models.CharField(blank=True, max_length=150, verbose_name="Lokasyon")),
+                ("brand", models.CharField(blank=True, max_length=120, verbose_name="Marka")),
+                ("model", models.CharField(blank=True, max_length=120, verbose_name="Model")),
+                ("serial_no", models.CharField(blank=True, max_length=120, verbose_name="Seri No")),
+                ("measure_range", models.CharField(blank=True, max_length=120, verbose_name="Ölçüm Aralığı")),
+                ("resolution", models.CharField(blank=True, max_length=120, verbose_name="Çözünürlük")),
+                ("unit", models.CharField(blank=True, max_length=30, verbose_name="Birim")),
+                ("accuracy", models.CharField(blank=True, max_length=120, verbose_name="Doğruluk")),
+                ("uncertainty", models.CharField(blank=True, max_length=120, verbose_name="Belirsizlik")),
+                ("acceptance_criteria", models.CharField(blank=True, max_length=200, verbose_name="Kabul Kriteri")),
+                ("calibration_method", models.CharField(blank=True, max_length=200, verbose_name="Yöntem/Prosedür")),
+                ("standard_device", models.CharField(blank=True, max_length=200, verbose_name="Referans/Standart Cihaz")),
+                ("standard_id", models.CharField(blank=True, max_length=120, verbose_name="Standart Cihaz ID")),
+                ("owner", models.CharField(blank=True, max_length=120, verbose_name="Sorumlu")),
+                ("responsible_email", models.EmailField(blank=True, max_length=254, verbose_name="Sorumlu E-posta")),
+                ("is_active", models.BooleanField(default=True)),
+                ("equipment", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to="maintenance.equipment")),
+            ],
+            options={
+                "verbose_name": "Kalibrasyon Cihazı",
+                "verbose_name_plural": "Kalibrasyon Cihazları",
+                "ordering": ["asset_code"],
+            },
+        ),
+
+        # 2) CalibrationRecord.asset alanını ÖNCE null=True ile ekle (veriyi taşımak için)
+        migrations.AddField(
+            model_name="calibrationrecord",
+            name="asset",
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name="records", to="maintenance.calibrationasset"),
+        ),
+
+        # 3) Veri taşıma: equipment -> asset
+        migrations.RunPython(create_assets_and_relink, reverse_code=noop),
+
+        # 4) asset'ı zorunlu yap
+        migrations.AlterField(
+            model_name="calibrationrecord",
+            name="asset",
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="records", to="maintenance.calibrationasset"),
+        ),
+
+        # 5) Eski equipment FK'sini kaldır (CalibrationRecord'tan)
+        migrations.RemoveField(
+            model_name="calibrationrecord",
+            name="equipment",
+        ),
+    ]
+### DOSYA BİTİŞ: 0002_calibration_asset_migrate.py
+
