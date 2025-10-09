@@ -12,10 +12,14 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with:
+          node-version: '20'
+
       - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
+        with:
+          python-version: '3.12'
 
       - name: Install deps
         shell: pwsh
@@ -24,17 +28,19 @@ jobs:
           npm ci
           npx playwright install --with-deps
 
-      # (İsteğe bağlı sağlamlık: build-tasks.js yoksa dummy üret)
-      - name: Ensure tests/tasks.json exists (fallback)
+      # --- SADE FALLBACK ADIMI ---
+      - name: Ensure tests/tasks.json exists (fallback only)
         shell: pwsh
         run: |
           if (!(Test-Path .\tests)) { New-Item -ItemType Directory -Force -Path .\tests | Out-Null }
-          if (Test-Path .\scripts\build-tasks.js -and (Test-Path .\data\tasks_template.csv -or Test-Path .\tests\tasks_template.csv)) {
-            $csv = (Test-Path .\data\tasks_template.csv) ? '.\data\tasks_template.csv' : '.\tests\tasks_template.csv'
-            node .\scripts\build-tasks.js $csv .\tests\tasks.json 2>$null
-          }
-          if (!(Test-Path .\tests\tasks.json)) {
+          if (Test-Path .\tests\tasks.json) {
+            Write-Host "tasks.json already exists under tests/"
+          } elseif (Test-Path .\tasks.json) {
+            Copy-Item .\tasks.json .\tests\tasks.json -Force
+            Write-Host "Copied root tasks.json to tests/tasks.json"
+          } else {
             '[{"id":"CI-DUMMY","type":"check","title":"dummy"}]' | Set-Content -Encoding UTF8 .\tests\tasks.json
+            Write-Host "Wrote dummy tests/tasks.json"
           }
 
       - name: Start Django (bg)
@@ -47,22 +53,42 @@ jobs:
           Start-Process -FilePath python -ArgumentList "manage.py","runserver","0.0.0.0:8010" -WindowStyle Hidden
           Start-Sleep -Seconds 5
 
-      - name: Run tests (explicit file paths; ignore tasks.spec.js)
+      - name: Run tests (files only; no regex, no --%)
         shell: pwsh
         run: |
           Set-StrictMode -Version Latest
           $ErrorActionPreference='Stop'
-          $t = "${{ github.event.inputs.target }}"
+
+          # hedef: both | eqp002 | eqp003 | admin
+          $t = '${{ github.event.inputs.target }}'
           switch ($t) {
             'eqp002' { $want = @('EQP-002.spec.js') }
             'eqp003' { $want = @('EQP-003.spec.js') }
             'admin'  { $want = @('admin-dashboard.spec.js') }
             default  { $want = @('admin-dashboard.spec.js','EQP-002.spec.js','EQP-003.spec.js') }
           }
-          $files = foreach($w in $want){ Get-ChildItem -Recurse -File -Include $w | Select-Object -Expand FullName }
-          if (!$files -or $files.Count -eq 0) { throw "Spec dosyası bulunamadı: $($want -join ', ')" }
-          Write-Host "Specs:"; $files | % { " - $_" | Write-Host }
-          & npx playwright test @files --project=chromium --reporter "line,html" --test-ignore "tasks\.spec\.js"
+
+          # 1) Dosyaları bul
+          $abs = @()
+          foreach($w in $want){
+            $found = Get-ChildItem -Recurse -File -Include $w | Select-Object -Expand FullName -ErrorAction SilentlyContinue
+            if (-not $found) {
+              $found = Get-ChildItem -Recurse -File | Where-Object { $_.Name -eq $w } | Select-Object -Expand FullName
+            }
+            $abs += $found
+          }
+          if (-not $abs -or $abs.Count -eq 0) { throw "Spec dosyası bulunamadı: $($want -join ', ')" }
+
+          # 2) Absolute → relative + POSIX slash
+          $repo = (Get-Location).Path.TrimEnd('\')
+          $rel  = $abs | ForEach-Object { $_.Replace($repo,'').TrimStart('\') -replace '\\','/' }
+
+          Write-Host "Specs (relative):"
+          $rel | ForEach-Object { " - $_" | Write-Host }
+
+          # 3) Çalıştır (regex yok, --% yok)
+          $args = @('playwright','test') + $rel + @('--project=chromium','--reporter','line,html')
+          & npx @args
 
       - name: Upload playwright report
         if: always()
