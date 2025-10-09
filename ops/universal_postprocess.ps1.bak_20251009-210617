@@ -9,19 +9,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 function First-NonEmpty { param([Parameter(ValueFromRemainingArguments=$true)][object[]]$Values)
-  foreach ($v in $Values) { if ($null -ne $v) { $s=[string]$v; if ($s.Trim().Length -gt 0) { return $s } } }
-  return ""
-}
-function Ensure-Dir([string]$Path) {
-  $p = (Split-Path -Parent $Path)
-  if ($p -and -not (Test-Path $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
-}
+  foreach ($v in $Values) { if ($null -ne $v) { $s=[string]$v; if ($s.Trim().Length -gt 0) { return $s } } } return "" }
+function Ensure-Dir([string]$Path) { $p = (Split-Path -Parent $Path); if ($p -and -not (Test-Path $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null } }
 function Get-Prop($obj, [string]$name, $default="") {
-  if ($null -eq $obj) { return $default }
-  $has = $obj.PSObject.Properties[$name]
-  if ($has -and $null -ne $has.Value -and ([string]$has.Value).Trim().Length -gt 0) { return $has.Value }
-  return $default
-}
+  if ($null -eq $obj) { return $default }; $has = $obj.PSObject.Properties[$name]
+  if ($has -and $null -ne $has.Value -and ([string]$has.Value).Trim().Length -gt 0) { return $has.Value } return $default }
 $repo = Resolve-Path $Repo; Set-Location $repo
 $ts   = (Get-Date).ToString("yyyyMMdd-HHmmss")
 $reportsRoot = Join-Path $repo $ReportsDir
@@ -47,8 +39,7 @@ function Convert-TasksCsvToJson {
   } else { $text = [Text.UTF8Encoding]::new($false).GetString($bytes) }
   $firstLine = ($text -split "`r?`n" | Where-Object { $_.Trim() -ne "" } | Select-Object -First 1)
   if ($null -eq $firstLine -or ($firstLine -notmatch '(^|,)id(,|$)') -or ($firstLine -notmatch '(^|,)title(,|$)')) {
-    Write-Host "[CSV→JSON] Uyarı: id/title başlıkları beklenen biçimde değil" -ForegroundColor Yellow
-  }
+    Write-Host "[CSV→JSON] Uyarı: id/title başlıkları beklenen biçimde değil" -ForegroundColor Yellow }
   try { $rows = ConvertFrom-Csv -InputObject $text } catch { throw "[CSV→JSON] CSV parse hatası: $($_.Exception.Message)" }
   $doc = [ordered]@{ generated_at=(Get-Date).ToUniversalTime().ToString("s")+"Z"; source="csv_template"; items=@() }
   foreach ($r in $rows) {
@@ -79,27 +70,23 @@ function Merge-FindingsIntoTasks {
     else { [void]$existing.Add(("TT::" + $ttl.Trim().ToLower() + "::" + $src)) }
   }
   foreach ($r in $rows) {
-    $sec  = Get-Prop $r 'Section' ""; $msg = Get-Prop $r 'Message' ""
-    $stat = ([string](Get-Prop $r 'Status' "")).ToUpper()
-    if ([string]::IsNullOrWhiteSpace($msg)) { continue }
+    $sec  = First-NonEmpty (Get-Prop $r 'Section') ""; $msg=First-NonEmpty (Get-Prop $r 'Message') ""
+    $stat = (First-NonEmpty (Get-Prop $r 'Status') "").ToUpper()
+    if ($msg.Trim().Length -eq 0) { continue }
     $hRaw  = ($sec + "::" + $msg).Trim().ToLower()
-    $key   = "TT::" + $hRaw + "::universal_findings"
+          # --- PS5 uyumlu atamalar (code) ---
+      $code = "UNIV-NOTE"
+      if ($stat -eq "FAIL") { $code = "UNIV-FAIL" }
+      elseif ($stat -eq "WARN") { $code = "UNIV-WARN" }{ "UNIV-FAIL" } elseif ($stat -eq "WARN") { "UNIV-WARN" } else { "UNIV-NOTE" })
+    $title = ("[{0}] {1} - {2}" -f $code,$sec,$msg); $key = "TT::" + $hRaw + "::universal_findings"
     if (-not $existing.Contains($key)) {
-      # PS5 uyumlu atamalar
-      $code = "UNIV-NOTE"; if ($stat -eq "FAIL") { $code = "UNIV-FAIL" } elseif ($stat -eq "WARN") { $code = "UNIV-WARN" }
-      $severity = "low";   if ($stat -eq "FAIL") { $severity = "high" }  elseif ($stat -eq "WARN") { $severity = "medium" }
-      $title = ("[{0}] {1} - {2}" -f $code,$sec,$msg)
-      $items.Add([ordered]@{
-        id        = ""
-        title     = $title.Substring(0,[Math]::Min(200,$title.Length))
-        severity  = $severity
-        area      = "aggregation"
-        evidence  = $sec
-        timestamp = (Get-Date).ToUniversalTime().ToString("s") + "Z"
-        status    = "todo"
-        steps     = @("Kaynak: dashboard/details_*.csv","Tekil anahtar: section+message")
-        source    = "universal_findings"
-      })
+            # --- PS5 uyumlu atamalar (severity) ---
+      $severity = "low"
+      if ($stat -eq "FAIL") { $severity = "high" }
+      elseif ($stat -eq "WARN") { $severity = "medium" }{ "high" } elseif ($stat -eq "WARN") { "medium" } else { "low" }
+      $items.Add([ordered]@{ id=""; title=$title.Substring(0,[Math]::Min(200,$title.Length)); severity=$severity; area="aggregation";
+        evidence=$sec; timestamp=(Get-Date).ToUniversalTime().ToString("s")+"Z"; status="todo";
+        steps=@("Kaynak: dashboard/details_*.csv","Tekil anahtar: section+message"); source="universal_findings" })
       [void]$existing.Add($key)
     }
   }
@@ -170,6 +157,6 @@ if (Test-Path $dashboard) {
 }
 if ($details) { Merge-FindingsIntoTasks -DetailsCsv $details.FullName -TasksJsonPath $tasksFull }
 $detailsPath = if ($details) { $details.FullName } else { $null }
-if ($totals)  { Write-NotifySummary -TotalsCsv $totals.FullName -DetailsCsv $detailsPath -OutDir (Join-Path $reportsRoot 'notify') }
+if ($totals)  { Write-NotifySummary -TotalsCsv $totals.FullName -DetailsCsv $detailsPath -OutDir $notifyDir }
 Include-Extras-ToBundle -BundleRoot $bundleRoot -ReportsRoot $reportsRoot -TasksFile $tasksFull
 Write-Host "`n[OK] Post-process tamamlandı." -ForegroundColor Green
