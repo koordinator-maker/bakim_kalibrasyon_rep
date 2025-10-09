@@ -1,0 +1,160 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#content-start"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - link "Django administration" [ref=e7] [cursor=pointer]:
+        - /url: /admin/
+      - generic [ref=e8]:
+        - text: Welcome,
+        - strong [ref=e9]: admin
+        - text: .
+        - link "View site" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - text: /
+        - link "Change password" [ref=e11] [cursor=pointer]:
+          - /url: /admin/password_change/
+        - text: /
+        - button "Log out" [ref=e13] [cursor=pointer]
+        - 'button "Toggle theme (current theme: auto)" [ref=e14] [cursor=pointer]':
+          - generic [ref=e15] [cursor=pointer]: "Toggle theme (current theme: auto)"
+          - img [ref=e16] [cursor=pointer]
+    - navigation "Breadcrumbs" [ref=e18]:
+      - generic [ref=e19]:
+        - link "Home" [ref=e20] [cursor=pointer]:
+          - /url: /admin/
+        - text: ›
+        - link "Authentication and Authorization" [ref=e21] [cursor=pointer]:
+          - /url: /admin/auth/
+        - text: › Groups
+    - generic [ref=e22]:
+      - button "Toggle navigation" [ref=e23] [cursor=pointer]: «
+      - navigation "Sidebar" [ref=e24]:
+        - searchbox "Filter navigation items" [ref=e25]
+        - table "Authentication and Authorization" [ref=e27]:
+          - caption [ref=e28]:
+            - link "Authentication and Authorization" [ref=e29] [cursor=pointer]:
+              - /url: /admin/auth/
+          - rowgroup [ref=e30]:
+            - row "Model name Add link Change or view list link" [ref=e31]:
+              - columnheader "Model name" [ref=e32]
+              - columnheader "Add link" [ref=e33]
+              - columnheader "Change or view list link" [ref=e34]
+          - rowgroup [ref=e35]:
+            - row "Groups Add" [ref=e36]:
+              - rowheader "Groups" [ref=e37]:
+                - link "Groups" [ref=e38] [cursor=pointer]:
+                  - /url: /admin/auth/group/
+              - cell "Add" [ref=e39]:
+                - link "Add" [ref=e40] [cursor=pointer]:
+                  - /url: /admin/auth/group/add/
+            - row "Users Add" [ref=e41]:
+              - rowheader "Users" [ref=e42]:
+                - link "Users" [ref=e43] [cursor=pointer]:
+                  - /url: /admin/auth/user/
+              - cell "Add" [ref=e44]:
+                - link "Add" [ref=e45] [cursor=pointer]:
+                  - /url: /admin/auth/user/add/
+        - table "Bakım Modülü" [ref=e47]:
+          - caption [ref=e48]:
+            - link "Bakım Modülü" [ref=e49] [cursor=pointer]:
+              - /url: /admin/maintenance/
+          - rowgroup [ref=e50]:
+            - row "Model name Add link Change or view list link" [ref=e51]:
+              - columnheader "Model name" [ref=e52]
+              - columnheader "Add link" [ref=e53]
+              - columnheader "Change or view list link" [ref=e54]
+          - rowgroup [ref=e55]:
+            - row "Equipments Add" [ref=e56]:
+              - rowheader "Equipments" [ref=e57]:
+                - link "Equipments" [ref=e58] [cursor=pointer]:
+                  - /url: /admin/maintenance/equipment/
+              - cell "Add" [ref=e59]:
+                - link "Add" [ref=e60] [cursor=pointer]:
+                  - /url: /admin/maintenance/equipment/add/
+      - main [ref=e61]:
+        - list [ref=e62]:
+          - listitem [ref=e63]:
+            - text: The group “
+            - link "AUTO-EQ-1759996871510" [ref=e64] [cursor=pointer]:
+              - /url: /admin/auth/group/7/change/
+            - text: ” was added successfully.
+        - generic [ref=e65]:
+          - heading "Select group to change" [level=1] [ref=e66]
+          - generic [ref=e67]:
+            - list [ref=e68]:
+              - listitem [ref=e69]:
+                - link "Add group" [ref=e70] [cursor=pointer]:
+                  - /url: /admin/auth/group/add/
+            - generic [ref=e72]:
+              - search [ref=e74]:
+                - generic [ref=e75]:
+                  - img "Search" [ref=e77]
+                  - textbox "Search" [ref=e78]
+                  - button "Search" [ref=e79] [cursor=pointer]
+              - generic [ref=e80]:
+                - generic [ref=e81]:
+                  - generic [ref=e82]:
+                    - text: "Action:"
+                    - combobox "Action:" [ref=e83]:
+                      - option "---------" [selected]
+                      - option "Delete selected groups"
+                  - button "Go" [ref=e84] [cursor=pointer]
+                  - generic [ref=e85]: 0 of 7 selected
+                - table [ref=e87]:
+                  - rowgroup [ref=e88]:
+                    - row "Select all objects on this page for an action Group" [ref=e89]:
+                      - columnheader "Select all objects on this page for an action" [ref=e90]:
+                        - checkbox "Select all objects on this page for an action" [ref=e93]
+                      - columnheader "Group" [ref=e94]:
+                        - link "Group" [ref=e96] [cursor=pointer]:
+                          - /url: "?o=1"
+                  - rowgroup [ref=e97]:
+                    - row "Select this object for an action - AUTO-EQ-1759996697773 AUTO-EQ-1759996697773" [ref=e98]:
+                      - cell "Select this object for an action - AUTO-EQ-1759996697773" [ref=e99]:
+                        - checkbox "Select this object for an action - AUTO-EQ-1759996697773" [ref=e100]
+                      - cell "AUTO-EQ-1759996697773" [ref=e101]:
+                        - link "AUTO-EQ-1759996697773" [ref=e102] [cursor=pointer]:
+                          - /url: /admin/auth/group/4/change/
+                    - row "Select this object for an action - AUTO-EQ-1759996700244 AUTO-EQ-1759996700244" [ref=e103]:
+                      - cell "Select this object for an action - AUTO-EQ-1759996700244" [ref=e104]:
+                        - checkbox "Select this object for an action - AUTO-EQ-1759996700244" [ref=e105]
+                      - cell "AUTO-EQ-1759996700244" [ref=e106]:
+                        - link "AUTO-EQ-1759996700244" [ref=e107] [cursor=pointer]:
+                          - /url: /admin/auth/group/5/change/
+                    - row "Select this object for an action - AUTO-EQ-1759996869334 AUTO-EQ-1759996869334" [ref=e108]:
+                      - cell "Select this object for an action - AUTO-EQ-1759996869334" [ref=e109]:
+                        - checkbox "Select this object for an action - AUTO-EQ-1759996869334" [ref=e110]
+                      - cell "AUTO-EQ-1759996869334" [ref=e111]:
+                        - link "AUTO-EQ-1759996869334" [ref=e112] [cursor=pointer]:
+                          - /url: /admin/auth/group/6/change/
+                    - row "Select this object for an action - AUTO-EQ-1759996871510 AUTO-EQ-1759996871510" [ref=e113]:
+                      - cell "Select this object for an action - AUTO-EQ-1759996871510" [ref=e114]:
+                        - checkbox "Select this object for an action - AUTO-EQ-1759996871510" [ref=e115]
+                      - cell "AUTO-EQ-1759996871510" [ref=e116]:
+                        - link "AUTO-EQ-1759996871510" [ref=e117] [cursor=pointer]:
+                          - /url: /admin/auth/group/7/change/
+                    - row "Select this object for an action - Bakım Yöneticisi Bakım Yöneticisi" [ref=e118]:
+                      - cell "Select this object for an action - Bakım Yöneticisi" [ref=e119]:
+                        - checkbox "Select this object for an action - Bakım Yöneticisi" [ref=e120]
+                      - cell "Bakım Yöneticisi" [ref=e121]:
+                        - link "Bakım Yöneticisi" [ref=e122] [cursor=pointer]:
+                          - /url: /admin/auth/group/1/change/
+                    - row "Select this object for an action - Gözlemci Gözlemci" [ref=e123]:
+                      - cell "Select this object for an action - Gözlemci" [ref=e124]:
+                        - checkbox "Select this object for an action - Gözlemci" [ref=e125]
+                      - cell "Gözlemci" [ref=e126]:
+                        - link "Gözlemci" [ref=e127] [cursor=pointer]:
+                          - /url: /admin/auth/group/3/change/
+                    - row "Select this object for an action - Teknisyen Teknisyen" [ref=e128]:
+                      - cell "Select this object for an action - Teknisyen" [ref=e129]:
+                        - checkbox "Select this object for an action - Teknisyen" [ref=e130]
+                      - cell "Teknisyen" [ref=e131]:
+                        - link "Teknisyen" [ref=e132] [cursor=pointer]:
+                          - /url: /admin/auth/group/2/change/
+                - paragraph [ref=e133]: 7 groups
+    - contentinfo
+```

@@ -1,0 +1,172 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#content-start"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - link "Django administration" [ref=e7] [cursor=pointer]:
+        - /url: /admin/
+      - generic [ref=e8]:
+        - text: Welcome,
+        - strong [ref=e9]: admin
+        - text: .
+        - link "View site" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - text: /
+        - link "Change password" [ref=e11] [cursor=pointer]:
+          - /url: /admin/password_change/
+        - text: /
+        - button "Log out" [ref=e13] [cursor=pointer]
+        - 'button "Toggle theme (current theme: auto)" [ref=e14] [cursor=pointer]':
+          - generic [ref=e15] [cursor=pointer]: "Toggle theme (current theme: auto)"
+          - img [ref=e16] [cursor=pointer]
+    - navigation "Breadcrumbs" [ref=e18]:
+      - generic [ref=e19]:
+        - link "Home" [ref=e20] [cursor=pointer]:
+          - /url: /admin/
+        - text: ›
+        - link "Authentication and Authorization" [ref=e21] [cursor=pointer]:
+          - /url: /admin/auth/
+        - text: ›
+        - link "Groups" [ref=e22] [cursor=pointer]:
+          - /url: /admin/auth/group/
+        - text: › Add group
+    - generic [ref=e23]:
+      - button "Toggle navigation" [ref=e24] [cursor=pointer]: «
+      - navigation "Sidebar" [ref=e25]:
+        - searchbox "Filter navigation items" [ref=e26]
+        - table "Authentication and Authorization" [ref=e28]:
+          - caption [ref=e29]:
+            - link "Authentication and Authorization" [ref=e30] [cursor=pointer]:
+              - /url: /admin/auth/
+          - rowgroup [ref=e31]:
+            - row "Model name Add link Change or view list link" [ref=e32]:
+              - columnheader "Model name" [ref=e33]
+              - columnheader "Add link" [ref=e34]
+              - columnheader "Change or view list link" [ref=e35]
+          - rowgroup [ref=e36]:
+            - row "Groups Add" [ref=e37]:
+              - rowheader "Groups" [ref=e38]:
+                - link "Groups" [ref=e39] [cursor=pointer]:
+                  - /url: /admin/auth/group/
+              - cell "Add" [ref=e40]:
+                - link "Add" [ref=e41] [cursor=pointer]:
+                  - /url: /admin/auth/group/add/
+            - row "Users Add" [ref=e42]:
+              - rowheader "Users" [ref=e43]:
+                - link "Users" [ref=e44] [cursor=pointer]:
+                  - /url: /admin/auth/user/
+              - cell "Add" [ref=e45]:
+                - link "Add" [ref=e46] [cursor=pointer]:
+                  - /url: /admin/auth/user/add/
+        - table "Bakım Modülü" [ref=e48]:
+          - caption [ref=e49]:
+            - link "Bakım Modülü" [ref=e50] [cursor=pointer]:
+              - /url: /admin/maintenance/
+          - rowgroup [ref=e51]:
+            - row "Model name Add link Change or view list link" [ref=e52]:
+              - columnheader "Model name" [ref=e53]
+              - columnheader "Add link" [ref=e54]
+              - columnheader "Change or view list link" [ref=e55]
+          - rowgroup [ref=e56]:
+            - row "Equipments Add" [ref=e57]:
+              - rowheader "Equipments" [ref=e58]:
+                - link "Equipments" [ref=e59] [cursor=pointer]:
+                  - /url: /admin/maintenance/equipment/
+              - cell "Add" [ref=e60]:
+                - link "Add" [ref=e61] [cursor=pointer]:
+                  - /url: /admin/maintenance/equipment/add/
+      - main [ref=e62]:
+        - generic [ref=e63]:
+          - heading "Add group" [level=1] [ref=e64]
+          - generic [ref=e67]:
+            - group [ref=e68]:
+              - generic [ref=e71]:
+                - generic [ref=e72]: "Name:"
+                - textbox "Name:" [active] [ref=e73]
+              - generic [ref=e75]:
+                - generic [ref=e76]:
+                  - generic [ref=e77]: "Permissions:"
+                  - generic [ref=e79]:
+                    - generic [ref=e80]:
+                      - generic [ref=e81]:
+                        - generic [ref=e82]: Available permissions
+                        - paragraph [ref=e83]: Choose permissions by selecting them and then select the "Choose" arrow button.
+                      - paragraph [ref=e84]:
+                        - textbox "Type into this box to filter down the list of available permissions." [ref=e87]
+                      - listbox "Available permissions Choose permissions by selecting them and then select the \"Choose\" arrow button." [ref=e88]:
+                        - option "Administration | log entry | Can add log entry" [ref=e89]
+                        - option "Administration | log entry | Can change log entry" [ref=e90]
+                        - option "Administration | log entry | Can delete log entry" [ref=e91]
+                        - option "Administration | log entry | Can view log entry" [ref=e92]
+                        - option "Authentication and Authorization | group | Can add group" [ref=e93]
+                        - option "Authentication and Authorization | group | Can change group" [ref=e94]
+                        - option "Authentication and Authorization | group | Can delete group" [ref=e95]
+                        - option "Authentication and Authorization | group | Can view group" [ref=e96]
+                        - option "Authentication and Authorization | permission | Can add permission" [ref=e97]
+                        - option "Authentication and Authorization | permission | Can change permission" [ref=e98]
+                        - option "Authentication and Authorization | permission | Can delete permission" [ref=e99]
+                        - option "Authentication and Authorization | permission | Can view permission" [ref=e100]
+                        - option "Authentication and Authorization | user | Can add user" [ref=e101]
+                        - option "Authentication and Authorization | user | Can change user" [ref=e102]
+                        - option "Authentication and Authorization | user | Can delete user" [ref=e103]
+                        - option "Authentication and Authorization | user | Can view user" [ref=e104]
+                        - option "Content Types | content type | Can add content type" [ref=e105]
+                        - option "Content Types | content type | Can change content type" [ref=e106]
+                        - option "Content Types | content type | Can delete content type" [ref=e107]
+                        - option "Content Types | content type | Can view content type" [ref=e108]
+                        - option "calibrationasset | Can add Kalibrasyon Cihazı" [ref=e109]
+                        - option "calibrationasset | Can change Kalibrasyon Cihazı" [ref=e110]
+                        - option "calibrationasset | Can delete Kalibrasyon Cihazı" [ref=e111]
+                        - option "calibrationasset | Can view Kalibrasyon Cihazı" [ref=e112]
+                        - option "calibrationrecord | Can add calibration record" [ref=e113]
+                        - option "calibrationrecord | Can change calibration record" [ref=e114]
+                        - option "calibrationrecord | Can delete calibration record" [ref=e115]
+                        - option "calibrationrecord | Can view calibration record" [ref=e116]
+                        - option "Bakım Modülü | Departman | Can add Departman" [ref=e117]
+                        - option "Bakım Modülü | Departman | Can change Departman" [ref=e118]
+                        - option "Bakım Modülü | Departman | Can delete Departman" [ref=e119]
+                        - option "Bakım Modülü | Departman | Can view Departman" [ref=e120]
+                        - option "Bakım Modülü | equipment | Can add equipment" [ref=e121]
+                        - option "Bakım Modülü | equipment | Can change equipment" [ref=e122]
+                        - option "Bakım Modülü | equipment | Can delete equipment" [ref=e123]
+                        - option "Bakım Modülü | equipment | Can view equipment" [ref=e124]
+                        - option "maintenancechecklistitem | Can add maintenance checklist item" [ref=e125]
+                        - option "maintenancechecklistitem | Can change maintenance checklist item" [ref=e126]
+                        - option "maintenancechecklistitem | Can delete maintenance checklist item" [ref=e127]
+                        - option "maintenancechecklistitem | Can view maintenance checklist item" [ref=e128]
+                        - option "maintenanceorder | Can add maintenance order" [ref=e129]
+                        - option "maintenanceorder | Can change maintenance order" [ref=e130]
+                        - option "maintenanceorder | Can delete maintenance order" [ref=e131]
+                        - option "maintenanceorder | Can view maintenance order" [ref=e132]
+                        - option "sparepart | Can add spare part" [ref=e133]
+                        - option "sparepart | Can change spare part" [ref=e134]
+                        - option "sparepart | Can delete spare part" [ref=e135]
+                        - option "sparepart | Can view spare part" [ref=e136]
+                        - option "Sessions | session | Can add session" [ref=e137]
+                        - option "Sessions | session | Can change session" [ref=e138]
+                        - option "Sessions | session | Can delete session" [ref=e139]
+                        - option "Sessions | session | Can view session" [ref=e140]
+                      - button "Choose all permissions" [ref=e141]
+                    - list [ref=e142]:
+                      - listitem [ref=e143]:
+                        - button "Choose selected permissions" [disabled] [ref=e144]
+                      - listitem [ref=e145]:
+                        - button "Remove selected permissions" [disabled] [ref=e146]
+                    - generic [ref=e147]:
+                      - generic [ref=e148]:
+                        - generic [ref=e149]: Chosen permissions
+                        - paragraph [ref=e150]: Remove permissions by selecting them and then select the "Remove" arrow button.
+                      - paragraph [ref=e151]:
+                        - textbox "Type into this box to filter down the list of selected permissions." [ref=e154]
+                      - listbox "Chosen permissions Remove permissions by selecting them and then select the \"Remove\" arrow button." [ref=e155]
+                      - button "Remove all permissions" [disabled] [ref=e156]
+                - generic [ref=e158]: Hold down “Control”, or “Command” on a Mac, to select more than one.
+            - generic [ref=e159]:
+              - button "Save" [ref=e160] [cursor=pointer]
+              - button "Save and add another" [ref=e161] [cursor=pointer]
+              - button "Save and continue editing" [ref=e162] [cursor=pointer]
+    - contentinfo
+```
