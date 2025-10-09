@@ -1,2 +1,1 @@
-﻿id,type,title,design_ref,visual_threshold,Job definition
-EQP-999-001,smoke,Placeholder Test Başlığı,N/A,1.0,Bu satırı kendi görevlerinizle değiştirin.
+﻿id,title,severity,area,evidence,timestamp,status
