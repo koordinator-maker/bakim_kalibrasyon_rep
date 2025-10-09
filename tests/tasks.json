@@ -1,19 +1,11 @@
-{
-  "meta": {
-    "generatedAt": "2025-10-08T21:21:54.703Z",
-    "source": "csv"
-  },
-  "jobs": [
-    {
-      "id": "EQP-999-001",
-      "title": "Placeholder Test Başlığı",
-      "steps": [
-        {
-          "action": "goto",
-          "selector": "",
-          "url": ""
-        }
-      ]
-    }
-  ]
-}
+[
+  {
+    "id": "SMOKE-001",
+    "type": "check",
+    "title": "Admin açılıyor",
+    "description": "Django admin sayfası yüklenir",
+    "job_definition": "\"open:/admin/;expect:Django administration\"",
+    "design_ref": "N/A",
+    "visual_threshold": "0.9"
+  }
+]

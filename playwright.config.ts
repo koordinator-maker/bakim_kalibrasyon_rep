@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+﻿import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   globalSetup: './global-setup.ts',
   use: {
@@ -9,4 +9,6 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  reporter: [['line'], ['html']],
+  retries: 1
 });

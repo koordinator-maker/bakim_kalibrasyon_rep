@@ -1,4 +1,4 @@
-import { chromium } from "@playwright/test";
+﻿import { chromium } from "@playwright/test";
 
 export default async () => {
   const browser = await chromium.launch();
@@ -10,7 +10,7 @@ export default async () => {
   await page.fill("#id_username", process.env.ADMIN_USER || "");
   await page.fill("#id_password", process.env.ADMIN_PASS || "");
 
-  // CSS ve text selector karıştırma! getByRole kullan
+  // CSS ve text selector karÄ±ÅŸtÄ±rma! getByRole kullan
   await Promise.all([
     page.waitForNavigation({ waitUntil: "domcontentloaded" }),
     page.getByRole("button", { name: /log in/i }).click()
@@ -21,3 +21,4 @@ export default async () => {
   await context.storageState({ path: "storage/user.json" });
   await browser.close();
 };
+
