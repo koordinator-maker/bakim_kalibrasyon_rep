@@ -1,32 +1,12 @@
-import { defineConfig, devices } from '@playwright/test';
-
-const baseURL = process.env.BASE_URL ?? 'http://127.0.0.1:8010';
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests',
-  timeout: 30 * 1000,
-  retries: 2,
-
-  // ESM configte dÃƒÂ¼z string yol:
-  globalSetup: './tests/global.setup.cjs',
-
-  use: { actionTimeout: 10_000, navigationTimeout: 15_000,
-    baseURL,
+  use: {
+    baseURL: process.env.BASE_URL || 'http://127.0.0.1:8010',
     storageState: 'storage/user.json',
-    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: 'on-first-retry',
+    trace: 'on-first-retry',
   },
-
-  projects: [
-    { name: 'chromium', use: { actionTimeout: 10_000, navigationTimeout: 15_000, ...devices['Desktop Chrome'] } },
-    // { name: 'firefox', use: { actionTimeout: 10_000, navigationTimeout: 15_000, ...devices['Desktop Firefox'] } },
-    // { name: 'webkit',  use: { actionTimeout: 10_000, navigationTimeout: 15_000, ...devices['Desktop Safari'] } },
-  ],
-
-  reporter: [
-    ['line'],
-    ['html', { open: 'never', outputFolder: 'playwright-report' }],
-  ],
+  retries: 2
 });
-
