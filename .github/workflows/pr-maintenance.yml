@@ -1,22 +1,14 @@
 name: PR Maintenance
-
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
-
 permissions:
   contents: read
   pull-requests: write
-
 jobs:
   maintain:
     runs-on: ubuntu-latest
     steps:
-      - name: Install GitHub CLI
-        uses: cli/cli@v2
-        with:
-          version: latest
-
       - name: Health check + no-op
         env:
           GH_TOKEN: ${{ github.token }}
