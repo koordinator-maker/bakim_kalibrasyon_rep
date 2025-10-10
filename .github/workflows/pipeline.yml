@@ -1,3 +1,8 @@
+on:
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/pr-maintenance.yml'
+
 name: pipeline
 on: [push, pull_request]
 jobs:

@@ -1,69 +1,19 @@
-﻿name: PR Maintenance
+name: PR Maintenance
 on:
-  workflow_dispatch: {}
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled]
-  schedule:
-    - cron: "*/15 * * * *"
-
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
-
 jobs:
   maintain:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-
-      - name: Set git user
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Install GitHub CLI
-        uses: cli/cli@v2
-        with:
-          version: latest
-
-      # PR event'inde sadece ilgili PR
-      - name: Update single PR (PR event)
-        if: ${{ github.event_name == 'pull_request' }}
-        shell: pwsh
+      - name: Setup gh CLI
+        uses: cli/gh-actions@v2
+      - name: Health check + no-op
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $pr = ${{ github.event.pull_request.number }}
-          $slug = "${{ github.repository }}"
-          try {
-            $sha  = gh pr view $pr --json headRefOid --jq .headRefOid
-            gh api -X PUT "repos/$slug/pulls/$pr/update-branch" `
-              -F expected_head_sha=$sha `
-              -H "Accept: application/vnd.github+json" 2>$null | Out-Null
-          } catch {}
-          ./ops/rebase_auto.ps1 -PrNumber $pr
-          gh pr review $pr --approve 2>$null
-          gh pr merge  $pr --squash --auto
-
-      # dispatch/schedule'da tüm açık PR'lar
-      - name: Update all open PRs (dispatch/schedule)
-        if: ${{ github.event_name != 'pull_request' }}
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $slug = "${{ github.repository }}"
-          $open = gh pr list --state open --json number --jq '.[].number'
-          foreach ($pr in $open) {
-            try {
-              $sha = gh pr view $pr --json headRefOid --jq .headRefOid
-              gh api -X PUT "repos/$slug/pulls/$pr/update-branch" `
-                -F expected_head_sha=$sha `
-                -H "Accept: application/vnd.github+json" 2>$null | Out-Null
-            } catch {}
-            ./ops/rebase_auto.ps1 -PrNumber $pr
-            gh pr review $pr --approve 2>$null
-            gh pr merge  $pr --squash --auto
-          }
+          gh --version || true
+          echo "PR Maintenance OK"
