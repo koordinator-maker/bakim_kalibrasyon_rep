@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches: [ main ]
   pull_request:
@@ -32,6 +33,7 @@ jobs:
           [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
       - name: Seed admin user
         if: steps.changes.outputs.only_pr_maint != 'true'
+        if: steps.changes.outputs.only_pr_maint != 'true'
         shell: pwsh
         env:
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
@@ -43,6 +45,8 @@ jobs:
 
       - name: Run visual pipeline + flows gate
 
+
+        if: steps.changes.outputs.only_pr_maint != 'true'
         if: steps.changes.outputs.only_pr_maint != 'true'
         shell: pwsh
         run: |

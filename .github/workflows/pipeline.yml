@@ -18,12 +18,14 @@ jobs:
         with: { python-version: '3.11' }
       - name: Install deps
         if: steps.changes.outputs.only_pr_maint != 'true'
+        if: steps.changes.outputs.only_pr_maint != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m pip install playwright
           python -m playwright install chromium
       - name: Serve & Pipeline
+        if: steps.changes.outputs.only_pr_maint != 'true'
         if: steps.changes.outputs.only_pr_maint != 'true'
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File .\tools\serve_then_pipeline.ps1 -BindHost 127.0.0.1 -Port 8000
