@@ -118,3 +118,4 @@ Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+# kick CI
