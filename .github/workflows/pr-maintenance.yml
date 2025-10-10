@@ -63,3 +63,4 @@ uses: cli/gh-actions@v2
             gh pr review $pr --approve 2>$null
             gh pr merge  $pr --squash --auto
           }
+# kick pr-maintenance
