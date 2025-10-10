@@ -1,8 +1,18 @@
 name: Playwright CI
 on:
   push:
+    paths-ignore:
+      - 'ops/**'
+      - '.github/workflows/universal-suite.yml'
+      - '.gitattributes'
+      - '**/*.md'
   pull_request:
 
+    paths-ignore:
+      - 'ops/**'
+      - '.github/workflows/universal-suite.yml'
+      - '.gitattributes'
+      - '**/*.md'
 jobs:
   test:
     runs-on: windows-latest

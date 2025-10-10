@@ -2,9 +2,19 @@ name: CI
 
 on:
   push:
+    paths-ignore:
+      - 'ops/**'
+      - '.github/workflows/universal-suite.yml'
+      - '.gitattributes'
+      - '**/*.md'
     branches: [ main ]
   pull_request:
 
+    paths-ignore:
+      - 'ops/**'
+      - '.github/workflows/universal-suite.yml'
+      - '.gitattributes'
+      - '**/*.md'
 jobs:
   pipeline:
     runs-on: windows-latest

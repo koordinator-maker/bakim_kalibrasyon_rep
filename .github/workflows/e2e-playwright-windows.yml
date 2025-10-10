@@ -1,3 +1,17 @@
+on:
+  push:
+    paths-ignore:
+      - 'ops/**'
+      - '.github/workflows/universal-suite.yml'
+      - '.gitattributes'
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - 'ops/**'
+      - '.github/workflows/universal-suite.yml'
+      - '.gitattributes'
+      - '**/*.md'
+
 name: e2e-playwright-windows
 on: { workflow_dispatch: {} }
 jobs:
