@@ -29,6 +29,8 @@ jobs:
       - name: Install deps
 
         if: steps.changes.outputs.only_ops != 'true'
+
+        if: steps.changes.outputs.only_ops != 'true'
         run: |
           npm ci
           npx playwright install --with-deps chromium
@@ -43,6 +45,8 @@ jobs:
           if (!(Test-Path storage\user.json)) { throw "storage yazılamadı" }
 
       - name: Run tests (Chromium only)
+
+        if: steps.changes.outputs.only_ops != 'true'
 
         if: steps.changes.outputs.only_ops != 'true'
         env:
