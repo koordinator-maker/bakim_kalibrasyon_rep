@@ -4,6 +4,10 @@ on:
     # Nightly (00:00 UTC ~= 03:00 Türkiye)
     - cron: "0 0 * * *"
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "ops/**"
+      - ".github/workflows/universal-suite.yml"
 # Pages için gerekli
 permissions:
   contents: read
@@ -21,26 +25,45 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Decide mode (full vs dry-run)
+        run: |
+          if ("${{ secrets.UNIV_BASE_URL }}") {
+            "MODE=full" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            "MODE=dry" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
       - name: Setup Node (Playwright için, varsa)
+        if: env.MODE == 'full'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
       - name: Install NPM deps (if package.json)
+        if: env.MODE == 'full'
         run: |
           if (Test-Path package.json) { npm ci }
       - name: Install Playwright (if package.json)
+        if: env.MODE == 'full'
         run: |
           if (Test-Path package.json) { npx playwright install }
-      - name: Run Universal Suite
+      - name: Run Universal Suite (FULL)
+        if: env.MODE == 'full'
         run: |
           $repo = (Get-Location).Path
           $base = "${{ secrets.UNIV_BASE_URL }}"
-          if (-not $base) { $base = "http://127.0.0.1:8010" }
+          if (-not $base) { throw "UNIV_BASE_URL secret yok; full modda koşulamaz." }
           & "$repo\ops\run_universal_suite.ps1" -Repo $repo -BaseUrl $base -EntryPath "/admin/" -GateOnFail:$false
-      - name: Build quick-links HTML
+      - name: Dry-run: placeholder rapor/özet üret (PR ortamı, secret yoksa)
+        if: env.MODE == 'dry'
         run: |
-          $repo = (Get-Location).Path
-          & "$repo\ops\diagnostics\build_quicklinks_html.ps1" -Repo $repo -ReportsDir "_otokodlama\reports" -BundleDir "_otokodlama\bundle"
+          New-Item -ItemType Directory -Force -Path "_otokodlama\reports\dashboard" | Out-Null
+          New-Item -ItemType Directory -Force -Path "_otokodlama\reports\junit" | Out-Null
+          New-Item -ItemType Directory -Force -Path "_otokodlama\bundle" | Out-Null
+          $ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
+          $tot = "_otokodlama\reports\dashboard\totals_$ts.csv"
+          "Timestamp,PASS,WARN,FAIL`n$ts,0,0,0" | Out-File -FilePath $tot -Encoding utf8
+          $det = "_otokodlama\reports\dashboard\details_$ts.csv"
+          "Section,Status,Message" | Out-File -FilePath $det -Encoding utf8
+          pwsh ".\ops\diagnostics\build_quicklinks_html.ps1" -Repo . -ReportsDir "_otokodlama\reports" -BundleDir "_otokodlama\bundle"
       - name: Job summary (PASS/WARN/FAIL)
         run: |
           $dash = Join-Path (Join-Path (Join-Path (Get-Location).Path "_otokodlama") "reports") "dashboard"
@@ -83,6 +106,7 @@ Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
           name: universal-junit
           path: _otokodlama/reports/junit/**/*.xml
   deploy-pages:
+    if: github.event_name != 'pull_request'  # PR'da atla, nightly/manual'da yayımla
     needs: universal
     runs-on: ubuntu-latest
     environment:
