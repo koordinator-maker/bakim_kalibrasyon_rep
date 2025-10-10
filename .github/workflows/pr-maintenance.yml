@@ -20,7 +20,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Install GitHub CLI
-        uses: cli/cli@v2
+uses: cli/gh-actions@v2
         with:
           version: latest
 
