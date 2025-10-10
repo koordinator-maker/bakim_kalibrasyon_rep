@@ -4,6 +4,14 @@ on:
     # Nightly (00:00 UTC ~= 03:00 Türkiye)
     - cron: "0 0 * * *"
   workflow_dispatch:
+# Pages için gerekli
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 jobs:
   universal:
     runs-on: windows-latest
@@ -49,7 +57,12 @@ Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
 "@
             $md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }
-      - name: Upload reports
+      # Pages: dashboard'ı artifact olarak yükle (diğer job alıp yayımlar)
+      - name: Upload dashboard to Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _otokodlama/reports/dashboard
+      - name: Upload reports (tam arşiv)
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
@@ -69,3 +82,15 @@ Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
         with:
           name: universal-junit
           path: _otokodlama/reports/junit/**/*.xml
+  deploy-pages:
+    needs: universal
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
