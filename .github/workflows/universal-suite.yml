@@ -80,7 +80,7 @@ Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
 "@
             $md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
           }
-      # Pages: dashboard'ı artifact olarak yükle (diğer job alıp yayımlar)
+      # Pages artefact
       - name: Upload dashboard to Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -118,4 +118,3 @@ Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-# kick CI
