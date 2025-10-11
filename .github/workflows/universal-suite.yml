@@ -1,0 +1,121 @@
+name: Universal Suite (Nightly)
+on:
+  schedule:
+    # Nightly (00:00 UTC ~= 03:00 Türkiye)
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "ops/**"
+      - ".github/workflows/universal-suite.yml"
+# Pages için gerekli
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+jobs:
+  universal:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Decide mode (full vs dry-run)
+        run: |
+          if ("${{ secrets.UNIV_BASE_URL }}") {
+            "MODE=full" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            "MODE=dry" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+      - name: Setup Node (Playwright için, varsa)
+        if: env.MODE == 'full'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install NPM deps (if package.json)
+        if: env.MODE == 'full'
+        run: |
+          if (Test-Path package.json) { npm ci }
+      - name: Install Playwright (if package.json)
+        if: env.MODE == 'full'
+        run: |
+          if (Test-Path package.json) { npx playwright install }
+      - name: Run Universal Suite (FULL)
+        if: env.MODE == 'full'
+        run: |
+          $repo = (Get-Location).Path
+          $base = "${{ secrets.UNIV_BASE_URL }}"
+          if (-not $base) { throw "UNIV_BASE_URL secret yok; full modda koşulamaz." }
+          & "$repo\ops\run_universal_suite.ps1" -Repo $repo -BaseUrl $base -EntryPath "/admin/" -GateOnFail:$false
+      - name: Dry-run: placeholder rapor/özet üret (PR ortamı, secret yoksa)
+        if: env.MODE == 'dry'
+        run: |
+          New-Item -ItemType Directory -Force -Path "_otokodlama\reports\dashboard" | Out-Null
+          New-Item -ItemType Directory -Force -Path "_otokodlama\reports\junit" | Out-Null
+          New-Item -ItemType Directory -Force -Path "_otokodlama\bundle" | Out-Null
+          $ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
+          $tot = "_otokodlama\reports\dashboard\totals_$ts.csv"
+          "Timestamp,PASS,WARN,FAIL`n$ts,0,0,0" | Out-File -FilePath $tot -Encoding utf8
+          $det = "_otokodlama\reports\dashboard\details_$ts.csv"
+          "Section,Status,Message" | Out-File -FilePath $det -Encoding utf8
+          pwsh ".\ops\diagnostics\build_quicklinks_html.ps1" -Repo . -ReportsDir "_otokodlama\reports" -BundleDir "_otokodlama\bundle"
+      - name: Job summary (PASS/WARN/FAIL)
+        run: |
+          $dash = Join-Path (Join-Path (Join-Path (Get-Location).Path "_otokodlama") "reports") "dashboard"
+          $tot = Get-ChildItem $dash -File -Filter "totals_*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($tot) {
+            $o = Import-Csv $tot.FullName | Select-Object -First 1
+$md = @"
+### Universal Suite Summary
+**Timestamp:** $($o.Timestamp)
+- **PASS:** $($o.PASS)
+- **WARN:** $($o.WARN)
+- **FAIL:** $($o.FAIL)
+Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
+"@
+            $md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          }
+      # Pages artefact
+      - name: Upload dashboard to Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _otokodlama/reports/dashboard
+      - name: Upload reports (tam arşiv)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-reports
+          path: |
+            _otokodlama/reports/**
+            playwright-report/**
+      - name: Upload bundles
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-bundles
+          path: _otokodlama/bundle/**
+      - name: Upload JUnit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-junit
+          path: _otokodlama/reports/junit/**/*.xml
+  deploy-pages:
+    if: github.event_name != 'pull_request'  # PR'da atla, nightly/manual'da yayımla
+    needs: universal
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+# retrigger checks

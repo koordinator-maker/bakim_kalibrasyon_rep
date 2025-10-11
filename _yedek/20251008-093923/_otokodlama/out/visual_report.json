@@ -1,0 +1,12 @@
+{
+    "ok":  true,
+    "items":  [
+                  {
+                      "ok":  true,
+                      "url":  null,
+                      "id":  null,
+                      "note":  "no visual config (skipped)"
+                  }
+              ],
+    "state":  "C:\\dev\\bakim_kalibrasyon\\ops\\state.json"
+}

@@ -1,0 +1,27 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#content-start"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "Django administration" [ref=e7] [cursor=pointer]:
+          - /url: /admin/
+        - 'button "Toggle theme (current theme: auto)" [ref=e8] [cursor=pointer]':
+          - generic [ref=e9] [cursor=pointer]: "Toggle theme (current theme: auto)"
+          - img [ref=e10] [cursor=pointer]
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - paragraph [ref=e15]: Please enter the correct username and password for a staff account. Note that both fields may be case-sensitive.
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e19]: "Username:"
+            - textbox "Username:" [active] [ref=e20]: AUTO
+          - generic [ref=e21]:
+            - generic [ref=e22]: "Password:"
+            - textbox "Password:" [ref=e23]
+          - button "Log in" [ref=e25] [cursor=pointer]
+    - contentinfo
+```

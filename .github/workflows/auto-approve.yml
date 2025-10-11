@@ -1,4 +1,4 @@
-﻿name: Auto Approve UI PR
+name: Auto Approve UI PR
 permissions:
   contents: read
   pull-requests: write
@@ -17,10 +17,3 @@ jobs:
 on:
 ubuntu-latest
     steps:
-      - name: Auto approve when label present
-        uses: peter-evans/approve-pull-request@v6
-        with:
-          token: ${{ secrets.OZKAN_PAT }}
-          pull-request-number: ${{ github.event.pull_request.number }}
-          message: Auto-approve: UI pipeline green.
-

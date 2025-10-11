@@ -1,4 +1,4 @@
-﻿name: PR Maintenance
+name: PR Maintenance
 on:
   workflow_dispatch: {}
   pull_request:
@@ -14,17 +14,13 @@ jobs:
   maintain:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-
       - name: Set git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Install GitHub CLI
-        uses: cli/cli@v2
+uses: cli/gh-actions@v2
         with:
           version: latest
 
@@ -67,3 +63,4 @@ jobs:
             gh pr review $pr --approve 2>$null
             gh pr merge  $pr --squash --auto
           }
+# kick pr-maintenance

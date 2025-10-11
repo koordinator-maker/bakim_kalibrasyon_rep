@@ -1,4 +1,4 @@
-﻿name: CI Auto PR
+name: CI Auto PR
 on:
   workflow_dispatch: {}
   schedule:
@@ -10,15 +10,12 @@ jobs:
   auto-pr:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
       - name: Set git user
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Install GitHub CLI
-        uses: cli/cli@v2
+uses: cli/gh-actions@v2
         with:
           version: latest
       - name: Run auto PR script (PowerShell Core)
