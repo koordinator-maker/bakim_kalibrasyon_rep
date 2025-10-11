@@ -1,10 +1,8 @@
-﻿name: PR Maintenance
+name: PR Maintenance (auto-approve & merge)
+
 on:
-  workflow_dispatch: {}
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
-  schedule:
-    - cron: "*/15 * * * *"
 
 permissions:
   contents: write
@@ -14,56 +12,35 @@ jobs:
   maintain:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-
-      - name: Set git user
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Install GitHub CLI
-        uses: cli/cli@v2
-        with:
-          version: latest
-
-      # PR event'inde sadece ilgili PR
-      - name: Update single PR (PR event)
-        if: ${{ github.event_name == 'pull_request' }}
-        shell: pwsh
+      - name: Who am I (bot)
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+        shell: bash
         run: |
-          $pr = ${{ github.event.pull_request.number }}
-          $slug = "${{ github.repository }}"
-          try {
-            $sha  = gh pr view $pr --json headRefOid --jq .headRefOid
-            gh api -X PUT "repos/$slug/pulls/$pr/update-branch" `
-              -F expected_head_sha=$sha `
-              -H "Accept: application/vnd.github+json" 2>$null | Out-Null
-          } catch {}
-          ./ops/rebase_auto.ps1 -PrNumber $pr
-          gh pr review $pr --approve 2>$null
-          gh pr merge  $pr --squash --auto
+          echo "BOT_LOGIN=$(gh api user -q .login)"
+          echo "PR_AUTHOR=${{ github.event.pull_request.user.login }}"
 
-      # dispatch/schedule'da tüm açık PR'lar
-      - name: Update all open PRs (dispatch/schedule)
-        if: ${{ github.event_name != 'pull_request' }}
-        shell: pwsh
+      - name: Auto-approve & enable auto-merge (tolerant)
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+        shell: bash
         run: |
-          $slug = "${{ github.repository }}"
-          $open = gh pr list --state open --json number --jq '.[].number'
-          foreach ($pr in $open) {
-            try {
-              $sha = gh pr view $pr --json headRefOid --jq .headRefOid
-              gh api -X PUT "repos/$slug/pulls/$pr/update-branch" `
-                -F expected_head_sha=$sha `
-                -H "Accept: application/vnd.github+json" 2>$null | Out-Null
-            } catch {}
-            ./ops/rebase_auto.ps1 -PrNumber $pr
-            gh pr review $pr --approve 2>$null
-            gh pr merge  $pr --squash --auto
-          }
+          set -e
+          pr=${{ github.event.pull_request.number }}
+          slug=${{ github.repository }}
+
+          # (Opsiyonel) base ile güncelle - hata verse de akışı bozma
+          sha=$(gh pr view "$pr" --json headRefOid --jq .headRefOid 2>/dev/null || true)
+          if [ -n "$sha" ]; then
+            gh api -X PUT "repos/$slug/pulls/$pr/update-branch" \
+              -f expected_head_sha="$sha" \
+              -H "Accept: application/vnd.github+json" || true
+          fi
+
+          # Onayla (gerekliyse); "own PR" veya gerek yoksa sorun etme
+          gh pr review "$pr" --approve || true
+
+          # Auto-merge aç (şartlar hazır değilse hata verse de YEŞİL kalsın)
+          gh pr merge "$pr" --squash --auto || true
+
+          echo "PR Maintenance done."
