@@ -39,9 +39,9 @@
           - rowheader "Python Path:" [ref=e36]
           - cell "['C:\\\\dev\\\\bakim_kalibrasyon', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages']" [ref=e37]:
             - code [ref=e39]: "['C:\\\\dev\\\\bakim_kalibrasyon', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages']"
-        - 'row "Server time: Sat, 11 Oct 2025 09:20:19 +0000" [ref=e40]':
+        - 'row "Server time: Sat, 11 Oct 2025 12:42:13 +0000" [ref=e40]':
           - rowheader "Server time:" [ref=e41]
-          - cell "Sat, 11 Oct 2025 09:20:19 +0000" [ref=e42]
+          - cell "Sat, 11 Oct 2025 12:42:13 +0000" [ref=e42]
   - main [ref=e43]:
     - generic [ref=e44]:
       - heading "Traceback Switch to copy-and-paste view" [level=2] [ref=e45]:
@@ -380,10 +380,10 @@
             - cell "CONTENT_TYPE" [ref=e353]
             - cell "'text/plain'" [ref=e354]:
               - generic [ref=e355]: "'text/plain'"
-          - row "CSRF_COOKIE 'OwsJROhIQiBj4MdcQRVh9knUR4c0lemF'" [ref=e356]:
+          - row "CSRF_COOKIE 'Ebfl12v3uwSG6vUF7dm6G8DiGH8k49fx'" [ref=e356]:
             - cell "CSRF_COOKIE" [ref=e357]
-            - cell "'OwsJROhIQiBj4MdcQRVh9knUR4c0lemF'" [ref=e358]:
-              - generic [ref=e359]: "'OwsJROhIQiBj4MdcQRVh9knUR4c0lemF'"
+            - cell "'Ebfl12v3uwSG6vUF7dm6G8DiGH8k49fx'" [ref=e358]:
+              - generic [ref=e359]: "'Ebfl12v3uwSG6vUF7dm6G8DiGH8k49fx'"
           - row "DEFAULT_FROM_EMAIL 'Bakım Kalibrasyon <kullanici@domain.com>'" [ref=e360]:
             - cell "DEFAULT_FROM_EMAIL" [ref=e361]
             - cell "'Bakım Kalibrasyon <kullanici@domain.com>'" [ref=e362]:
@@ -800,10 +800,10 @@
             - cell "wsgi.file_wrapper" [ref=e773]
             - cell "<class 'wsgiref.util.FileWrapper'>" [ref=e774]:
               - generic [ref=e775]: <class 'wsgiref.util.FileWrapper'>
-          - row "wsgi.input <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2E7B250>" [ref=e776]:
+          - row "wsgi.input <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2D6C040>" [ref=e776]:
             - cell "wsgi.input" [ref=e777]
-            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2E7B250>" [ref=e778]:
-              - generic [ref=e779]: <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2E7B250>
+            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2D6C040>" [ref=e778]:
+              - generic [ref=e779]: <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2D6C040>
           - row "wsgi.multiprocess False" [ref=e780]:
             - cell "wsgi.multiprocess" [ref=e781]
             - cell "False" [ref=e782]:

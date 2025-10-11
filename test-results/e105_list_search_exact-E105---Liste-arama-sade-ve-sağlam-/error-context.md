@@ -10,9 +10,9 @@
         - 'row "Request Method: GET" [ref=e7]':
           - rowheader "Request Method:" [ref=e8]
           - cell "GET" [ref=e9]
-        - 'row "Request URL: http://127.0.0.1:8010/admin/maintenance/equipment/_direct/?q=AUTO-E105-1760174388725" [ref=e10]':
+        - 'row "Request URL: http://127.0.0.1:8010/admin/maintenance/equipment/_direct/?q=AUTO-E105-1760186514381" [ref=e10]':
           - rowheader "Request URL:" [ref=e11]
-          - cell "http://127.0.0.1:8010/admin/maintenance/equipment/_direct/?q=AUTO-E105-1760174388725" [ref=e12]
+          - cell "http://127.0.0.1:8010/admin/maintenance/equipment/_direct/?q=AUTO-E105-1760186514381" [ref=e12]
         - 'row "Django Version: 5.2.6" [ref=e13]':
           - rowheader "Django Version:" [ref=e14]
           - cell "5.2.6" [ref=e15]
@@ -39,9 +39,9 @@
           - rowheader "Python Path:" [ref=e36]
           - cell "['C:\\\\dev\\\\bakim_kalibrasyon', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages']" [ref=e37]:
             - code [ref=e39]: "['C:\\\\dev\\\\bakim_kalibrasyon', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages']"
-        - 'row "Server time: Sat, 11 Oct 2025 09:19:49 +0000" [ref=e40]':
+        - 'row "Server time: Sat, 11 Oct 2025 12:41:55 +0000" [ref=e40]':
           - rowheader "Server time:" [ref=e41]
-          - cell "Sat, 11 Oct 2025 09:19:49 +0000" [ref=e42]
+          - cell "Sat, 11 Oct 2025 12:41:55 +0000" [ref=e42]
   - main [ref=e43]:
     - generic [ref=e44]:
       - heading "Traceback Switch to copy-and-paste view" [level=2] [ref=e45]:
@@ -340,10 +340,10 @@
             - columnheader "Variable" [ref=e308]
             - columnheader "Value" [ref=e309]
         - rowgroup [ref=e310]:
-          - row "q 'AUTO-E105-1760174388725'" [ref=e311]:
+          - row "q 'AUTO-E105-1760186514381'" [ref=e311]:
             - cell "q" [ref=e312]
-            - cell "'AUTO-E105-1760174388725'" [ref=e313]:
-              - generic [ref=e314]: "'AUTO-E105-1760174388725'"
+            - cell "'AUTO-E105-1760186514381'" [ref=e313]:
+              - generic [ref=e314]: "'AUTO-E105-1760186514381'"
       - heading "POST" [level=3] [ref=e315]
       - paragraph [ref=e316]: No POST data
       - heading "FILES" [level=3] [ref=e317]
@@ -434,10 +434,10 @@
             - cell "CONTENT_TYPE" [ref=e402]
             - cell "'text/plain'" [ref=e403]:
               - generic [ref=e404]: "'text/plain'"
-          - row "CSRF_COOKIE 'xt027jEfoY2ln8yMZaJGe48XwLlDpciy'" [ref=e405]:
+          - row "CSRF_COOKIE 'qUgUx6svVcFU0xmWtX99oIPMX8o1ZGL6'" [ref=e405]:
             - cell "CSRF_COOKIE" [ref=e406]
-            - cell "'xt027jEfoY2ln8yMZaJGe48XwLlDpciy'" [ref=e407]:
-              - generic [ref=e408]: "'xt027jEfoY2ln8yMZaJGe48XwLlDpciy'"
+            - cell "'qUgUx6svVcFU0xmWtX99oIPMX8o1ZGL6'" [ref=e407]:
+              - generic [ref=e408]: "'qUgUx6svVcFU0xmWtX99oIPMX8o1ZGL6'"
           - row "DEFAULT_FROM_EMAIL 'Bakım Kalibrasyon <kullanici@domain.com>'" [ref=e409]:
             - cell "DEFAULT_FROM_EMAIL" [ref=e410]
             - cell "'Bakım Kalibrasyon <kullanici@domain.com>'" [ref=e411]:
@@ -662,10 +662,10 @@
             - cell "PYCHARM COMMUNITY EDITION" [ref=e630]
             - cell "'C:\\\\Program Files\\\\JetBrains\\\\PyCharm Community Edition 2021.3.3\\\\bin;'" [ref=e631]:
               - generic [ref=e632]: "'C:\\\\Program Files\\\\JetBrains\\\\PyCharm Community Edition 2021.3.3\\\\bin;'"
-          - row "QUERY_STRING 'q=AUTO-E105-1760174388725'" [ref=e633]:
+          - row "QUERY_STRING 'q=AUTO-E105-1760186514381'" [ref=e633]:
             - cell "QUERY_STRING" [ref=e634]
-            - cell "'q=AUTO-E105-1760174388725'" [ref=e635]:
-              - generic [ref=e636]: "'q=AUTO-E105-1760174388725'"
+            - cell "'q=AUTO-E105-1760186514381'" [ref=e635]:
+              - generic [ref=e636]: "'q=AUTO-E105-1760186514381'"
           - row "REGIONCODE 'EMEA'" [ref=e637]:
             - cell "REGIONCODE" [ref=e638]
             - cell "'EMEA'" [ref=e639]:
@@ -854,10 +854,10 @@
             - cell "wsgi.file_wrapper" [ref=e822]
             - cell "<class 'wsgiref.util.FileWrapper'>" [ref=e823]:
               - generic [ref=e824]: <class 'wsgiref.util.FileWrapper'>
-          - row "wsgi.input <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2E79B70>" [ref=e825]:
+          - row "wsgi.input <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2F17010>" [ref=e825]:
             - cell "wsgi.input" [ref=e826]
-            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2E79B70>" [ref=e827]:
-              - generic [ref=e828]: <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2E79B70>
+            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2F17010>" [ref=e827]:
+              - generic [ref=e828]: <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2F17010>
           - row "wsgi.multiprocess False" [ref=e829]:
             - cell "wsgi.multiprocess" [ref=e830]
             - cell "False" [ref=e831]:

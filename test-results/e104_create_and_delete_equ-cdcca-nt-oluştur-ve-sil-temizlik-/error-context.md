@@ -96,7 +96,7 @@
                   - textbox "Code:" [active] [ref=e76]
               - generic [ref=e79]:
                 - generic [ref=e80]: "Name:"
-                - textbox "Name:" [ref=e81]: AUTO-NAME-1760174387718
+                - textbox "Name:" [ref=e81]: AUTO-NAME-1760186513446
               - generic [ref=e84]:
                 - generic [ref=e85]: "Area:"
                 - textbox "Area:" [ref=e86]
