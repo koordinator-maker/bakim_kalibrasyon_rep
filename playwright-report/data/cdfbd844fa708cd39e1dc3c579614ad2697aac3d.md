@@ -1,0 +1,1490 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - heading "OperationalError at /admin/maintenance/equipment/_direct/" [level=1] [ref=e3]
+    - generic [ref=e4]: "no such column: maintenance_equipment.code"
+    - table [ref=e5]:
+      - rowgroup [ref=e6]:
+        - 'row "Request Method: GET" [ref=e7]':
+          - rowheader "Request Method:" [ref=e8]
+          - cell "GET" [ref=e9]
+        - 'row "Request URL: http://127.0.0.1:8010/admin/maintenance/equipment/_direct/?q=AUTO-E105-1760186514381" [ref=e10]':
+          - rowheader "Request URL:" [ref=e11]
+          - cell "http://127.0.0.1:8010/admin/maintenance/equipment/_direct/?q=AUTO-E105-1760186514381" [ref=e12]
+        - 'row "Django Version: 5.2.6" [ref=e13]':
+          - rowheader "Django Version:" [ref=e14]
+          - cell "5.2.6" [ref=e15]
+        - 'row "Exception Type: OperationalError" [ref=e16]':
+          - rowheader "Exception Type:" [ref=e17]
+          - cell "OperationalError" [ref=e18]
+        - 'row "Exception Value: no such column: maintenance_equipment.code" [ref=e19]':
+          - rowheader "Exception Value:" [ref=e20]
+          - 'cell "no such column: maintenance_equipment.code" [ref=e21]':
+            - generic [ref=e22]: "no such column: maintenance_equipment.code"
+        - 'row "Exception Location: C:\\dev\\bakim_kalibrasyon\\venv\\Lib\\site-packages\\django\\db\\backends\\sqlite3\\base.py, line 361, in execute" [ref=e23]':
+          - rowheader "Exception Location:" [ref=e24]
+          - cell "C:\\dev\\bakim_kalibrasyon\\venv\\Lib\\site-packages\\django\\db\\backends\\sqlite3\\base.py, line 361, in execute" [ref=e25]
+        - 'row "Raised during: core.urls.equipment_list_direct" [ref=e26]':
+          - rowheader "Raised during:" [ref=e27]
+          - cell "core.urls.equipment_list_direct" [ref=e28]
+        - 'row "Python Executable: C:\\dev\\bakim_kalibrasyon\\venv\\Scripts\\python.exe" [ref=e29]':
+          - rowheader "Python Executable:" [ref=e30]
+          - cell "C:\\dev\\bakim_kalibrasyon\\venv\\Scripts\\python.exe" [ref=e31]
+        - 'row "Python Version: 3.11.9" [ref=e32]':
+          - rowheader "Python Version:" [ref=e33]
+          - cell "3.11.9" [ref=e34]
+        - 'row "Python Path: [''C:\\\\dev\\\\bakim_kalibrasyon'', ''C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip'', ''C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs'', ''C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib'', ''C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311'', ''C:\\\\dev\\\\bakim_kalibrasyon\\\\venv'', ''C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages'']" [ref=e35]':
+          - rowheader "Python Path:" [ref=e36]
+          - cell "['C:\\\\dev\\\\bakim_kalibrasyon', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages']" [ref=e37]:
+            - code [ref=e39]: "['C:\\\\dev\\\\bakim_kalibrasyon', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python311.zip', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\DLLs', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\Lib', 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv', 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv\\\\Lib\\\\site-packages']"
+        - 'row "Server time: Sat, 11 Oct 2025 12:41:55 +0000" [ref=e40]':
+          - rowheader "Server time:" [ref=e41]
+          - cell "Sat, 11 Oct 2025 12:41:55 +0000" [ref=e42]
+  - main [ref=e43]:
+    - generic [ref=e44]:
+      - heading "Traceback Switch to copy-and-paste view" [level=2] [ref=e45]:
+        - text: Traceback
+        - button "Switch to copy-and-paste view" [ref=e47] [cursor=pointer]
+      - list [ref=e49]:
+        - listitem [ref=e50]:
+          - code [ref=e51]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\backends\utils.py
+          - text: ", line 106, in _execute"
+          - list [ref=e53]:
+            - listitem [ref=e54] [cursor=pointer]:
+              - text: return self.cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e55]: …
+          - group [ref=e56]:
+            - generic "Local vars" [ref=e57] [cursor=pointer]
+        - listitem [ref=e58]:
+          - code [ref=e59]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\backends\sqlite3\base.py
+          - text: ", line 361, in execute"
+          - list [ref=e61]:
+            - listitem [ref=e62] [cursor=pointer]:
+              - text: return super().execute(query, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e63]: …
+          - group [ref=e64]:
+            - generic "Local vars" [ref=e65] [cursor=pointer]
+        - listitem [ref=e66]:
+          - 'heading "The above exception (no such column: maintenance_equipment.code) was the direct cause of the following exception:" [level=3] [ref=e67]'
+        - listitem [ref=e68]:
+          - code [ref=e69]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\core\handlers\exception.py
+          - text: ", line 56, in inner"
+          - list [ref=e71]:
+            - listitem [ref=e72] [cursor=pointer]:
+              - text: response = get_response(request) ^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e73]: …
+          - group [ref=e74]:
+            - generic "Local vars" [ref=e75] [cursor=pointer]
+        - listitem [ref=e76]:
+          - code [ref=e77]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\core\handlers\base.py
+          - text: ", line 198, in _get_response"
+          - list [ref=e79]:
+            - listitem [ref=e80] [cursor=pointer]:
+              - text: response = wrapped_callback(request, *callback_args, **callback_kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e81]: …
+          - group [ref=e82]:
+            - generic "Local vars" [ref=e83] [cursor=pointer]
+        - listitem [ref=e84]:
+          - code [ref=e85]: C:\dev\bakim_kalibrasyon\core\urls.py
+          - text: ", line 37, in equipment_list_direct"
+          - list [ref=e87]:
+            - listitem [ref=e88] [cursor=pointer]:
+              - text: return view(request, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e89]: …
+          - group [ref=e90]:
+            - generic "Local vars" [ref=e91] [cursor=pointer]
+        - listitem [ref=e92]:
+          - code [ref=e93]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\utils\decorators.py
+          - text: ", line 193, in _view_wrapper"
+          - list [ref=e95]:
+            - listitem [ref=e96] [cursor=pointer]:
+              - text: result = _process_exception(request, e) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e97]: …
+          - group [ref=e98]:
+            - generic "Local vars" [ref=e99] [cursor=pointer]
+        - listitem [ref=e100]:
+          - code [ref=e101]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\utils\decorators.py
+          - text: ", line 191, in _view_wrapper"
+          - list [ref=e103]:
+            - listitem [ref=e104] [cursor=pointer]:
+              - text: response = view_func(request, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e105]: …
+          - group [ref=e106]:
+            - generic "Local vars" [ref=e107] [cursor=pointer]
+        - listitem [ref=e108]:
+          - code [ref=e109]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\views\decorators\cache.py
+          - text: ", line 81, in _view_wrapper"
+          - list [ref=e111]:
+            - listitem [ref=e112] [cursor=pointer]:
+              - text: response = view_func(request, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e113]: …
+          - group [ref=e114]:
+            - generic "Local vars" [ref=e115] [cursor=pointer]
+        - listitem [ref=e116]:
+          - code [ref=e117]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\contrib\admin\sites.py
+          - text: ", line 247, in inner"
+          - list [ref=e119]:
+            - listitem [ref=e120] [cursor=pointer]:
+              - text: return view(request, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e121]: …
+          - group [ref=e122]:
+            - generic "Local vars" [ref=e123] [cursor=pointer]
+        - listitem [ref=e124]:
+          - code [ref=e125]: C:\dev\bakim_kalibrasyon\maintenance\admin.py
+          - text: ", line 145, in _eq_changelist_view"
+          - list [ref=e127]:
+            - listitem [ref=e128] [cursor=pointer]:
+              - text: return _orig_changelist(self, request, extra_context=extra_context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e129]: …
+          - group [ref=e130]:
+            - generic "Local vars" [ref=e131] [cursor=pointer]
+        - listitem [ref=e132]:
+          - code [ref=e133]: C:\dev\bakim_kalibrasyon\maintenance\admin.py
+          - text: ", line 68, in changelist_view"
+          - list [ref=e135]:
+            - listitem [ref=e136] [cursor=pointer]:
+              - text: return super().changelist_view(request, extra_context=extra_context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e137]: …
+          - group [ref=e138]:
+            - generic "Local vars" [ref=e139] [cursor=pointer]
+        - listitem [ref=e140]:
+          - code [ref=e141]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\utils\decorators.py
+          - text: ", line 49, in _wrapper"
+          - list [ref=e143]:
+            - listitem [ref=e144] [cursor=pointer]:
+              - text: return bound_method(*args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e145]: …
+          - group [ref=e146]:
+            - generic "Local vars" [ref=e147] [cursor=pointer]
+        - listitem [ref=e148]:
+          - code [ref=e149]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\utils\decorators.py
+          - text: ", line 193, in _view_wrapper"
+          - list [ref=e151]:
+            - listitem [ref=e152] [cursor=pointer]:
+              - text: result = _process_exception(request, e) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e153]: …
+          - group [ref=e154]:
+            - generic "Local vars" [ref=e155] [cursor=pointer]
+        - listitem [ref=e156]:
+          - code [ref=e157]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\utils\decorators.py
+          - text: ", line 191, in _view_wrapper"
+          - list [ref=e159]:
+            - listitem [ref=e160] [cursor=pointer]:
+              - text: response = view_func(request, *args, **kwargs) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e161]: …
+          - group [ref=e162]:
+            - generic "Local vars" [ref=e163] [cursor=pointer]
+        - listitem [ref=e164]:
+          - code [ref=e165]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\contrib\admin\options.py
+          - text: ", line 2025, in changelist_view"
+          - list [ref=e167]:
+            - listitem [ref=e168] [cursor=pointer]:
+              - text: cl = self.get_changelist_instance(request) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e169]: …
+          - group [ref=e170]:
+            - generic "Local vars" [ref=e171] [cursor=pointer]
+        - listitem [ref=e172]:
+          - code [ref=e173]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\contrib\admin\options.py
+          - text: ", line 868, in get_changelist_instance"
+          - list [ref=e175]:
+            - listitem [ref=e176] [cursor=pointer]:
+              - text: return ChangeList(
+              - generic [ref=e177]: …
+          - group [ref=e178]:
+            - generic "Local vars" [ref=e179] [cursor=pointer]
+        - listitem [ref=e180]:
+          - code [ref=e181]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\contrib\admin\views\main.py
+          - text: ", line 147, in __init__"
+          - list [ref=e183]:
+            - listitem [ref=e184] [cursor=pointer]:
+              - text: self.get_results(request) ^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e185]: …
+          - group [ref=e186]:
+            - generic "Local vars" [ref=e187] [cursor=pointer]
+        - listitem [ref=e188]:
+          - code [ref=e189]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\contrib\admin\views\main.py
+          - text: ", line 314, in get_results"
+          - list [ref=e191]:
+            - listitem [ref=e192] [cursor=pointer]:
+              - text: result_count = paginator.count ^^^^^^^^^^^^^^^
+              - generic [ref=e193]: …
+          - group [ref=e194]:
+            - generic "Local vars" [ref=e195] [cursor=pointer]
+        - listitem [ref=e196]:
+          - code [ref=e197]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\utils\functional.py
+          - text: ", line 48, in __get__"
+          - list [ref=e199]:
+            - listitem [ref=e200] [cursor=pointer]:
+              - text: res = instance.__dict__[self.name] = self.func(instance) ^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e201]: …
+          - group [ref=e202]:
+            - generic "Local vars" [ref=e203] [cursor=pointer]
+        - listitem [ref=e204]:
+          - code [ref=e205]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\core\paginator.py
+          - text: ", line 111, in count"
+          - list [ref=e207]:
+            - listitem [ref=e208] [cursor=pointer]:
+              - text: return c() ^^^
+              - generic [ref=e209]: …
+          - group [ref=e210]:
+            - generic "Local vars" [ref=e211] [cursor=pointer]
+        - listitem [ref=e212]:
+          - code [ref=e213]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\models\query.py
+          - text: ", line 605, in count"
+          - list [ref=e215]:
+            - listitem [ref=e216] [cursor=pointer]:
+              - text: return self.query.get_count(using=self.db) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e217]: …
+          - group [ref=e218]:
+            - generic "Local vars" [ref=e219] [cursor=pointer]
+        - listitem [ref=e220]:
+          - code [ref=e221]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\models\sql\query.py
+          - text: ", line 645, in get_count"
+          - list [ref=e223]:
+            - listitem [ref=e224] [cursor=pointer]:
+              - text: "return obj.get_aggregation(using, {\"__count\": Count(\"*\")})[\"__count\"] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+              - generic [ref=e225]: …
+          - group [ref=e226]:
+            - generic "Local vars" [ref=e227] [cursor=pointer]
+        - listitem [ref=e228]:
+          - code [ref=e229]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\models\sql\query.py
+          - text: ", line 627, in get_aggregation"
+          - list [ref=e231]:
+            - listitem [ref=e232] [cursor=pointer]:
+              - text: result = compiler.execute_sql(SINGLE) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e233]: …
+          - group [ref=e234]:
+            - generic "Local vars" [ref=e235] [cursor=pointer]
+        - listitem [ref=e236]:
+          - code [ref=e237]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\models\sql\compiler.py
+          - text: ", line 1624, in execute_sql"
+          - list [ref=e239]:
+            - listitem [ref=e240] [cursor=pointer]:
+              - text: cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e241]: …
+          - group [ref=e242]:
+            - generic "Local vars" [ref=e243] [cursor=pointer]
+        - listitem [ref=e244]:
+          - code [ref=e245]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\backends\utils.py
+          - text: ", line 123, in execute"
+          - list [ref=e247]:
+            - listitem [ref=e248] [cursor=pointer]:
+              - text: return super().execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e249]: …
+          - group [ref=e250]:
+            - generic "Local vars" [ref=e251] [cursor=pointer]
+        - listitem [ref=e252]:
+          - code [ref=e253]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\backends\utils.py
+          - text: ", line 80, in execute"
+          - list [ref=e255]:
+            - listitem [ref=e256] [cursor=pointer]:
+              - text: return self._execute_with_wrappers(
+              - generic [ref=e257]: …
+          - group [ref=e258]:
+            - generic "Local vars" [ref=e259] [cursor=pointer]
+        - listitem [ref=e260]:
+          - code [ref=e261]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\backends\utils.py
+          - text: ", line 93, in _execute_with_wrappers"
+          - list [ref=e263]:
+            - listitem [ref=e264] [cursor=pointer]:
+              - text: return executor(sql, params, many, context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e265]: …
+          - group [ref=e266]:
+            - generic "Local vars" [ref=e267] [cursor=pointer]
+        - listitem [ref=e268]:
+          - code [ref=e269]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\backends\utils.py
+          - text: ", line 101, in _execute"
+          - list [ref=e271]:
+            - listitem [ref=e272] [cursor=pointer]:
+              - text: "with self.db.wrap_database_errors: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+              - generic [ref=e273]: …
+          - group [ref=e274]:
+            - generic "Local vars" [ref=e275] [cursor=pointer]
+        - listitem [ref=e276]:
+          - code [ref=e277]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\utils.py
+          - text: ", line 92, in __exit__"
+          - list [ref=e279]:
+            - listitem [ref=e280] [cursor=pointer]:
+              - text: raise dj_exc_value.with_traceback(traceback) from exc_value ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e281]: …
+          - group [ref=e282]:
+            - generic "Local vars" [ref=e283] [cursor=pointer]
+        - listitem [ref=e284]:
+          - code [ref=e285]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\backends\utils.py
+          - text: ", line 106, in _execute"
+          - list [ref=e287]:
+            - listitem [ref=e288] [cursor=pointer]:
+              - text: return self.cursor.execute(sql, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e289]: …
+          - group [ref=e290]:
+            - generic "Local vars" [ref=e291] [cursor=pointer]
+        - listitem [ref=e292]:
+          - code [ref=e293]: C:\dev\bakim_kalibrasyon\venv\Lib\site-packages\django\db\backends\sqlite3\base.py
+          - text: ", line 361, in execute"
+          - list [ref=e295]:
+            - listitem [ref=e296] [cursor=pointer]:
+              - text: return super().execute(query, params) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              - generic [ref=e297]: …
+          - group [ref=e298]:
+            - generic "Local vars" [ref=e299] [cursor=pointer]
+    - generic [ref=e300]:
+      - heading "Request information" [level=2] [ref=e301]
+      - heading "USER" [level=3] [ref=e302]
+      - paragraph [ref=e303]: admin
+      - heading "GET" [level=3] [ref=e304]
+      - table [ref=e305]:
+        - rowgroup [ref=e306]:
+          - row "Variable Value" [ref=e307]:
+            - columnheader "Variable" [ref=e308]
+            - columnheader "Value" [ref=e309]
+        - rowgroup [ref=e310]:
+          - row "q 'AUTO-E105-1760186514381'" [ref=e311]:
+            - cell "q" [ref=e312]
+            - cell "'AUTO-E105-1760186514381'" [ref=e313]:
+              - generic [ref=e314]: "'AUTO-E105-1760186514381'"
+      - heading "POST" [level=3] [ref=e315]
+      - paragraph [ref=e316]: No POST data
+      - heading "FILES" [level=3] [ref=e317]
+      - paragraph [ref=e318]: No FILES data
+      - heading "COOKIES" [level=3] [ref=e319]
+      - table [ref=e320]:
+        - rowgroup [ref=e321]:
+          - row "Variable Value" [ref=e322]:
+            - columnheader "Variable" [ref=e323]
+            - columnheader "Value" [ref=e324]
+        - rowgroup [ref=e325]:
+          - row "csrftoken '********************'" [ref=e326]:
+            - cell "csrftoken" [ref=e327]
+            - cell "'********************'" [ref=e328]:
+              - generic [ref=e329]: "'********************'"
+          - row "sessionid '********************'" [ref=e330]:
+            - cell "sessionid" [ref=e331]
+            - cell "'********************'" [ref=e332]:
+              - generic [ref=e333]: "'********************'"
+      - heading "META" [level=3] [ref=e334]
+      - table [ref=e335]:
+        - rowgroup [ref=e336]:
+          - row "Variable Value" [ref=e337]:
+            - columnheader "Variable" [ref=e338]
+            - columnheader "Value" [ref=e339]
+        - rowgroup [ref=e340]:
+          - row "ACE_STUDIO_PATH 'C:\\\\Program Files\\\\ACE Studio'" [ref=e341]:
+            - cell "ACE_STUDIO_PATH" [ref=e342]
+            - cell "'C:\\\\Program Files\\\\ACE Studio'" [ref=e343]:
+              - generic [ref=e344]: "'C:\\\\Program Files\\\\ACE Studio'"
+          - row "ADMIN_PASS '********************'" [ref=e345]:
+            - cell "ADMIN_PASS" [ref=e346]
+            - cell "'********************'" [ref=e347]:
+              - generic [ref=e348]: "'********************'"
+          - row "ADMIN_USER 'admin'" [ref=e349]:
+            - cell "ADMIN_USER" [ref=e350]
+            - cell "'admin'" [ref=e351]:
+              - generic [ref=e352]: "'admin'"
+          - row "ALLUSERSPROFILE 'C:\\\\ProgramData'" [ref=e353]:
+            - cell "ALLUSERSPROFILE" [ref=e354]
+            - cell "'C:\\\\ProgramData'" [ref=e355]:
+              - generic [ref=e356]: "'C:\\\\ProgramData'"
+          - row "APPDATA 'C:\\\\Users\\\\HP\\\\AppData\\\\Roaming'" [ref=e357]:
+            - cell "APPDATA" [ref=e358]
+            - cell "'C:\\\\Users\\\\HP\\\\AppData\\\\Roaming'" [ref=e359]:
+              - generic [ref=e360]: "'C:\\\\Users\\\\HP\\\\AppData\\\\Roaming'"
+          - row "BASE_URL 'http://127.0.0.1:8010'" [ref=e361]:
+            - cell "BASE_URL" [ref=e362]
+            - cell "'http://127.0.0.1:8010'" [ref=e363]:
+              - generic [ref=e364]: "'http://127.0.0.1:8010'"
+          - row "CHOCOLATEYINSTALL 'C:\\\\ProgramData\\\\chocolatey'" [ref=e365]:
+            - cell "CHOCOLATEYINSTALL" [ref=e366]
+            - cell "'C:\\\\ProgramData\\\\chocolatey'" [ref=e367]:
+              - generic [ref=e368]: "'C:\\\\ProgramData\\\\chocolatey'"
+          - row "CHOCOLATEYLASTPATHUPDATE '134034653625501794'" [ref=e369]:
+            - cell "CHOCOLATEYLASTPATHUPDATE" [ref=e370]
+            - cell "'134034653625501794'" [ref=e371]:
+              - generic [ref=e372]: "'134034653625501794'"
+          - row "COMMANDPROMPTTYPE 'Native'" [ref=e373]:
+            - cell "COMMANDPROMPTTYPE" [ref=e374]
+            - cell "'Native'" [ref=e375]:
+              - generic [ref=e376]: "'Native'"
+          - row "COMMONPROGRAMFILES 'C:\\\\Program Files\\\\Common Files'" [ref=e377]:
+            - cell "COMMONPROGRAMFILES" [ref=e378]
+            - cell "'C:\\\\Program Files\\\\Common Files'" [ref=e379]:
+              - generic [ref=e380]: "'C:\\\\Program Files\\\\Common Files'"
+          - row "COMMONPROGRAMFILES(X86) 'C:\\\\Program Files (x86)\\\\Common Files'" [ref=e381]:
+            - cell "COMMONPROGRAMFILES(X86)" [ref=e382]
+            - cell "'C:\\\\Program Files (x86)\\\\Common Files'" [ref=e383]:
+              - generic [ref=e384]: "'C:\\\\Program Files (x86)\\\\Common Files'"
+          - row "COMMONPROGRAMW6432 'C:\\\\Program Files\\\\Common Files'" [ref=e385]:
+            - cell "COMMONPROGRAMW6432" [ref=e386]
+            - cell "'C:\\\\Program Files\\\\Common Files'" [ref=e387]:
+              - generic [ref=e388]: "'C:\\\\Program Files\\\\Common Files'"
+          - row "COMPUTERNAME 'LAPTOP-BJ5VB4RI'" [ref=e389]:
+            - cell "COMPUTERNAME" [ref=e390]
+            - cell "'LAPTOP-BJ5VB4RI'" [ref=e391]:
+              - generic [ref=e392]: "'LAPTOP-BJ5VB4RI'"
+          - row "COMSPEC 'C:\\\\windows\\\\system32\\\\cmd.exe'" [ref=e393]:
+            - cell "COMSPEC" [ref=e394]
+            - cell "'C:\\\\windows\\\\system32\\\\cmd.exe'" [ref=e395]:
+              - generic [ref=e396]: "'C:\\\\windows\\\\system32\\\\cmd.exe'"
+          - row "CONTENT_LENGTH ''" [ref=e397]:
+            - cell "CONTENT_LENGTH" [ref=e398]
+            - cell "''" [ref=e399]:
+              - generic [ref=e400]: "''"
+          - row "CONTENT_TYPE 'text/plain'" [ref=e401]:
+            - cell "CONTENT_TYPE" [ref=e402]
+            - cell "'text/plain'" [ref=e403]:
+              - generic [ref=e404]: "'text/plain'"
+          - row "CSRF_COOKIE 'qUgUx6svVcFU0xmWtX99oIPMX8o1ZGL6'" [ref=e405]:
+            - cell "CSRF_COOKIE" [ref=e406]
+            - cell "'qUgUx6svVcFU0xmWtX99oIPMX8o1ZGL6'" [ref=e407]:
+              - generic [ref=e408]: "'qUgUx6svVcFU0xmWtX99oIPMX8o1ZGL6'"
+          - row "DEFAULT_FROM_EMAIL 'Bakım Kalibrasyon <kullanici@domain.com>'" [ref=e409]:
+            - cell "DEFAULT_FROM_EMAIL" [ref=e410]
+            - cell "'Bakım Kalibrasyon <kullanici@domain.com>'" [ref=e411]:
+              - generic [ref=e412]: "'Bakım Kalibrasyon <kullanici@domain.com>'"
+          - row "DEVENVDIR ('C:\\\\Program Files (x86)\\\\Microsoft Visual ' 'Studio\\\\2019\\\\BuildTools\\\\Common7\\\\IDE\\\\')" [ref=e413]:
+            - cell "DEVENVDIR" [ref=e414]
+            - cell "('C:\\\\Program Files (x86)\\\\Microsoft Visual ' 'Studio\\\\2019\\\\BuildTools\\\\Common7\\\\IDE\\\\')" [ref=e415]:
+              - generic [ref=e416]: ('C:\\Program Files (x86)\\Microsoft Visual ' 'Studio\\2019\\BuildTools\\Common7\\IDE\\')
+          - row "DJANGO_EMAIL_PASS '********************'" [ref=e417]:
+            - cell "DJANGO_EMAIL_PASS" [ref=e418]
+            - cell "'********************'" [ref=e419]:
+              - generic [ref=e420]: "'********************'"
+          - row "DJANGO_EMAIL_USER 'koordinator@nqs.com.tr'" [ref=e421]:
+            - cell "DJANGO_EMAIL_USER" [ref=e422]
+            - cell "'koordinator@nqs.com.tr'" [ref=e423]:
+              - generic [ref=e424]: "'koordinator@nqs.com.tr'"
+          - row "DJANGO_SETTINGS_MODULE 'core.settings_maintenance'" [ref=e425]:
+            - cell "DJANGO_SETTINGS_MODULE" [ref=e426]
+            - cell "'core.settings_maintenance'" [ref=e427]:
+              - generic [ref=e428]: "'core.settings_maintenance'"
+          - row "DRIVERDATA 'C:\\\\Windows\\\\System32\\\\Drivers\\\\DriverData'" [ref=e429]:
+            - cell "DRIVERDATA" [ref=e430]
+            - cell "'C:\\\\Windows\\\\System32\\\\Drivers\\\\DriverData'" [ref=e431]:
+              - generic [ref=e432]: "'C:\\\\Windows\\\\System32\\\\Drivers\\\\DriverData'"
+          - row "FRAMEWORK40VERSION 'v4.0'" [ref=e433]:
+            - cell "FRAMEWORK40VERSION" [ref=e434]
+            - cell "'v4.0'" [ref=e435]:
+              - generic [ref=e436]: "'v4.0'"
+          - row "FRAMEWORKDIR 'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\'" [ref=e437]:
+            - cell "FRAMEWORKDIR" [ref=e438]
+            - cell "'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\'" [ref=e439]:
+              - generic [ref=e440]: "'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\'"
+          - row "FRAMEWORKDIR32 'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\'" [ref=e441]:
+            - cell "FRAMEWORKDIR32" [ref=e442]
+            - cell "'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\'" [ref=e443]:
+              - generic [ref=e444]: "'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\'"
+          - row "FRAMEWORKVERSION 'v4.0.30319'" [ref=e445]:
+            - cell "FRAMEWORKVERSION" [ref=e446]
+            - cell "'v4.0.30319'" [ref=e447]:
+              - generic [ref=e448]: "'v4.0.30319'"
+          - row "FRAMEWORKVERSION32 'v4.0.30319'" [ref=e449]:
+            - cell "FRAMEWORKVERSION32" [ref=e450]
+            - cell "'v4.0.30319'" [ref=e451]:
+              - generic [ref=e452]: "'v4.0.30319'"
+          - row "GATEWAY_INTERFACE 'CGI/1.1'" [ref=e453]:
+            - cell "GATEWAY_INTERFACE" [ref=e454]
+            - cell "'CGI/1.1'" [ref=e455]:
+              - generic [ref=e456]: "'CGI/1.1'"
+          - row "HOMEDRIVE 'C:'" [ref=e457]:
+            - cell "HOMEDRIVE" [ref=e458]
+            - cell "'C:'" [ref=e459]:
+              - generic [ref=e460]: "'C:'"
+          - row "HOMEPATH '\\\\Users\\\\HP'" [ref=e461]:
+            - cell "HOMEPATH" [ref=e462]
+            - cell "'\\\\Users\\\\HP'" [ref=e463]:
+              - generic [ref=e464]: "'\\\\Users\\\\HP'"
+          - row "HTTP_ACCEPT 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'" [ref=e465]:
+            - cell "HTTP_ACCEPT" [ref=e466]
+            - cell "'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'" [ref=e467]:
+              - generic [ref=e468]: "'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'"
+          - row "HTTP_ACCEPT_ENCODING 'gzip, deflate, br, zstd'" [ref=e469]:
+            - cell "HTTP_ACCEPT_ENCODING" [ref=e470]
+            - cell "'gzip, deflate, br, zstd'" [ref=e471]:
+              - generic [ref=e472]: "'gzip, deflate, br, zstd'"
+          - row "HTTP_ACCEPT_LANGUAGE 'en-US'" [ref=e473]:
+            - cell "HTTP_ACCEPT_LANGUAGE" [ref=e474]
+            - cell "'en-US'" [ref=e475]:
+              - generic [ref=e476]: "'en-US'"
+          - row "HTTP_CONNECTION 'keep-alive'" [ref=e477]:
+            - cell "HTTP_CONNECTION" [ref=e478]
+            - cell "'keep-alive'" [ref=e479]:
+              - generic [ref=e480]: "'keep-alive'"
+          - row "HTTP_COOKIE '********************'" [ref=e481]:
+            - cell "HTTP_COOKIE" [ref=e482]
+            - cell "'********************'" [ref=e483]:
+              - generic [ref=e484]: "'********************'"
+          - row "HTTP_HOST '127.0.0.1:8010'" [ref=e485]:
+            - cell "HTTP_HOST" [ref=e486]
+            - cell "'127.0.0.1:8010'" [ref=e487]:
+              - generic [ref=e488]: "'127.0.0.1:8010'"
+          - row "HTTP_SEC_CH_UA '\"Chromium\";v=\"141\", \"Not?A_Brand\";v=\"8\"'" [ref=e489]:
+            - cell "HTTP_SEC_CH_UA" [ref=e490]
+            - cell "'\"Chromium\";v=\"141\", \"Not?A_Brand\";v=\"8\"'" [ref=e491]:
+              - generic [ref=e492]: "'\"Chromium\";v=\"141\", \"Not?A_Brand\";v=\"8\"'"
+          - row "HTTP_SEC_CH_UA_MOBILE '?0'" [ref=e493]:
+            - cell "HTTP_SEC_CH_UA_MOBILE" [ref=e494]
+            - cell "'?0'" [ref=e495]:
+              - generic [ref=e496]: "'?0'"
+          - row "HTTP_SEC_CH_UA_PLATFORM '\"Windows\"'" [ref=e497]:
+            - cell "HTTP_SEC_CH_UA_PLATFORM" [ref=e498]
+            - cell "'\"Windows\"'" [ref=e499]:
+              - generic [ref=e500]: "'\"Windows\"'"
+          - row "HTTP_SEC_FETCH_DEST 'document'" [ref=e501]:
+            - cell "HTTP_SEC_FETCH_DEST" [ref=e502]
+            - cell "'document'" [ref=e503]:
+              - generic [ref=e504]: "'document'"
+          - row "HTTP_SEC_FETCH_MODE 'navigate'" [ref=e505]:
+            - cell "HTTP_SEC_FETCH_MODE" [ref=e506]
+            - cell "'navigate'" [ref=e507]:
+              - generic [ref=e508]: "'navigate'"
+          - row "HTTP_SEC_FETCH_SITE 'none'" [ref=e509]:
+            - cell "HTTP_SEC_FETCH_SITE" [ref=e510]
+            - cell "'none'" [ref=e511]:
+              - generic [ref=e512]: "'none'"
+          - row "HTTP_SEC_FETCH_USER '?1'" [ref=e513]:
+            - cell "HTTP_SEC_FETCH_USER" [ref=e514]
+            - cell "'?1'" [ref=e515]:
+              - generic [ref=e516]: "'?1'"
+          - row "HTTP_UPGRADE_INSECURE_REQUESTS '1'" [ref=e517]:
+            - cell "HTTP_UPGRADE_INSECURE_REQUESTS" [ref=e518]
+            - cell "'1'" [ref=e519]:
+              - generic [ref=e520]: "'1'"
+          - row "HTTP_USER_AGENT ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like ' 'Gecko) Chrome/141.0.0.0 Safari/537.36')" [ref=e521]:
+            - cell "HTTP_USER_AGENT" [ref=e522]
+            - cell "('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like ' 'Gecko) Chrome/141.0.0.0 Safari/537.36')" [ref=e523]:
+              - generic [ref=e524]: ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like ' 'Gecko) Chrome/141.0.0.0 Safari/537.36')
+          - row "LIBPATH 'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\v4.0.30319'" [ref=e525]:
+            - cell "LIBPATH" [ref=e526]
+            - cell "'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\v4.0.30319'" [ref=e527]:
+              - generic [ref=e528]: "'C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\v4.0.30319'"
+          - row "LOCALAPPDATA 'C:\\\\Users\\\\HP\\\\AppData\\\\Local'" [ref=e529]:
+            - cell "LOCALAPPDATA" [ref=e530]
+            - cell "'C:\\\\Users\\\\HP\\\\AppData\\\\Local'" [ref=e531]:
+              - generic [ref=e532]: "'C:\\\\Users\\\\HP\\\\AppData\\\\Local'"
+          - row "LOGONSERVER '\\\\\\\\LAPTOP-BJ5VB4RI'" [ref=e533]:
+            - cell "LOGONSERVER" [ref=e534]
+            - cell "'\\\\\\\\LAPTOP-BJ5VB4RI'" [ref=e535]:
+              - generic [ref=e536]: "'\\\\\\\\LAPTOP-BJ5VB4RI'"
+          - row "NUMBER_OF_PROCESSORS '8'" [ref=e537]:
+            - cell "NUMBER_OF_PROCESSORS" [ref=e538]
+            - cell "'8'" [ref=e539]:
+              - generic [ref=e540]: "'8'"
+          - row "ONEDRIVE 'C:\\\\Users\\\\HP\\\\OneDrive'" [ref=e541]:
+            - cell "ONEDRIVE" [ref=e542]
+            - cell "'C:\\\\Users\\\\HP\\\\OneDrive'" [ref=e543]:
+              - generic [ref=e544]: "'C:\\\\Users\\\\HP\\\\OneDrive'"
+          - row "ONEDRIVECONSUMER 'C:\\\\Users\\\\HP\\\\OneDrive'" [ref=e545]:
+            - cell "ONEDRIVECONSUMER" [ref=e546]
+            - cell "'C:\\\\Users\\\\HP\\\\OneDrive'" [ref=e547]:
+              - generic [ref=e548]: "'C:\\\\Users\\\\HP\\\\OneDrive'"
+          - row "ONLINESERVICES 'Online Services'" [ref=e549]:
+            - cell "ONLINESERVICES" [ref=e550]
+            - cell "'Online Services'" [ref=e551]:
+              - generic [ref=e552]: "'Online Services'"
+          - row "OPENAI_API_KEY '********************'" [ref=e553]:
+            - cell "OPENAI_API_KEY" [ref=e554]
+            - cell "'********************'" [ref=e555]:
+              - generic [ref=e556]: "'********************'"
+          - row "OS 'Windows_NT'" [ref=e557]:
+            - cell "OS" [ref=e558]
+            - cell "'Windows_NT'" [ref=e559]:
+              - generic [ref=e560]: "'Windows_NT'"
+          - row "OZKAN_PAT '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'" [ref=e561]:
+            - cell "OZKAN_PAT" [ref=e562]
+            - cell "'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'" [ref=e563]:
+              - generic [ref=e564]: "'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'"
+          - row [ref=e565]:
+            - cell "PATH" [ref=e566]
+            - cell [ref=e567]:
+              - generic [ref=e568]: ('C:\\dev\\bakim_kalibrasyon\\venv\\Scripts;C:\\Program Files (x86)\\Microsoft ' 'Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\bin\\Roslyn;C:\\Program ' 'Files (x86)\\Microsoft Visual ' 'Studio\\2019\\BuildTools\\\\MSBuild\\Current\\Bin;C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319;C:\\Program ' 'Files (x86)\\Microsoft Visual ' 'Studio\\2019\\BuildTools\\Common7\\IDE\\;C:\\Program Files (x86)\\Microsoft ' 'Visual Studio\\2019\\BuildTools\\Common7\\Tools\\;C:\\Program Files\\Common ' 'Files\\Oracle\\Java\\javapath;C:\\Program Files (x86)\\Common ' 'Files\\Oracle\\Java\\java8path;C:\\Program Files (x86)\\Common ' 'Files\\Oracle\\Java\\javapath;C:\\ProgramData\\Oracle\\Java\\javapath;C:\\windows\\system32;C:\\windows;C:\\windows\\System32\\Wbem;C:\\windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\windows\\System32\\OpenSSH\\;C:\\Program ' 'Files\\Git\\cmd;C:\\Program ' 'Files\\nodejs\\;C:\\ProgramData\\chocolatey\\bin;C:\\Program ' 'Files\\cursor\\resources\\app\\bin;C:\\Program Files\\GitHub ' 'CLI\\;C:\\Users\\HP\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\;C:\\Users\\HP\\AppData\\Local\\Programs\\Python\\Python311\\;C:\\Users\\HP\\AppData\\Local\\Microsoft\\WindowsApps;;C:\\Program ' 'Files\\JetBrains\\PyCharm Community Edition ' '2021.3.3\\bin;;C:\\Users\\HP\\AppData\\Local\\Programs\\Microsoft VS ' 'Code\\bin;C:\\Users\\HP\\AppData\\Roaming\\npm;C:\\Program ' 'Files\\Tesseract-OCR')
+          - row "PATHEXT '.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL'" [ref=e569]:
+            - cell "PATHEXT" [ref=e570]
+            - cell "'.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL'" [ref=e571]:
+              - generic [ref=e572]: "'.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL'"
+          - row "PATH_INFO '/admin/maintenance/equipment/_direct/'" [ref=e573]:
+            - cell "PATH_INFO" [ref=e574]
+            - cell "'/admin/maintenance/equipment/_direct/'" [ref=e575]:
+              - generic [ref=e576]: "'/admin/maintenance/equipment/_direct/'"
+          - row "PLATFORMCODE 'AN'" [ref=e577]:
+            - cell "PLATFORMCODE" [ref=e578]
+            - cell "'AN'" [ref=e579]:
+              - generic [ref=e580]: "'AN'"
+          - row "PROCESSOR_ARCHITECTURE 'AMD64'" [ref=e581]:
+            - cell "PROCESSOR_ARCHITECTURE" [ref=e582]
+            - cell "'AMD64'" [ref=e583]:
+              - generic [ref=e584]: "'AMD64'"
+          - row "PROCESSOR_IDENTIFIER 'Intel64 Family 6 Model 126 Stepping 5, GenuineIntel'" [ref=e585]:
+            - cell "PROCESSOR_IDENTIFIER" [ref=e586]
+            - cell "'Intel64 Family 6 Model 126 Stepping 5, GenuineIntel'" [ref=e587]:
+              - generic [ref=e588]: "'Intel64 Family 6 Model 126 Stepping 5, GenuineIntel'"
+          - row "PROCESSOR_LEVEL '6'" [ref=e589]:
+            - cell "PROCESSOR_LEVEL" [ref=e590]
+            - cell "'6'" [ref=e591]:
+              - generic [ref=e592]: "'6'"
+          - row "PROCESSOR_REVISION '7e05'" [ref=e593]:
+            - cell "PROCESSOR_REVISION" [ref=e594]
+            - cell "'7e05'" [ref=e595]:
+              - generic [ref=e596]: "'7e05'"
+          - row "PROGRAMDATA 'C:\\\\ProgramData'" [ref=e597]:
+            - cell "PROGRAMDATA" [ref=e598]
+            - cell "'C:\\\\ProgramData'" [ref=e599]:
+              - generic [ref=e600]: "'C:\\\\ProgramData'"
+          - row "PROGRAMFILES 'C:\\\\Program Files'" [ref=e601]:
+            - cell "PROGRAMFILES" [ref=e602]
+            - cell "'C:\\\\Program Files'" [ref=e603]:
+              - generic [ref=e604]: "'C:\\\\Program Files'"
+          - row "PROGRAMFILES(X86) 'C:\\\\Program Files (x86)'" [ref=e605]:
+            - cell "PROGRAMFILES(X86)" [ref=e606]
+            - cell "'C:\\\\Program Files (x86)'" [ref=e607]:
+              - generic [ref=e608]: "'C:\\\\Program Files (x86)'"
+          - row "PROGRAMW6432 'C:\\\\Program Files'" [ref=e609]:
+            - cell "PROGRAMW6432" [ref=e610]
+            - cell "'C:\\\\Program Files'" [ref=e611]:
+              - generic [ref=e612]: "'C:\\\\Program Files'"
+          - row "PROMPT '$P$G'" [ref=e613]:
+            - cell "PROMPT" [ref=e614]
+            - cell "'$P$G'" [ref=e615]:
+              - generic [ref=e616]: "'$P$G'"
+          - row "PSMODULEPATH ('C:\\\\Program ' 'Files\\\\WindowsPowerShell\\\\Modules;C:\\\\Users\\\\HP\\\\Documents\\\\WindowsPowerShell\\\\Modules;C:\\\\Program ' 'Files ' '(x86)\\\\WindowsPowerShell\\\\Modules;C:\\\\windows\\\\system32\\\\WindowsPowerShell\\\\v1.0\\\\Modules')" [ref=e617]:
+            - cell "PSMODULEPATH" [ref=e618]
+            - cell "('C:\\\\Program ' 'Files\\\\WindowsPowerShell\\\\Modules;C:\\\\Users\\\\HP\\\\Documents\\\\WindowsPowerShell\\\\Modules;C:\\\\Program ' 'Files ' '(x86)\\\\WindowsPowerShell\\\\Modules;C:\\\\windows\\\\system32\\\\WindowsPowerShell\\\\v1.0\\\\Modules')" [ref=e619]:
+              - generic [ref=e620]: ('C:\\Program ' 'Files\\WindowsPowerShell\\Modules;C:\\Users\\HP\\Documents\\WindowsPowerShell\\Modules;C:\\Program ' 'Files ' '(x86)\\WindowsPowerShell\\Modules;C:\\windows\\system32\\WindowsPowerShell\\v1.0\\Modules')
+          - row "PUBLIC 'C:\\\\Users\\\\Public'" [ref=e621]:
+            - cell "PUBLIC" [ref=e622]
+            - cell "'C:\\\\Users\\\\Public'" [ref=e623]:
+              - generic [ref=e624]: "'C:\\\\Users\\\\Public'"
+          - row "PWDEBUG '0'" [ref=e625]:
+            - cell "PWDEBUG" [ref=e626]
+            - cell "'0'" [ref=e627]:
+              - generic [ref=e628]: "'0'"
+          - row "PYCHARM COMMUNITY EDITION 'C:\\\\Program Files\\\\JetBrains\\\\PyCharm Community Edition 2021.3.3\\\\bin;'" [ref=e629]:
+            - cell "PYCHARM COMMUNITY EDITION" [ref=e630]
+            - cell "'C:\\\\Program Files\\\\JetBrains\\\\PyCharm Community Edition 2021.3.3\\\\bin;'" [ref=e631]:
+              - generic [ref=e632]: "'C:\\\\Program Files\\\\JetBrains\\\\PyCharm Community Edition 2021.3.3\\\\bin;'"
+          - row "QUERY_STRING 'q=AUTO-E105-1760186514381'" [ref=e633]:
+            - cell "QUERY_STRING" [ref=e634]
+            - cell "'q=AUTO-E105-1760186514381'" [ref=e635]:
+              - generic [ref=e636]: "'q=AUTO-E105-1760186514381'"
+          - row "REGIONCODE 'EMEA'" [ref=e637]:
+            - cell "REGIONCODE" [ref=e638]
+            - cell "'EMEA'" [ref=e639]:
+              - generic [ref=e640]: "'EMEA'"
+          - row "REMOTE_ADDR '127.0.0.1'" [ref=e641]:
+            - cell "REMOTE_ADDR" [ref=e642]
+            - cell "'127.0.0.1'" [ref=e643]:
+              - generic [ref=e644]: "'127.0.0.1'"
+          - row "REMOTE_HOST ''" [ref=e645]:
+            - cell "REMOTE_HOST" [ref=e646]
+            - cell "''" [ref=e647]:
+              - generic [ref=e648]: "''"
+          - row "REQUEST_METHOD 'GET'" [ref=e649]:
+            - cell "REQUEST_METHOD" [ref=e650]
+            - cell "'GET'" [ref=e651]:
+              - generic [ref=e652]: "'GET'"
+          - row "SCRIPT_NAME ''" [ref=e653]:
+            - cell "SCRIPT_NAME" [ref=e654]
+            - cell "''" [ref=e655]:
+              - generic [ref=e656]: "''"
+          - row "SERVER_NAME 'LAPTOP-BJ5VB4RI'" [ref=e657]:
+            - cell "SERVER_NAME" [ref=e658]
+            - cell "'LAPTOP-BJ5VB4RI'" [ref=e659]:
+              - generic [ref=e660]: "'LAPTOP-BJ5VB4RI'"
+          - row "SERVER_PORT '8010'" [ref=e661]:
+            - cell "SERVER_PORT" [ref=e662]
+            - cell "'8010'" [ref=e663]:
+              - generic [ref=e664]: "'8010'"
+          - row "SERVER_PROTOCOL 'HTTP/1.1'" [ref=e665]:
+            - cell "SERVER_PROTOCOL" [ref=e666]
+            - cell "'HTTP/1.1'" [ref=e667]:
+              - generic [ref=e668]: "'HTTP/1.1'"
+          - row "SERVER_SOFTWARE 'WSGIServer/0.2'" [ref=e669]:
+            - cell "SERVER_SOFTWARE" [ref=e670]
+            - cell "'WSGIServer/0.2'" [ref=e671]:
+              - generic [ref=e672]: "'WSGIServer/0.2'"
+          - row "SESSIONNAME 'Console'" [ref=e673]:
+            - cell "SESSIONNAME" [ref=e674]
+            - cell "'Console'" [ref=e675]:
+              - generic [ref=e676]: "'Console'"
+          - row "SMTP_HOST 'smtp.office365.com'" [ref=e677]:
+            - cell "SMTP_HOST" [ref=e678]
+            - cell "'smtp.office365.com'" [ref=e679]:
+              - generic [ref=e680]: "'smtp.office365.com'"
+          - row "SMTP_PASS '********************'" [ref=e681]:
+            - cell "SMTP_PASS" [ref=e682]
+            - cell "'********************'" [ref=e683]:
+              - generic [ref=e684]: "'********************'"
+          - row "SMTP_PORT '587'" [ref=e685]:
+            - cell "SMTP_PORT" [ref=e686]
+            - cell "'587'" [ref=e687]:
+              - generic [ref=e688]: "'587'"
+          - row "SMTP_SSL '0'" [ref=e689]:
+            - cell "SMTP_SSL" [ref=e690]
+            - cell "'0'" [ref=e691]:
+              - generic [ref=e692]: "'0'"
+          - row "SMTP_TLS '1'" [ref=e693]:
+            - cell "SMTP_TLS" [ref=e694]
+            - cell "'1'" [ref=e695]:
+              - generic [ref=e696]: "'1'"
+          - row "SMTP_USER 'kullanici@domain.com'" [ref=e697]:
+            - cell "SMTP_USER" [ref=e698]
+            - cell "'kullanici@domain.com'" [ref=e699]:
+              - generic [ref=e700]: "'kullanici@domain.com'"
+          - row "SYSTEMDRIVE 'C:'" [ref=e701]:
+            - cell "SYSTEMDRIVE" [ref=e702]
+            - cell "'C:'" [ref=e703]:
+              - generic [ref=e704]: "'C:'"
+          - row "SYSTEMROOT 'C:\\\\windows'" [ref=e705]:
+            - cell "SYSTEMROOT" [ref=e706]
+            - cell "'C:\\\\windows'" [ref=e707]:
+              - generic [ref=e708]: "'C:\\\\windows'"
+          - row "TEMP 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Temp'" [ref=e709]:
+            - cell "TEMP" [ref=e710]
+            - cell "'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Temp'" [ref=e711]:
+              - generic [ref=e712]: "'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Temp'"
+          - row "TMP 'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Temp'" [ref=e713]:
+            - cell "TMP" [ref=e714]
+            - cell "'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Temp'" [ref=e715]:
+              - generic [ref=e716]: "'C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Temp'"
+          - row "UNIVERSALCRTSDKDIR 'C:\\\\Program Files (x86)\\\\Windows Kits\\\\10\\\\'" [ref=e717]:
+            - cell "UNIVERSALCRTSDKDIR" [ref=e718]
+            - cell "'C:\\\\Program Files (x86)\\\\Windows Kits\\\\10\\\\'" [ref=e719]:
+              - generic [ref=e720]: "'C:\\\\Program Files (x86)\\\\Windows Kits\\\\10\\\\'"
+          - row "USERDOMAIN 'LAPTOP-BJ5VB4RI'" [ref=e721]:
+            - cell "USERDOMAIN" [ref=e722]
+            - cell "'LAPTOP-BJ5VB4RI'" [ref=e723]:
+              - generic [ref=e724]: "'LAPTOP-BJ5VB4RI'"
+          - row "USERDOMAIN_ROAMINGPROFILE 'LAPTOP-BJ5VB4RI'" [ref=e725]:
+            - cell "USERDOMAIN_ROAMINGPROFILE" [ref=e726]
+            - cell "'LAPTOP-BJ5VB4RI'" [ref=e727]:
+              - generic [ref=e728]: "'LAPTOP-BJ5VB4RI'"
+          - row "USERNAME 'HP'" [ref=e729]:
+            - cell "USERNAME" [ref=e730]
+            - cell "'HP'" [ref=e731]:
+              - generic [ref=e732]: "'HP'"
+          - row "USERPROFILE 'C:\\\\Users\\\\HP'" [ref=e733]:
+            - cell "USERPROFILE" [ref=e734]
+            - cell "'C:\\\\Users\\\\HP'" [ref=e735]:
+              - generic [ref=e736]: "'C:\\\\Users\\\\HP'"
+          - row "VCIDEINSTALLDIR ('C:\\\\Program Files (x86)\\\\Microsoft Visual ' 'Studio\\\\2019\\\\BuildTools\\\\Common7\\\\IDE\\\\VC\\\\')" [ref=e737]:
+            - cell "VCIDEINSTALLDIR" [ref=e738]
+            - cell "('C:\\\\Program Files (x86)\\\\Microsoft Visual ' 'Studio\\\\2019\\\\BuildTools\\\\Common7\\\\IDE\\\\VC\\\\')" [ref=e739]:
+              - generic [ref=e740]: ('C:\\Program Files (x86)\\Microsoft Visual ' 'Studio\\2019\\BuildTools\\Common7\\IDE\\VC\\')
+          - row "VCINSTALLDIR 'C:\\\\Program Files (x86)\\\\Microsoft Visual Studio\\\\2019\\\\BuildTools\\\\VC\\\\'" [ref=e741]:
+            - cell "VCINSTALLDIR" [ref=e742]
+            - cell "'C:\\\\Program Files (x86)\\\\Microsoft Visual Studio\\\\2019\\\\BuildTools\\\\VC\\\\'" [ref=e743]:
+              - generic [ref=e744]: "'C:\\\\Program Files (x86)\\\\Microsoft Visual Studio\\\\2019\\\\BuildTools\\\\VC\\\\'"
+          - row "VIRTUAL_ENV 'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv'" [ref=e745]:
+            - cell "VIRTUAL_ENV" [ref=e746]
+            - cell "'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv'" [ref=e747]:
+              - generic [ref=e748]: "'C:\\\\dev\\\\bakim_kalibrasyon\\\\venv'"
+          - row "VIRTUAL_ENV_PROMPT 'venv'" [ref=e749]:
+            - cell "VIRTUAL_ENV_PROMPT" [ref=e750]
+            - cell "'venv'" [ref=e751]:
+              - generic [ref=e752]: "'venv'"
+          - row "VISUALSTUDIOVERSION '16.0'" [ref=e753]:
+            - cell "VISUALSTUDIOVERSION" [ref=e754]
+            - cell "'16.0'" [ref=e755]:
+              - generic [ref=e756]: "'16.0'"
+          - row "VS160COMNTOOLS ('C:\\\\Program Files (x86)\\\\Microsoft Visual ' 'Studio\\\\2019\\\\BuildTools\\\\Common7\\\\Tools\\\\')" [ref=e757]:
+            - cell "VS160COMNTOOLS" [ref=e758]
+            - cell "('C:\\\\Program Files (x86)\\\\Microsoft Visual ' 'Studio\\\\2019\\\\BuildTools\\\\Common7\\\\Tools\\\\')" [ref=e759]:
+              - generic [ref=e760]: ('C:\\Program Files (x86)\\Microsoft Visual ' 'Studio\\2019\\BuildTools\\Common7\\Tools\\')
+          - row "VSCMD_ARG_APP_PLAT 'Desktop'" [ref=e761]:
+            - cell "VSCMD_ARG_APP_PLAT" [ref=e762]
+            - cell "'Desktop'" [ref=e763]:
+              - generic [ref=e764]: "'Desktop'"
+          - row "VSCMD_ARG_HOST_ARCH 'x86'" [ref=e765]:
+            - cell "VSCMD_ARG_HOST_ARCH" [ref=e766]
+            - cell "'x86'" [ref=e767]:
+              - generic [ref=e768]: "'x86'"
+          - row "VSCMD_ARG_TGT_ARCH 'x86'" [ref=e769]:
+            - cell "VSCMD_ARG_TGT_ARCH" [ref=e770]
+            - cell "'x86'" [ref=e771]:
+              - generic [ref=e772]: "'x86'"
+          - row "VSCMD_VER '16.11.50'" [ref=e773]:
+            - cell "VSCMD_VER" [ref=e774]
+            - cell "'16.11.50'" [ref=e775]:
+              - generic [ref=e776]: "'16.11.50'"
+          - row "VSINSTALLDIR 'C:\\\\Program Files (x86)\\\\Microsoft Visual Studio\\\\2019\\\\BuildTools\\\\'" [ref=e777]:
+            - cell "VSINSTALLDIR" [ref=e778]
+            - cell "'C:\\\\Program Files (x86)\\\\Microsoft Visual Studio\\\\2019\\\\BuildTools\\\\'" [ref=e779]:
+              - generic [ref=e780]: "'C:\\\\Program Files (x86)\\\\Microsoft Visual Studio\\\\2019\\\\BuildTools\\\\'"
+          - row "WINDIR 'C:\\\\windows'" [ref=e781]:
+            - cell "WINDIR" [ref=e782]
+            - cell "'C:\\\\windows'" [ref=e783]:
+              - generic [ref=e784]: "'C:\\\\windows'"
+          - row "WINDOWSLIBPATH 'References\\\\CommonConfiguration\\\\Neutral'" [ref=e785]:
+            - cell "WINDOWSLIBPATH" [ref=e786]
+            - cell "'References\\\\CommonConfiguration\\\\Neutral'" [ref=e787]:
+              - generic [ref=e788]: "'References\\\\CommonConfiguration\\\\Neutral'"
+          - row "WINDOWSSDKLIBVERSION 'winv6.3\\\\'" [ref=e789]:
+            - cell "WINDOWSSDKLIBVERSION" [ref=e790]
+            - cell "'winv6.3\\\\'" [ref=e791]:
+              - generic [ref=e792]: "'winv6.3\\\\'"
+          - row "WINDOWSSDKVERSION '\\\\'" [ref=e793]:
+            - cell "WINDOWSSDKVERSION" [ref=e794]
+            - cell "'\\\\'" [ref=e795]:
+              - generic [ref=e796]: "'\\\\'"
+          - row "ZES_ENABLE_SYSMAN '1'" [ref=e797]:
+            - cell "ZES_ENABLE_SYSMAN" [ref=e798]
+            - cell "'1'" [ref=e799]:
+              - generic [ref=e800]: "'1'"
+          - row [ref=e801]:
+            - cell "_OLD_VIRTUAL_PATH" [ref=e802]
+            - cell [ref=e803]:
+              - generic [ref=e804]: ('C:\\Program Files (x86)\\Microsoft Visual ' 'Studio\\2019\\BuildTools\\MSBuild\\Current\\bin\\Roslyn;C:\\Program Files ' '(x86)\\Microsoft Visual ' 'Studio\\2019\\BuildTools\\\\MSBuild\\Current\\Bin;C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319;C:\\Program ' 'Files (x86)\\Microsoft Visual ' 'Studio\\2019\\BuildTools\\Common7\\IDE\\;C:\\Program Files (x86)\\Microsoft ' 'Visual Studio\\2019\\BuildTools\\Common7\\Tools\\;C:\\Program Files\\Common ' 'Files\\Oracle\\Java\\javapath;C:\\Program Files (x86)\\Common ' 'Files\\Oracle\\Java\\java8path;C:\\Program Files (x86)\\Common ' 'Files\\Oracle\\Java\\javapath;C:\\ProgramData\\Oracle\\Java\\javapath;C:\\windows\\system32;C:\\windows;C:\\windows\\System32\\Wbem;C:\\windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\windows\\System32\\OpenSSH\\;C:\\Program ' 'Files\\Git\\cmd;C:\\Program ' 'Files\\nodejs\\;C:\\ProgramData\\chocolatey\\bin;C:\\Program ' 'Files\\cursor\\resources\\app\\bin;C:\\Program Files\\GitHub ' 'CLI\\;C:\\Users\\HP\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\;C:\\Users\\HP\\AppData\\Local\\Programs\\Python\\Python311\\;C:\\Users\\HP\\AppData\\Local\\Microsoft\\WindowsApps;;C:\\Program ' 'Files\\JetBrains\\PyCharm Community Edition ' '2021.3.3\\bin;;C:\\Users\\HP\\AppData\\Local\\Programs\\Microsoft VS ' 'Code\\bin;C:\\Users\\HP\\AppData\\Roaming\\npm;C:\\Program ' 'Files\\Tesseract-OCR')
+          - row "__DOTNET_ADD_32BIT '1'" [ref=e805]:
+            - cell "__DOTNET_ADD_32BIT" [ref=e806]
+            - cell "'1'" [ref=e807]:
+              - generic [ref=e808]: "'1'"
+          - row "__DOTNET_PREFERRED_BITNESS '32'" [ref=e809]:
+            - cell "__DOTNET_PREFERRED_BITNESS" [ref=e810]
+            - cell "'32'" [ref=e811]:
+              - generic [ref=e812]: "'32'"
+          - row [ref=e813]:
+            - cell "__VSCMD_PREINIT_PATH" [ref=e814]
+            - cell [ref=e815]:
+              - generic [ref=e816]: ('C:\\Program Files\\Common Files\\Oracle\\Java\\javapath;C:\\Program Files ' '(x86)\\Common Files\\Oracle\\Java\\java8path;C:\\Program Files (x86)\\Common ' 'Files\\Oracle\\Java\\javapath;C:\\ProgramData\\Oracle\\Java\\javapath;C:\\windows\\system32;C:\\windows;C:\\windows\\System32\\Wbem;C:\\windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\windows\\System32\\OpenSSH\\;C:\\Program ' 'Files\\Git\\cmd;C:\\Program ' 'Files\\nodejs\\;C:\\ProgramData\\chocolatey\\bin;C:\\Program ' 'Files\\cursor\\resources\\app\\bin;C:\\Program Files\\GitHub ' 'CLI\\;C:\\Users\\HP\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\;C:\\Users\\HP\\AppData\\Local\\Programs\\Python\\Python311\\;C:\\Users\\HP\\AppData\\Local\\Microsoft\\WindowsApps;;C:\\Program ' 'Files\\JetBrains\\PyCharm Community Edition ' '2021.3.3\\bin;;C:\\Users\\HP\\AppData\\Local\\Programs\\Microsoft VS ' 'Code\\bin;C:\\Users\\HP\\AppData\\Roaming\\npm;C:\\Program ' 'Files\\Tesseract-OCR')
+          - row "wsgi.errors <_io.TextIOWrapper name='<stderr>' mode='w' encoding='utf-8'>" [ref=e817]:
+            - cell "wsgi.errors" [ref=e818]
+            - cell "<_io.TextIOWrapper name='<stderr>' mode='w' encoding='utf-8'>" [ref=e819]:
+              - generic [ref=e820]: <_io.TextIOWrapper name='<stderr>' mode='w' encoding='utf-8'>
+          - row "wsgi.file_wrapper <class 'wsgiref.util.FileWrapper'>" [ref=e821]:
+            - cell "wsgi.file_wrapper" [ref=e822]
+            - cell "<class 'wsgiref.util.FileWrapper'>" [ref=e823]:
+              - generic [ref=e824]: <class 'wsgiref.util.FileWrapper'>
+          - row "wsgi.input <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2F17010>" [ref=e825]:
+            - cell "wsgi.input" [ref=e826]
+            - cell "<django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2F17010>" [ref=e827]:
+              - generic [ref=e828]: <django.core.handlers.wsgi.LimitedStream object at 0x0000017FD2F17010>
+          - row "wsgi.multiprocess False" [ref=e829]:
+            - cell "wsgi.multiprocess" [ref=e830]
+            - cell "False" [ref=e831]:
+              - generic [ref=e832]: "False"
+          - row "wsgi.multithread True" [ref=e833]:
+            - cell "wsgi.multithread" [ref=e834]
+            - cell "True" [ref=e835]:
+              - generic [ref=e836]: "True"
+          - row "wsgi.run_once False" [ref=e837]:
+            - cell "wsgi.run_once" [ref=e838]
+            - cell "False" [ref=e839]:
+              - generic [ref=e840]: "False"
+          - row "wsgi.url_scheme 'http'" [ref=e841]:
+            - cell "wsgi.url_scheme" [ref=e842]
+            - cell "'http'" [ref=e843]:
+              - generic [ref=e844]: "'http'"
+          - row "wsgi.version (1, 0)" [ref=e845]:
+            - cell "wsgi.version" [ref=e846]
+            - cell "(1, 0)" [ref=e847]:
+              - generic [ref=e848]: (1, 0)
+      - heading "Settings" [level=3] [ref=e849]
+      - heading "Using settings module core.settings_maintenance" [level=4] [ref=e850]:
+        - text: Using settings module
+        - code [ref=e851]: core.settings_maintenance
+      - table [ref=e852]:
+        - rowgroup [ref=e853]:
+          - row "Setting Value" [ref=e854]:
+            - columnheader "Setting" [ref=e855]
+            - columnheader "Value" [ref=e856]
+        - rowgroup [ref=e857]:
+          - 'row "ABSOLUTE_URL_OVERRIDES {}" [ref=e858]':
+            - cell "ABSOLUTE_URL_OVERRIDES" [ref=e859]
+            - 'cell "{}" [ref=e860]':
+              - generic [ref=e861]: "{}"
+          - row "ADMINS []" [ref=e862]:
+            - cell "ADMINS" [ref=e863]
+            - cell "[]" [ref=e864]:
+              - generic [ref=e865]: "[]"
+          - row "ALLOWED_HOSTS ['127.0.0.1', 'localhost', 'testserver']" [ref=e866]:
+            - cell "ALLOWED_HOSTS" [ref=e867]
+            - cell "['127.0.0.1', 'localhost', 'testserver']" [ref=e868]:
+              - generic [ref=e869]: "['127.0.0.1', 'localhost', 'testserver']"
+          - row "APPEND_SLASH False" [ref=e870]:
+            - cell "APPEND_SLASH" [ref=e871]
+            - cell "False" [ref=e872]:
+              - generic [ref=e873]: "False"
+          - row "AUTHENTICATION_BACKENDS '********************'" [ref=e874]:
+            - cell "AUTHENTICATION_BACKENDS" [ref=e875]
+            - cell "'********************'" [ref=e876]:
+              - generic [ref=e877]: "'********************'"
+          - row "AUTH_PASSWORD_VALIDATORS '********************'" [ref=e878]:
+            - cell "AUTH_PASSWORD_VALIDATORS" [ref=e879]
+            - cell "'********************'" [ref=e880]:
+              - generic [ref=e881]: "'********************'"
+          - row "AUTH_USER_MODEL '********************'" [ref=e882]:
+            - cell "AUTH_USER_MODEL" [ref=e883]
+            - cell "'********************'" [ref=e884]:
+              - generic [ref=e885]: "'********************'"
+          - row "BASE_DIR WindowsPath('C:/dev/bakim_kalibrasyon')" [ref=e886]:
+            - cell "BASE_DIR" [ref=e887]
+            - cell "WindowsPath('C:/dev/bakim_kalibrasyon')" [ref=e888]:
+              - generic [ref=e889]: WindowsPath('C:/dev/bakim_kalibrasyon')
+          - 'row "CACHES {''default'': {''BACKEND'': ''django.core.cache.backends.locmem.LocMemCache''}}" [ref=e890]':
+            - cell "CACHES" [ref=e891]
+            - 'cell "{''default'': {''BACKEND'': ''django.core.cache.backends.locmem.LocMemCache''}}" [ref=e892]':
+              - generic [ref=e893]: "{'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}"
+          - row "CACHE_MIDDLEWARE_ALIAS 'default'" [ref=e894]:
+            - cell "CACHE_MIDDLEWARE_ALIAS" [ref=e895]
+            - cell "'default'" [ref=e896]:
+              - generic [ref=e897]: "'default'"
+          - row "CACHE_MIDDLEWARE_KEY_PREFIX '********************'" [ref=e898]:
+            - cell "CACHE_MIDDLEWARE_KEY_PREFIX" [ref=e899]
+            - cell "'********************'" [ref=e900]:
+              - generic [ref=e901]: "'********************'"
+          - row "CACHE_MIDDLEWARE_SECONDS 600" [ref=e902]:
+            - cell "CACHE_MIDDLEWARE_SECONDS" [ref=e903]
+            - cell "600" [ref=e904]:
+              - generic [ref=e905]: "600"
+          - row "CSRF_COOKIE_AGE 31449600" [ref=e906]:
+            - cell "CSRF_COOKIE_AGE" [ref=e907]
+            - cell "31449600" [ref=e908]:
+              - generic [ref=e909]: "31449600"
+          - row "CSRF_COOKIE_DOMAIN None" [ref=e910]:
+            - cell "CSRF_COOKIE_DOMAIN" [ref=e911]
+            - cell "None" [ref=e912]:
+              - generic [ref=e913]: None
+          - row "CSRF_COOKIE_HTTPONLY False" [ref=e914]:
+            - cell "CSRF_COOKIE_HTTPONLY" [ref=e915]
+            - cell "False" [ref=e916]:
+              - generic [ref=e917]: "False"
+          - row "CSRF_COOKIE_NAME 'csrftoken'" [ref=e918]:
+            - cell "CSRF_COOKIE_NAME" [ref=e919]
+            - cell "'csrftoken'" [ref=e920]:
+              - generic [ref=e921]: "'csrftoken'"
+          - row "CSRF_COOKIE_PATH '/'" [ref=e922]:
+            - cell "CSRF_COOKIE_PATH" [ref=e923]
+            - cell "'/'" [ref=e924]:
+              - generic [ref=e925]: "'/'"
+          - row "CSRF_COOKIE_SAMESITE 'Lax'" [ref=e926]:
+            - cell "CSRF_COOKIE_SAMESITE" [ref=e927]
+            - cell "'Lax'" [ref=e928]:
+              - generic [ref=e929]: "'Lax'"
+          - row "CSRF_COOKIE_SECURE False" [ref=e930]:
+            - cell "CSRF_COOKIE_SECURE" [ref=e931]
+            - cell "False" [ref=e932]:
+              - generic [ref=e933]: "False"
+          - row "CSRF_FAILURE_VIEW 'django.views.csrf.csrf_failure'" [ref=e934]:
+            - cell "CSRF_FAILURE_VIEW" [ref=e935]
+            - cell "'django.views.csrf.csrf_failure'" [ref=e936]:
+              - generic [ref=e937]: "'django.views.csrf.csrf_failure'"
+          - row "CSRF_HEADER_NAME 'HTTP_X_CSRFTOKEN'" [ref=e938]:
+            - cell "CSRF_HEADER_NAME" [ref=e939]
+            - cell "'HTTP_X_CSRFTOKEN'" [ref=e940]:
+              - generic [ref=e941]: "'HTTP_X_CSRFTOKEN'"
+          - row "CSRF_TRUSTED_ORIGINS []" [ref=e942]:
+            - cell "CSRF_TRUSTED_ORIGINS" [ref=e943]
+            - cell "[]" [ref=e944]:
+              - generic [ref=e945]: "[]"
+          - row "CSRF_USE_SESSIONS False" [ref=e946]:
+            - cell "CSRF_USE_SESSIONS" [ref=e947]
+            - cell "False" [ref=e948]:
+              - generic [ref=e949]: "False"
+          - 'row "DATABASES {''default'': {''ATOMIC_REQUESTS'': False, ''AUTOCOMMIT'': True, ''CONN_HEALTH_CHECKS'': False, ''CONN_MAX_AGE'': 0, ''ENGINE'': ''django.db.backends.sqlite3'', ''HOST'': '''', ''NAME'': WindowsPath(''C:/dev/bakim_kalibrasyon/db.sqlite3''), ''OPTIONS'': {}, ''PASSWORD'': ''********************'', ''PORT'': '''', ''TEST'': {''CHARSET'': None, ''COLLATION'': None, ''MIGRATE'': True, ''MIRROR'': None, ''NAME'': None}, ''TIME_ZONE'': None, ''USER'': ''''}}" [ref=e950]':
+            - cell "DATABASES" [ref=e951]
+            - 'cell "{''default'': {''ATOMIC_REQUESTS'': False, ''AUTOCOMMIT'': True, ''CONN_HEALTH_CHECKS'': False, ''CONN_MAX_AGE'': 0, ''ENGINE'': ''django.db.backends.sqlite3'', ''HOST'': '''', ''NAME'': WindowsPath(''C:/dev/bakim_kalibrasyon/db.sqlite3''), ''OPTIONS'': {}, ''PASSWORD'': ''********************'', ''PORT'': '''', ''TEST'': {''CHARSET'': None, ''COLLATION'': None, ''MIGRATE'': True, ''MIRROR'': None, ''NAME'': None}, ''TIME_ZONE'': None, ''USER'': ''''}}" [ref=e952]':
+              - generic [ref=e953]: "{'default': {'ATOMIC_REQUESTS': False, 'AUTOCOMMIT': True, 'CONN_HEALTH_CHECKS': False, 'CONN_MAX_AGE': 0, 'ENGINE': 'django.db.backends.sqlite3', 'HOST': '', 'NAME': WindowsPath('C:/dev/bakim_kalibrasyon/db.sqlite3'), 'OPTIONS': {}, 'PASSWORD': '********************', 'PORT': '', 'TEST': {'CHARSET': None, 'COLLATION': None, 'MIGRATE': True, 'MIRROR': None, 'NAME': None}, 'TIME_ZONE': None, 'USER': ''}}"
+          - row "DATABASE_ROUTERS []" [ref=e954]:
+            - cell "DATABASE_ROUTERS" [ref=e955]
+            - cell "[]" [ref=e956]:
+              - generic [ref=e957]: "[]"
+          - row "DATA_UPLOAD_MAX_MEMORY_SIZE 2621440" [ref=e958]:
+            - cell "DATA_UPLOAD_MAX_MEMORY_SIZE" [ref=e959]
+            - cell "2621440" [ref=e960]:
+              - generic [ref=e961]: "2621440"
+          - row "DATA_UPLOAD_MAX_NUMBER_FIELDS 1000" [ref=e962]:
+            - cell "DATA_UPLOAD_MAX_NUMBER_FIELDS" [ref=e963]
+            - cell "1000" [ref=e964]:
+              - generic [ref=e965]: "1000"
+          - row "DATA_UPLOAD_MAX_NUMBER_FILES 100" [ref=e966]:
+            - cell "DATA_UPLOAD_MAX_NUMBER_FILES" [ref=e967]
+            - cell "100" [ref=e968]:
+              - generic [ref=e969]: "100"
+          - row "DATETIME_FORMAT 'N j, Y, P'" [ref=e970]:
+            - cell "DATETIME_FORMAT" [ref=e971]
+            - cell "'N j, Y, P'" [ref=e972]:
+              - generic [ref=e973]: "'N j, Y, P'"
+          - row "DATETIME_INPUT_FORMATS ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M', '%m/%d/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S.%f', '%m/%d/%Y %H:%M', '%m/%d/%y %H:%M:%S', '%m/%d/%y %H:%M:%S.%f', '%m/%d/%y %H:%M']" [ref=e974]:
+            - cell "DATETIME_INPUT_FORMATS" [ref=e975]
+            - cell "['%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M', '%m/%d/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S.%f', '%m/%d/%Y %H:%M', '%m/%d/%y %H:%M:%S', '%m/%d/%y %H:%M:%S.%f', '%m/%d/%y %H:%M']" [ref=e976]:
+              - generic [ref=e977]: "['%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M', '%m/%d/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S.%f', '%m/%d/%Y %H:%M', '%m/%d/%y %H:%M:%S', '%m/%d/%y %H:%M:%S.%f', '%m/%d/%y %H:%M']"
+          - row "DATE_FORMAT 'N j, Y'" [ref=e978]:
+            - cell "DATE_FORMAT" [ref=e979]
+            - cell "'N j, Y'" [ref=e980]:
+              - generic [ref=e981]: "'N j, Y'"
+          - row "DATE_INPUT_FORMATS ['%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y', '%b %d %Y', '%b %d, %Y', '%d %b %Y', '%d %b, %Y', '%B %d %Y', '%B %d, %Y', '%d %B %Y', '%d %B, %Y']" [ref=e982]:
+            - cell "DATE_INPUT_FORMATS" [ref=e983]
+            - cell "['%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y', '%b %d %Y', '%b %d, %Y', '%d %b %Y', '%d %b, %Y', '%B %d %Y', '%B %d, %Y', '%d %B %Y', '%d %B, %Y']" [ref=e984]:
+              - generic [ref=e985]: "['%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y', '%b %d %Y', '%b %d, %Y', '%d %b %Y', '%d %b, %Y', '%B %d %Y', '%B %d, %Y', '%d %B %Y', '%d %B, %Y']"
+          - row "DEBUG True" [ref=e986]:
+            - cell "DEBUG" [ref=e987]
+            - cell "True" [ref=e988]:
+              - generic [ref=e989]: "True"
+          - row "DEBUG_PROPAGATE_EXCEPTIONS False" [ref=e990]:
+            - cell "DEBUG_PROPAGATE_EXCEPTIONS" [ref=e991]
+            - cell "False" [ref=e992]:
+              - generic [ref=e993]: "False"
+          - row "DECIMAL_SEPARATOR '.'" [ref=e994]:
+            - cell "DECIMAL_SEPARATOR" [ref=e995]
+            - cell "'.'" [ref=e996]:
+              - generic [ref=e997]: "'.'"
+          - row "DEFAULT_AUTO_FIELD 'django.db.models.BigAutoField'" [ref=e998]:
+            - cell "DEFAULT_AUTO_FIELD" [ref=e999]
+            - cell "'django.db.models.BigAutoField'" [ref=e1000]:
+              - generic [ref=e1001]: "'django.db.models.BigAutoField'"
+          - row "DEFAULT_CHARSET 'utf-8'" [ref=e1002]:
+            - cell "DEFAULT_CHARSET" [ref=e1003]
+            - cell "'utf-8'" [ref=e1004]:
+              - generic [ref=e1005]: "'utf-8'"
+          - row "DEFAULT_EXCEPTION_REPORTER 'django.views.debug.ExceptionReporter'" [ref=e1006]:
+            - cell "DEFAULT_EXCEPTION_REPORTER" [ref=e1007]
+            - cell "'django.views.debug.ExceptionReporter'" [ref=e1008]:
+              - generic [ref=e1009]: "'django.views.debug.ExceptionReporter'"
+          - row "DEFAULT_EXCEPTION_REPORTER_FILTER 'django.views.debug.SafeExceptionReporterFilter'" [ref=e1010]:
+            - cell "DEFAULT_EXCEPTION_REPORTER_FILTER" [ref=e1011]
+            - cell "'django.views.debug.SafeExceptionReporterFilter'" [ref=e1012]:
+              - generic [ref=e1013]: "'django.views.debug.SafeExceptionReporterFilter'"
+          - row "DEFAULT_FROM_EMAIL 'webmaster@localhost'" [ref=e1014]:
+            - cell "DEFAULT_FROM_EMAIL" [ref=e1015]
+            - cell "'webmaster@localhost'" [ref=e1016]:
+              - generic [ref=e1017]: "'webmaster@localhost'"
+          - row "DEFAULT_INDEX_TABLESPACE ''" [ref=e1018]:
+            - cell "DEFAULT_INDEX_TABLESPACE" [ref=e1019]
+            - cell "''" [ref=e1020]:
+              - generic [ref=e1021]: "''"
+          - row "DEFAULT_TABLESPACE ''" [ref=e1022]:
+            - cell "DEFAULT_TABLESPACE" [ref=e1023]
+            - cell "''" [ref=e1024]:
+              - generic [ref=e1025]: "''"
+          - row "DISALLOWED_USER_AGENTS []" [ref=e1026]:
+            - cell "DISALLOWED_USER_AGENTS" [ref=e1027]
+            - cell "[]" [ref=e1028]:
+              - generic [ref=e1029]: "[]"
+          - row "EMAIL_BACKEND 'django.core.mail.backends.smtp.EmailBackend'" [ref=e1030]:
+            - cell "EMAIL_BACKEND" [ref=e1031]
+            - cell "'django.core.mail.backends.smtp.EmailBackend'" [ref=e1032]:
+              - generic [ref=e1033]: "'django.core.mail.backends.smtp.EmailBackend'"
+          - row "EMAIL_HOST 'localhost'" [ref=e1034]:
+            - cell "EMAIL_HOST" [ref=e1035]
+            - cell "'localhost'" [ref=e1036]:
+              - generic [ref=e1037]: "'localhost'"
+          - row "EMAIL_HOST_PASSWORD '********************'" [ref=e1038]:
+            - cell "EMAIL_HOST_PASSWORD" [ref=e1039]
+            - cell "'********************'" [ref=e1040]:
+              - generic [ref=e1041]: "'********************'"
+          - row "EMAIL_HOST_USER ''" [ref=e1042]:
+            - cell "EMAIL_HOST_USER" [ref=e1043]
+            - cell "''" [ref=e1044]:
+              - generic [ref=e1045]: "''"
+          - row "EMAIL_PORT 25" [ref=e1046]:
+            - cell "EMAIL_PORT" [ref=e1047]
+            - cell "25" [ref=e1048]:
+              - generic [ref=e1049]: "25"
+          - row "EMAIL_SSL_CERTFILE None" [ref=e1050]:
+            - cell "EMAIL_SSL_CERTFILE" [ref=e1051]
+            - cell "None" [ref=e1052]:
+              - generic [ref=e1053]: None
+          - row "EMAIL_SSL_KEYFILE '********************'" [ref=e1054]:
+            - cell "EMAIL_SSL_KEYFILE" [ref=e1055]
+            - cell "'********************'" [ref=e1056]:
+              - generic [ref=e1057]: "'********************'"
+          - row "EMAIL_SUBJECT_PREFIX '[Django] '" [ref=e1058]:
+            - cell "EMAIL_SUBJECT_PREFIX" [ref=e1059]
+            - cell "'[Django] '" [ref=e1060]:
+              - generic [ref=e1061]: "'[Django] '"
+          - row "EMAIL_TIMEOUT None" [ref=e1062]:
+            - cell "EMAIL_TIMEOUT" [ref=e1063]
+            - cell "None" [ref=e1064]:
+              - generic [ref=e1065]: None
+          - row "EMAIL_USE_LOCALTIME False" [ref=e1066]:
+            - cell "EMAIL_USE_LOCALTIME" [ref=e1067]
+            - cell "False" [ref=e1068]:
+              - generic [ref=e1069]: "False"
+          - row "EMAIL_USE_SSL False" [ref=e1070]:
+            - cell "EMAIL_USE_SSL" [ref=e1071]
+            - cell "False" [ref=e1072]:
+              - generic [ref=e1073]: "False"
+          - row "EMAIL_USE_TLS False" [ref=e1074]:
+            - cell "EMAIL_USE_TLS" [ref=e1075]
+            - cell "False" [ref=e1076]:
+              - generic [ref=e1077]: "False"
+          - row "FILE_UPLOAD_DIRECTORY_PERMISSIONS None" [ref=e1078]:
+            - cell "FILE_UPLOAD_DIRECTORY_PERMISSIONS" [ref=e1079]
+            - cell "None" [ref=e1080]:
+              - generic [ref=e1081]: None
+          - row "FILE_UPLOAD_HANDLERS ['django.core.files.uploadhandler.MemoryFileUploadHandler', 'django.core.files.uploadhandler.TemporaryFileUploadHandler']" [ref=e1082]:
+            - cell "FILE_UPLOAD_HANDLERS" [ref=e1083]
+            - cell "['django.core.files.uploadhandler.MemoryFileUploadHandler', 'django.core.files.uploadhandler.TemporaryFileUploadHandler']" [ref=e1084]:
+              - generic [ref=e1085]: "['django.core.files.uploadhandler.MemoryFileUploadHandler', 'django.core.files.uploadhandler.TemporaryFileUploadHandler']"
+          - row "FILE_UPLOAD_MAX_MEMORY_SIZE 2621440" [ref=e1086]:
+            - cell "FILE_UPLOAD_MAX_MEMORY_SIZE" [ref=e1087]
+            - cell "2621440" [ref=e1088]:
+              - generic [ref=e1089]: "2621440"
+          - row "FILE_UPLOAD_PERMISSIONS 420" [ref=e1090]:
+            - cell "FILE_UPLOAD_PERMISSIONS" [ref=e1091]
+            - cell "420" [ref=e1092]:
+              - generic [ref=e1093]: "420"
+          - row "FILE_UPLOAD_TEMP_DIR None" [ref=e1094]:
+            - cell "FILE_UPLOAD_TEMP_DIR" [ref=e1095]
+            - cell "None" [ref=e1096]:
+              - generic [ref=e1097]: None
+          - row "FIRST_DAY_OF_WEEK 0" [ref=e1098]:
+            - cell "FIRST_DAY_OF_WEEK" [ref=e1099]
+            - cell "0" [ref=e1100]:
+              - generic [ref=e1101]: "0"
+          - row "FIXTURE_DIRS []" [ref=e1102]:
+            - cell "FIXTURE_DIRS" [ref=e1103]
+            - cell "[]" [ref=e1104]:
+              - generic [ref=e1105]: "[]"
+          - row "FORCE_SCRIPT_NAME None" [ref=e1106]:
+            - cell "FORCE_SCRIPT_NAME" [ref=e1107]
+            - cell "None" [ref=e1108]:
+              - generic [ref=e1109]: None
+          - row "FORMAT_MODULE_PATH None" [ref=e1110]:
+            - cell "FORMAT_MODULE_PATH" [ref=e1111]
+            - cell "None" [ref=e1112]:
+              - generic [ref=e1113]: None
+          - row "FORMS_URLFIELD_ASSUME_HTTPS False" [ref=e1114]:
+            - cell "FORMS_URLFIELD_ASSUME_HTTPS" [ref=e1115]
+            - cell "False" [ref=e1116]:
+              - generic [ref=e1117]: "False"
+          - row "FORM_RENDERER 'django.forms.renderers.DjangoTemplates'" [ref=e1118]:
+            - cell "FORM_RENDERER" [ref=e1119]
+            - cell "'django.forms.renderers.DjangoTemplates'" [ref=e1120]:
+              - generic [ref=e1121]: "'django.forms.renderers.DjangoTemplates'"
+          - row "IGNORABLE_404_URLS []" [ref=e1122]:
+            - cell "IGNORABLE_404_URLS" [ref=e1123]
+            - cell "[]" [ref=e1124]:
+              - generic [ref=e1125]: "[]"
+          - row "INSTALLED_APPS ['maintenance.apps.MaintenanceConfig', 'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles']" [ref=e1126]:
+            - cell "INSTALLED_APPS" [ref=e1127]
+            - cell "['maintenance.apps.MaintenanceConfig', 'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles']" [ref=e1128]:
+              - generic [ref=e1129]: "['maintenance.apps.MaintenanceConfig', 'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles']"
+          - row "INTERNAL_IPS []" [ref=e1130]:
+            - cell "INTERNAL_IPS" [ref=e1131]
+            - cell "[]" [ref=e1132]:
+              - generic [ref=e1133]: "[]"
+          - row [ref=e1134]:
+            - cell "LANGUAGES" [ref=e1135]
+            - cell [ref=e1136]:
+              - generic [ref=e1137]: "[('af', 'Afrikaans'), ('ar', 'Arabic'), ('ar-dz', 'Algerian Arabic'), ('ast', 'Asturian'), ('az', 'Azerbaijani'), ('bg', 'Bulgarian'), ('be', 'Belarusian'), ('bn', 'Bengali'), ('br', 'Breton'), ('bs', 'Bosnian'), ('ca', 'Catalan'), ('ckb', 'Central Kurdish (Sorani)'), ('cs', 'Czech'), ('cy', 'Welsh'), ('da', 'Danish'), ('de', 'German'), ('dsb', 'Lower Sorbian'), ('el', 'Greek'), ('en', 'English'), ('en-au', 'Australian English'), ('en-gb', 'British English'), ('eo', 'Esperanto'), ('es', 'Spanish'), ('es-ar', 'Argentinian Spanish'), ('es-co', 'Colombian Spanish'), ('es-mx', 'Mexican Spanish'), ('es-ni', 'Nicaraguan Spanish'), ('es-ve', 'Venezuelan Spanish'), ('et', 'Estonian'), ('eu', 'Basque'), ('fa', 'Persian'), ('fi', 'Finnish'), ('fr', 'French'), ('fy', 'Frisian'), ('ga', 'Irish'), ('gd', 'Scottish Gaelic'), ('gl', 'Galician'), ('he', 'Hebrew'), ('hi', 'Hindi'), ('hr', 'Croatian'), ('hsb', 'Upper Sorbian'), ('hu', 'Hungarian'), ('hy', 'Armenian'), ('ia', 'Interlingua'), ('id', 'Indonesian'), ('ig', 'Igbo'), ('io', 'Ido'), ('is', 'Icelandic'), ('it', 'Italian'), ('ja', 'Japanese'), ('ka', 'Georgian'), ('kab', 'Kabyle'), ('kk', 'Kazakh'), ('km', 'Khmer'), ('kn', 'Kannada'), ('ko', 'Korean'), ('ky', 'Kyrgyz'), ('lb', 'Luxembourgish'), ('lt', 'Lithuanian'), ('lv', 'Latvian'), ('mk', 'Macedonian'), ('ml', 'Malayalam'), ('mn', 'Mongolian'), ('mr', 'Marathi'), ('ms', 'Malay'), ('my', 'Burmese'), ('nb', 'Norwegian Bokmål'), ('ne', 'Nepali'), ('nl', 'Dutch'), ('nn', 'Norwegian Nynorsk'), ('os', 'Ossetic'), ('pa', 'Punjabi'), ('pl', 'Polish'), ('pt', 'Portuguese'), ('pt-br', 'Brazilian Portuguese'), ('ro', 'Romanian'), ('ru', 'Russian'), ('sk', 'Slovak'), ('sl', 'Slovenian'), ('sq', 'Albanian'), ('sr', 'Serbian'), ('sr-latn', 'Serbian Latin'), ('sv', 'Swedish'), ('sw', 'Swahili'), ('ta', 'Tamil'), ('te', 'Telugu'), ('tg', 'Tajik'), ('th', 'Thai'), ('tk', 'Turkmen'), ('tr', 'Turkish'), ('tt', 'Tatar'), ('udm', 'Udmurt'), ('ug', 'Uyghur'), ('uk', 'Ukrainian'), ('ur', 'Urdu'), ('uz', 'Uzbek'), ('vi', 'Vietnamese'), ('zh-hans', 'Simplified Chinese'), ('zh-hant', 'Traditional Chinese')]"
+          - row "LANGUAGES_BIDI ['he', 'ar', 'ar-dz', 'ckb', 'fa', 'ug', 'ur']" [ref=e1138]:
+            - cell "LANGUAGES_BIDI" [ref=e1139]
+            - cell "['he', 'ar', 'ar-dz', 'ckb', 'fa', 'ug', 'ur']" [ref=e1140]:
+              - generic [ref=e1141]: "['he', 'ar', 'ar-dz', 'ckb', 'fa', 'ug', 'ur']"
+          - row "LANGUAGE_CODE 'en-us'" [ref=e1142]:
+            - cell "LANGUAGE_CODE" [ref=e1143]
+            - cell "'en-us'" [ref=e1144]:
+              - generic [ref=e1145]: "'en-us'"
+          - row "LANGUAGE_COOKIE_AGE None" [ref=e1146]:
+            - cell "LANGUAGE_COOKIE_AGE" [ref=e1147]
+            - cell "None" [ref=e1148]:
+              - generic [ref=e1149]: None
+          - row "LANGUAGE_COOKIE_DOMAIN None" [ref=e1150]:
+            - cell "LANGUAGE_COOKIE_DOMAIN" [ref=e1151]
+            - cell "None" [ref=e1152]:
+              - generic [ref=e1153]: None
+          - row "LANGUAGE_COOKIE_HTTPONLY False" [ref=e1154]:
+            - cell "LANGUAGE_COOKIE_HTTPONLY" [ref=e1155]
+            - cell "False" [ref=e1156]:
+              - generic [ref=e1157]: "False"
+          - row "LANGUAGE_COOKIE_NAME 'django_language'" [ref=e1158]:
+            - cell "LANGUAGE_COOKIE_NAME" [ref=e1159]
+            - cell "'django_language'" [ref=e1160]:
+              - generic [ref=e1161]: "'django_language'"
+          - row "LANGUAGE_COOKIE_PATH '/'" [ref=e1162]:
+            - cell "LANGUAGE_COOKIE_PATH" [ref=e1163]
+            - cell "'/'" [ref=e1164]:
+              - generic [ref=e1165]: "'/'"
+          - row "LANGUAGE_COOKIE_SAMESITE None" [ref=e1166]:
+            - cell "LANGUAGE_COOKIE_SAMESITE" [ref=e1167]
+            - cell "None" [ref=e1168]:
+              - generic [ref=e1169]: None
+          - row "LANGUAGE_COOKIE_SECURE False" [ref=e1170]:
+            - cell "LANGUAGE_COOKIE_SECURE" [ref=e1171]
+            - cell "False" [ref=e1172]:
+              - generic [ref=e1173]: "False"
+          - row "LOCALE_PATHS []" [ref=e1174]:
+            - cell "LOCALE_PATHS" [ref=e1175]
+            - cell "[]" [ref=e1176]:
+              - generic [ref=e1177]: "[]"
+          - 'row "LOGGING {}" [ref=e1178]':
+            - cell "LOGGING" [ref=e1179]
+            - 'cell "{}" [ref=e1180]':
+              - generic [ref=e1181]: "{}"
+          - row "LOGGING_CONFIG 'logging.config.dictConfig'" [ref=e1182]:
+            - cell "LOGGING_CONFIG" [ref=e1183]
+            - cell "'logging.config.dictConfig'" [ref=e1184]:
+              - generic [ref=e1185]: "'logging.config.dictConfig'"
+          - row "LOGIN_REDIRECT_URL '/accounts/profile/'" [ref=e1186]:
+            - cell "LOGIN_REDIRECT_URL" [ref=e1187]
+            - cell "'/accounts/profile/'" [ref=e1188]:
+              - generic [ref=e1189]: "'/accounts/profile/'"
+          - row "LOGIN_URL '/accounts/login/'" [ref=e1190]:
+            - cell "LOGIN_URL" [ref=e1191]
+            - cell "'/accounts/login/'" [ref=e1192]:
+              - generic [ref=e1193]: "'/accounts/login/'"
+          - row "LOGOUT_REDIRECT_URL None" [ref=e1194]:
+            - cell "LOGOUT_REDIRECT_URL" [ref=e1195]
+            - cell "None" [ref=e1196]:
+              - generic [ref=e1197]: None
+          - row "MANAGERS []" [ref=e1198]:
+            - cell "MANAGERS" [ref=e1199]
+            - cell "[]" [ref=e1200]:
+              - generic [ref=e1201]: "[]"
+          - row "MEDIA_ROOT ''" [ref=e1202]:
+            - cell "MEDIA_ROOT" [ref=e1203]
+            - cell "''" [ref=e1204]:
+              - generic [ref=e1205]: "''"
+          - row "MEDIA_URL '/'" [ref=e1206]:
+            - cell "MEDIA_URL" [ref=e1207]
+            - cell "'/'" [ref=e1208]:
+              - generic [ref=e1209]: "'/'"
+          - row "MESSAGE_STORAGE 'django.contrib.messages.storage.fallback.FallbackStorage'" [ref=e1210]:
+            - cell "MESSAGE_STORAGE" [ref=e1211]
+            - cell "'django.contrib.messages.storage.fallback.FallbackStorage'" [ref=e1212]:
+              - generic [ref=e1213]: "'django.contrib.messages.storage.fallback.FallbackStorage'"
+          - row "MIDDLEWARE ['core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware', 'django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware']" [ref=e1214]:
+            - cell "MIDDLEWARE" [ref=e1215]
+            - cell "['core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware', 'django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware']" [ref=e1216]:
+              - generic [ref=e1217]: "['core.mw_fix_equip_redirect.AdminEquipmentRedirectFixMiddleware', 'django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware']"
+          - 'row "MIGRATION_MODULES {}" [ref=e1218]':
+            - cell "MIGRATION_MODULES" [ref=e1219]
+            - 'cell "{}" [ref=e1220]':
+              - generic [ref=e1221]: "{}"
+          - row "MONTH_DAY_FORMAT 'F j'" [ref=e1222]:
+            - cell "MONTH_DAY_FORMAT" [ref=e1223]
+            - cell "'F j'" [ref=e1224]:
+              - generic [ref=e1225]: "'F j'"
+          - row "NUMBER_GROUPING 0" [ref=e1226]:
+            - cell "NUMBER_GROUPING" [ref=e1227]
+            - cell "0" [ref=e1228]:
+              - generic [ref=e1229]: "0"
+          - row "PASSWORD_HASHERS '********************'" [ref=e1230]:
+            - cell "PASSWORD_HASHERS" [ref=e1231]
+            - cell "'********************'" [ref=e1232]:
+              - generic [ref=e1233]: "'********************'"
+          - row "PASSWORD_RESET_TIMEOUT '********************'" [ref=e1234]:
+            - cell "PASSWORD_RESET_TIMEOUT" [ref=e1235]
+            - cell "'********************'" [ref=e1236]:
+              - generic [ref=e1237]: "'********************'"
+          - row "PREPEND_WWW False" [ref=e1238]:
+            - cell "PREPEND_WWW" [ref=e1239]
+            - cell "False" [ref=e1240]:
+              - generic [ref=e1241]: "False"
+          - row "ROOT_URLCONF 'core.urls'" [ref=e1242]:
+            - cell "ROOT_URLCONF" [ref=e1243]
+            - cell "'core.urls'" [ref=e1244]:
+              - generic [ref=e1245]: "'core.urls'"
+          - row "SECRET_KEY '********************'" [ref=e1246]:
+            - cell "SECRET_KEY" [ref=e1247]
+            - cell "'********************'" [ref=e1248]:
+              - generic [ref=e1249]: "'********************'"
+          - row "SECRET_KEY_FALLBACKS '********************'" [ref=e1250]:
+            - cell "SECRET_KEY_FALLBACKS" [ref=e1251]
+            - cell "'********************'" [ref=e1252]:
+              - generic [ref=e1253]: "'********************'"
+          - row "SECURE_CONTENT_TYPE_NOSNIFF True" [ref=e1254]:
+            - cell "SECURE_CONTENT_TYPE_NOSNIFF" [ref=e1255]
+            - cell "True" [ref=e1256]:
+              - generic [ref=e1257]: "True"
+          - row "SECURE_CROSS_ORIGIN_OPENER_POLICY 'same-origin'" [ref=e1258]:
+            - cell "SECURE_CROSS_ORIGIN_OPENER_POLICY" [ref=e1259]
+            - cell "'same-origin'" [ref=e1260]:
+              - generic [ref=e1261]: "'same-origin'"
+          - row "SECURE_HSTS_INCLUDE_SUBDOMAINS False" [ref=e1262]:
+            - cell "SECURE_HSTS_INCLUDE_SUBDOMAINS" [ref=e1263]
+            - cell "False" [ref=e1264]:
+              - generic [ref=e1265]: "False"
+          - row "SECURE_HSTS_PRELOAD False" [ref=e1266]:
+            - cell "SECURE_HSTS_PRELOAD" [ref=e1267]
+            - cell "False" [ref=e1268]:
+              - generic [ref=e1269]: "False"
+          - row "SECURE_HSTS_SECONDS 0" [ref=e1270]:
+            - cell "SECURE_HSTS_SECONDS" [ref=e1271]
+            - cell "0" [ref=e1272]:
+              - generic [ref=e1273]: "0"
+          - row "SECURE_PROXY_SSL_HEADER None" [ref=e1274]:
+            - cell "SECURE_PROXY_SSL_HEADER" [ref=e1275]
+            - cell "None" [ref=e1276]:
+              - generic [ref=e1277]: None
+          - row "SECURE_REDIRECT_EXEMPT []" [ref=e1278]:
+            - cell "SECURE_REDIRECT_EXEMPT" [ref=e1279]
+            - cell "[]" [ref=e1280]:
+              - generic [ref=e1281]: "[]"
+          - row "SECURE_REFERRER_POLICY 'same-origin'" [ref=e1282]:
+            - cell "SECURE_REFERRER_POLICY" [ref=e1283]
+            - cell "'same-origin'" [ref=e1284]:
+              - generic [ref=e1285]: "'same-origin'"
+          - row "SECURE_SSL_HOST None" [ref=e1286]:
+            - cell "SECURE_SSL_HOST" [ref=e1287]
+            - cell "None" [ref=e1288]:
+              - generic [ref=e1289]: None
+          - row "SECURE_SSL_REDIRECT False" [ref=e1290]:
+            - cell "SECURE_SSL_REDIRECT" [ref=e1291]
+            - cell "False" [ref=e1292]:
+              - generic [ref=e1293]: "False"
+          - row "SERVER_EMAIL 'root@localhost'" [ref=e1294]:
+            - cell "SERVER_EMAIL" [ref=e1295]
+            - cell "'root@localhost'" [ref=e1296]:
+              - generic [ref=e1297]: "'root@localhost'"
+          - row "SESSION_CACHE_ALIAS 'default'" [ref=e1298]:
+            - cell "SESSION_CACHE_ALIAS" [ref=e1299]
+            - cell "'default'" [ref=e1300]:
+              - generic [ref=e1301]: "'default'"
+          - row "SESSION_COOKIE_AGE 1209600" [ref=e1302]:
+            - cell "SESSION_COOKIE_AGE" [ref=e1303]
+            - cell "1209600" [ref=e1304]:
+              - generic [ref=e1305]: "1209600"
+          - row "SESSION_COOKIE_DOMAIN None" [ref=e1306]:
+            - cell "SESSION_COOKIE_DOMAIN" [ref=e1307]
+            - cell "None" [ref=e1308]:
+              - generic [ref=e1309]: None
+          - row "SESSION_COOKIE_HTTPONLY True" [ref=e1310]:
+            - cell "SESSION_COOKIE_HTTPONLY" [ref=e1311]
+            - cell "True" [ref=e1312]:
+              - generic [ref=e1313]: "True"
+          - row "SESSION_COOKIE_NAME 'sessionid'" [ref=e1314]:
+            - cell "SESSION_COOKIE_NAME" [ref=e1315]
+            - cell "'sessionid'" [ref=e1316]:
+              - generic [ref=e1317]: "'sessionid'"
+          - row "SESSION_COOKIE_PATH '/'" [ref=e1318]:
+            - cell "SESSION_COOKIE_PATH" [ref=e1319]
+            - cell "'/'" [ref=e1320]:
+              - generic [ref=e1321]: "'/'"
+          - row "SESSION_COOKIE_SAMESITE 'Lax'" [ref=e1322]:
+            - cell "SESSION_COOKIE_SAMESITE" [ref=e1323]
+            - cell "'Lax'" [ref=e1324]:
+              - generic [ref=e1325]: "'Lax'"
+          - row "SESSION_COOKIE_SECURE False" [ref=e1326]:
+            - cell "SESSION_COOKIE_SECURE" [ref=e1327]
+            - cell "False" [ref=e1328]:
+              - generic [ref=e1329]: "False"
+          - row "SESSION_ENGINE 'django.contrib.sessions.backends.db'" [ref=e1330]:
+            - cell "SESSION_ENGINE" [ref=e1331]
+            - cell "'django.contrib.sessions.backends.db'" [ref=e1332]:
+              - generic [ref=e1333]: "'django.contrib.sessions.backends.db'"
+          - row "SESSION_EXPIRE_AT_BROWSER_CLOSE False" [ref=e1334]:
+            - cell "SESSION_EXPIRE_AT_BROWSER_CLOSE" [ref=e1335]
+            - cell "False" [ref=e1336]:
+              - generic [ref=e1337]: "False"
+          - row "SESSION_FILE_PATH None" [ref=e1338]:
+            - cell "SESSION_FILE_PATH" [ref=e1339]
+            - cell "None" [ref=e1340]:
+              - generic [ref=e1341]: None
+          - row "SESSION_SAVE_EVERY_REQUEST False" [ref=e1342]:
+            - cell "SESSION_SAVE_EVERY_REQUEST" [ref=e1343]
+            - cell "False" [ref=e1344]:
+              - generic [ref=e1345]: "False"
+          - row "SESSION_SERIALIZER 'django.contrib.sessions.serializers.JSONSerializer'" [ref=e1346]:
+            - cell "SESSION_SERIALIZER" [ref=e1347]
+            - cell "'django.contrib.sessions.serializers.JSONSerializer'" [ref=e1348]:
+              - generic [ref=e1349]: "'django.contrib.sessions.serializers.JSONSerializer'"
+          - row "SETTINGS_MODULE 'core.settings_maintenance'" [ref=e1350]:
+            - cell "SETTINGS_MODULE" [ref=e1351]
+            - cell "'core.settings_maintenance'" [ref=e1352]:
+              - generic [ref=e1353]: "'core.settings_maintenance'"
+          - row "SHORT_DATETIME_FORMAT 'm/d/Y P'" [ref=e1354]:
+            - cell "SHORT_DATETIME_FORMAT" [ref=e1355]
+            - cell "'m/d/Y P'" [ref=e1356]:
+              - generic [ref=e1357]: "'m/d/Y P'"
+          - row "SHORT_DATE_FORMAT 'm/d/Y'" [ref=e1358]:
+            - cell "SHORT_DATE_FORMAT" [ref=e1359]
+            - cell "'m/d/Y'" [ref=e1360]:
+              - generic [ref=e1361]: "'m/d/Y'"
+          - row "SIGNING_BACKEND 'django.core.signing.TimestampSigner'" [ref=e1362]:
+            - cell "SIGNING_BACKEND" [ref=e1363]
+            - cell "'django.core.signing.TimestampSigner'" [ref=e1364]:
+              - generic [ref=e1365]: "'django.core.signing.TimestampSigner'"
+          - row "SILENCED_SYSTEM_CHECKS []" [ref=e1366]:
+            - cell "SILENCED_SYSTEM_CHECKS" [ref=e1367]
+            - cell "[]" [ref=e1368]:
+              - generic [ref=e1369]: "[]"
+          - row "STATICFILES_DIRS []" [ref=e1370]:
+            - cell "STATICFILES_DIRS" [ref=e1371]
+            - cell "[]" [ref=e1372]:
+              - generic [ref=e1373]: "[]"
+          - row "STATICFILES_FINDERS ['django.contrib.staticfiles.finders.FileSystemFinder', 'django.contrib.staticfiles.finders.AppDirectoriesFinder']" [ref=e1374]:
+            - cell "STATICFILES_FINDERS" [ref=e1375]
+            - cell "['django.contrib.staticfiles.finders.FileSystemFinder', 'django.contrib.staticfiles.finders.AppDirectoriesFinder']" [ref=e1376]:
+              - generic [ref=e1377]: "['django.contrib.staticfiles.finders.FileSystemFinder', 'django.contrib.staticfiles.finders.AppDirectoriesFinder']"
+          - row "STATIC_ROOT None" [ref=e1378]:
+            - cell "STATIC_ROOT" [ref=e1379]
+            - cell "None" [ref=e1380]:
+              - generic [ref=e1381]: None
+          - row "STATIC_URL '/static/'" [ref=e1382]:
+            - cell "STATIC_URL" [ref=e1383]
+            - cell "'/static/'" [ref=e1384]:
+              - generic [ref=e1385]: "'/static/'"
+          - 'row "STORAGES {''default'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''staticfiles'': {''BACKEND'': ''django.contrib.staticfiles.storage.StaticFilesStorage''}}" [ref=e1386]':
+            - cell "STORAGES" [ref=e1387]
+            - 'cell "{''default'': {''BACKEND'': ''django.core.files.storage.FileSystemStorage''}, ''staticfiles'': {''BACKEND'': ''django.contrib.staticfiles.storage.StaticFilesStorage''}}" [ref=e1388]':
+              - generic [ref=e1389]: "{'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'}, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}"
+          - 'row "TEMPLATES [{''APP_DIRS'': True, ''BACKEND'': ''django.template.backends.django.DjangoTemplates'', ''DIRS'': [], ''OPTIONS'': {''context_processors'': [''django.template.context_processors.request'', ''django.contrib.auth.context_processors.auth'', ''django.contrib.messages.context_processors.messages'']}}]" [ref=e1390]':
+            - cell "TEMPLATES" [ref=e1391]
+            - 'cell "[{''APP_DIRS'': True, ''BACKEND'': ''django.template.backends.django.DjangoTemplates'', ''DIRS'': [], ''OPTIONS'': {''context_processors'': [''django.template.context_processors.request'', ''django.contrib.auth.context_processors.auth'', ''django.contrib.messages.context_processors.messages'']}}]" [ref=e1392]':
+              - generic [ref=e1393]: "[{'APP_DIRS': True, 'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [], 'OPTIONS': {'context_processors': ['django.template.context_processors.request', 'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages']}}]"
+          - row "TEST_NON_SERIALIZED_APPS []" [ref=e1394]:
+            - cell "TEST_NON_SERIALIZED_APPS" [ref=e1395]
+            - cell "[]" [ref=e1396]:
+              - generic [ref=e1397]: "[]"
+          - row "TEST_RUNNER 'django.test.runner.DiscoverRunner'" [ref=e1398]:
+            - cell "TEST_RUNNER" [ref=e1399]
+            - cell "'django.test.runner.DiscoverRunner'" [ref=e1400]:
+              - generic [ref=e1401]: "'django.test.runner.DiscoverRunner'"
+          - row "THOUSAND_SEPARATOR ','" [ref=e1402]:
+            - cell "THOUSAND_SEPARATOR" [ref=e1403]
+            - cell "','" [ref=e1404]:
+              - generic [ref=e1405]: "','"
+          - row "TIME_FORMAT 'P'" [ref=e1406]:
+            - cell "TIME_FORMAT" [ref=e1407]
+            - cell "'P'" [ref=e1408]:
+              - generic [ref=e1409]: "'P'"
+          - row "TIME_INPUT_FORMATS ['%H:%M:%S', '%H:%M:%S.%f', '%H:%M']" [ref=e1410]:
+            - cell "TIME_INPUT_FORMATS" [ref=e1411]
+            - cell "['%H:%M:%S', '%H:%M:%S.%f', '%H:%M']" [ref=e1412]:
+              - generic [ref=e1413]: "['%H:%M:%S', '%H:%M:%S.%f', '%H:%M']"
+          - row "TIME_ZONE 'UTC'" [ref=e1414]:
+            - cell "TIME_ZONE" [ref=e1415]
+            - cell "'UTC'" [ref=e1416]:
+              - generic [ref=e1417]: "'UTC'"
+          - row "USE_I18N True" [ref=e1418]:
+            - cell "USE_I18N" [ref=e1419]
+            - cell "True" [ref=e1420]:
+              - generic [ref=e1421]: "True"
+          - row "USE_THOUSAND_SEPARATOR False" [ref=e1422]:
+            - cell "USE_THOUSAND_SEPARATOR" [ref=e1423]
+            - cell "False" [ref=e1424]:
+              - generic [ref=e1425]: "False"
+          - row "USE_TZ True" [ref=e1426]:
+            - cell "USE_TZ" [ref=e1427]
+            - cell "True" [ref=e1428]:
+              - generic [ref=e1429]: "True"
+          - row "USE_X_FORWARDED_HOST False" [ref=e1430]:
+            - cell "USE_X_FORWARDED_HOST" [ref=e1431]
+            - cell "False" [ref=e1432]:
+              - generic [ref=e1433]: "False"
+          - row "USE_X_FORWARDED_PORT False" [ref=e1434]:
+            - cell "USE_X_FORWARDED_PORT" [ref=e1435]
+            - cell "False" [ref=e1436]:
+              - generic [ref=e1437]: "False"
+          - row "WSGI_APPLICATION 'core.wsgi.application'" [ref=e1438]:
+            - cell "WSGI_APPLICATION" [ref=e1439]
+            - cell "'core.wsgi.application'" [ref=e1440]:
+              - generic [ref=e1441]: "'core.wsgi.application'"
+          - row "X_FRAME_OPTIONS 'DENY'" [ref=e1442]:
+            - cell "X_FRAME_OPTIONS" [ref=e1443]
+            - cell "'DENY'" [ref=e1444]:
+              - generic [ref=e1445]: "'DENY'"
+          - row "YEAR_MONTH_FORMAT 'F Y'" [ref=e1446]:
+            - cell "YEAR_MONTH_FORMAT" [ref=e1447]
+            - cell "'F Y'" [ref=e1448]:
+              - generic [ref=e1449]: "'F Y'"
+  - contentinfo [ref=e1450]:
+    - paragraph [ref=e1451]:
+      - text: You’re seeing this error because you have
+      - code [ref=e1452]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=e1453]: "False"
+      - text: ", and Django will display a standard page generated by the handler for this status code."
+```

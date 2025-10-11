@@ -1,0 +1,1 @@
+<buraya zaten kullandığın script gövdesi (param(...) ile başlayan) olduğu gibi kalsın>

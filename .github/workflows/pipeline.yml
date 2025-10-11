@@ -1,19 +1,31 @@
+on:
+  pull_request:
+
 name: pipeline
 on: [push, pull_request]
 jobs:
   run:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main'))
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            only_pr_maint:
+              - '.github/workflows/pr-maintenance.yml'
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
       - name: Install deps
+        if: steps.changes.outputs.only_pr_maint != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m pip install playwright
           python -m playwright install chromium
       - name: Serve & Pipeline
+        if: steps.changes.outputs.only_pr_maint != 'true'
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File .\tools\serve_then_pipeline.ps1 -BindHost 127.0.0.1 -Port 8000
       - name: Upload screenshots (artifact)
@@ -21,3 +33,6 @@ jobs:
         with:
           name: screens
           path: targets/screens/*.png
+      - name: No-op (only pr-maintenance changed)
+        if: steps.changes.outputs.only_pr_maint == 'true'
+        run: echo ""Skipping heavy steps because only pr-maintenance.yml changed.""

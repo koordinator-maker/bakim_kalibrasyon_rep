@@ -1,17 +1,25 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches: [ main ]
   pull_request:
 
 jobs:
   pipeline:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main'))
     runs-on: windows-latest
     timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            only_pr_maint:
+              - '.github/workflows/pr-maintenance.yml'
 
       - uses: actions/setup-python@v5
         with:
@@ -23,6 +31,7 @@ jobs:
         run: |
           [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
       - name: Seed admin user
+        if: steps.changes.outputs.only_pr_maint != 'true'
         shell: pwsh
         env:
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
@@ -33,6 +42,8 @@ jobs:
           ./venv/Scripts/python manage.py shell --settings=core.settings_maintenance -c "from django.contrib.auth import get_user_model as G; U=G(); u,created=U.objects.get_or_create(username='$u', defaults={'email':'admin@example.com','is_staff':True,'is_superuser':True}); u.is_staff=True; u.is_superuser=True; u.set_password('$p'); u.save(); print('created' if created else 'updated')"
 
       - name: Run visual pipeline + flows gate
+
+        if: steps.changes.outputs.only_pr_maint != 'true'
         shell: pwsh
         run: |
           powershell -ExecutionPolicy Bypass -File tools/pipeline_and_next.ps1 -BindHost 127.0.0.1 -Port 8000
@@ -47,3 +58,6 @@ jobs:
             targets/screens/*.png
             layout_report.json
             _otokodlama/status.json
+      - name: No-op (only pr-maintenance changed)
+        if: steps.changes.outputs.only_pr_maint == 'true'
+        run: echo ""Skipping heavy steps because only pr-maintenance.yml changed.""
