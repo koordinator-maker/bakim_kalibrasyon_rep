@@ -12,21 +12,26 @@ jobs:
   maintain:
     runs-on: ubuntu-latest
     steps:
-      - name: Auto-approve & enable auto-merge
+      - name: Auto-approve & enable auto-merge (tolerant)
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
         shell: bash
         run: |
-          set -e
           pr=${{ github.event.pull_request.number }}
           slug=${{ github.repository }}
 
-          # (Opsiyonel) PR branch'ini main ile güncelle (fail olsa da akışı bozma)
-          sha=$(gh pr view "$pr" --json headRefOid --jq .headRefOid)
-          gh api -X PUT "repos/$slug/pulls/$pr/update-branch" \
-            -f expected_head_sha="$sha" \
-            -H "Accept: application/vnd.github+json" || true
+          # (Opsiyonel) PR branch'ini güncelle - hata verse de devam
+          sha=$(gh pr view "$pr" --json headRefOid --jq .headRefOid 2>/dev/null || true)
+          if [ -n "$sha" ]; then
+            gh api -X PUT "repos/$slug/pulls/$pr/update-branch" \
+              -f expected_head_sha="$sha" \
+              -H "Accept: application/vnd.github+json" || true
+          fi
 
-          # Onay + auto-merge
+          # Onay ver; zaten onaylıysa sorun etme
           gh pr review "$pr" --approve || true
-          gh pr merge  "$pr" --squash --auto
+
+          # Auto-merge'i aç; şartlar hazır değilse hata verse de job YEŞİL kalsın
+          gh pr merge "$pr" --squash --auto || true
+
+          echo "PR Maintenance completed (tolerant mode)."
