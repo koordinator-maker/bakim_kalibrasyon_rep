@@ -1,0 +1,125 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#content-start"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - link "BakÄ±m Kalibrasyon" [ref=e7] [cursor=pointer]:
+        - /url: /admin/
+      - generic [ref=e8]:
+        - text: Welcome,
+        - strong [ref=e9]: admin
+        - text: .
+        - link "View site" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - text: /
+        - link "Change password" [ref=e11] [cursor=pointer]:
+          - /url: /admin/password_change/
+        - text: /
+        - button "Log out" [ref=e13] [cursor=pointer]
+        - 'button "Toggle theme (current theme: auto)" [ref=e14] [cursor=pointer]':
+          - generic [ref=e15]: "Toggle theme (current theme: auto)"
+          - img [ref=e16]
+    - navigation "Breadcrumbs" [ref=e18]:
+      - generic [ref=e19]:
+        - link "Home" [ref=e20] [cursor=pointer]:
+          - /url: /admin/
+        - text: ›
+        - link "Bakım Modülü" [ref=e21] [cursor=pointer]:
+          - /url: /admin/maintenance/
+        - text: ›
+        - link "Equipments" [ref=e22] [cursor=pointer]:
+          - /url: /admin/maintenance/equipment/
+        - text: › Add equipment
+    - generic [ref=e23]:
+      - button "Toggle navigation" [ref=e24] [cursor=pointer]: «
+      - navigation "Sidebar" [ref=e25]:
+        - searchbox "Filter navigation items" [ref=e26]
+        - table "Bakım Modülü" [ref=e28]:
+          - caption [ref=e29]:
+            - link "Bakım Modülü" [ref=e30] [cursor=pointer]:
+              - /url: /admin/maintenance/
+          - rowgroup [ref=e31]:
+            - row "Model name Add link Change or view list link" [ref=e32]:
+              - columnheader "Model name" [ref=e33]
+              - columnheader "Add link" [ref=e34]
+              - columnheader "Change or view list link" [ref=e35]
+          - rowgroup [ref=e36]:
+            - row "Calibration records Add" [ref=e37]:
+              - rowheader "Calibration records" [ref=e38]:
+                - link "Calibration records" [ref=e39] [cursor=pointer]:
+                  - /url: /admin/maintenance/calibrationrecord/
+              - cell "Add" [ref=e40]:
+                - link "Add" [ref=e41] [cursor=pointer]:
+                  - /url: /admin/maintenance/calibrationrecord/add/
+            - row "Equipments Add" [ref=e42]:
+              - rowheader "Equipments" [ref=e43]:
+                - link "Equipments" [ref=e44] [cursor=pointer]:
+                  - /url: /admin/maintenance/equipment/_direct/
+              - cell "Add" [ref=e45]:
+                - link "Add" [ref=e46] [cursor=pointer]:
+                  - /url: /admin/maintenance/equipment/add/
+            - row "Kalibrasyon Cihazları Add" [ref=e47]:
+              - rowheader "Kalibrasyon Cihazları" [ref=e48]:
+                - link "Kalibrasyon Cihazları" [ref=e49] [cursor=pointer]:
+                  - /url: /admin/maintenance/calibrationasset/
+              - cell "Add" [ref=e50]:
+                - link "Add" [ref=e51] [cursor=pointer]:
+                  - /url: /admin/maintenance/calibrationasset/add/
+            - row "Maintenance checklist items Add" [ref=e52]:
+              - rowheader "Maintenance checklist items" [ref=e53]:
+                - link "Maintenance checklist items" [ref=e54] [cursor=pointer]:
+                  - /url: /admin/maintenance/maintenancechecklistitem/
+              - cell "Add" [ref=e55]:
+                - link "Add" [ref=e56] [cursor=pointer]:
+                  - /url: /admin/maintenance/maintenancechecklistitem/add/
+            - row "Maintenance orders Add" [ref=e57]:
+              - rowheader "Maintenance orders" [ref=e58]:
+                - link "Maintenance orders" [ref=e59] [cursor=pointer]:
+                  - /url: /admin/maintenance/maintenanceorder/
+              - cell "Add" [ref=e60]:
+                - link "Add" [ref=e61] [cursor=pointer]:
+                  - /url: /admin/maintenance/maintenanceorder/add/
+      - main [ref=e62]:
+        - generic [ref=e63]:
+          - heading "Add equipment" [level=1] [ref=e64]
+          - generic [ref=e67]:
+            - paragraph [ref=e68]: Please correct the error below.
+            - group [ref=e69]:
+              - generic [ref=e70]:
+                - list [ref=e71]:
+                  - listitem [ref=e72]: This field is required.
+                - generic [ref=e74]:
+                  - generic [ref=e75]: "Code:"
+                  - textbox "Code:" [active] [ref=e76]
+              - generic [ref=e79]:
+                - generic [ref=e80]: "Name:"
+                - textbox "Name:" [ref=e81]: AUTO-NAME-1760174387718
+              - generic [ref=e84]:
+                - generic [ref=e85]: "Area:"
+                - textbox "Area:" [ref=e86]
+              - generic [ref=e89]:
+                - generic [ref=e90]: "Üretici Firma:"
+                - textbox "Üretici Firma:" [ref=e91]
+              - generic [ref=e94]:
+                - generic [ref=e95]: "Discipline:"
+                - combobox "Discipline:" [ref=e96]:
+                  - option "Elektrik"
+                  - option "Mekanik" [selected]
+                  - option "Pnömatik"
+              - generic [ref=e98]:
+                - generic [ref=e99]:
+                  - generic [ref=e100]: "Criticality:"
+                  - spinbutton "Criticality:" [ref=e101]: "3"
+                - generic [ref=e103]: 1=En kritik, 5=En az kritik
+              - generic [ref=e106]:
+                - checkbox "Is active" [checked] [ref=e107]
+                - generic [ref=e108]: Is active
+            - generic [ref=e109]:
+              - button "Save" [ref=e110] [cursor=pointer]
+              - button "Save and add another" [ref=e111] [cursor=pointer]
+              - button "Save and continue editing" [ref=e112] [cursor=pointer]
+    - contentinfo
+```
