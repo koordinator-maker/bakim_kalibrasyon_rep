@@ -1,10 +1,13 @@
 name: PR Maintenance (auto-approve & merge)
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
+
 permissions:
   contents: write
   pull-requests: write
+
 jobs:
   maintain:
     runs-on: ubuntu-latest
@@ -14,13 +17,16 @@ jobs:
           GH_TOKEN: ${{ secrets.BOT_TOKEN }}
         shell: bash
         run: |
+          set -e
           pr=${{ github.event.pull_request.number }}
-          # (İsteğe bağlı) PR branch’ini main ile güncelle
           slug=${{ github.repository }}
+
+          # (Opsiyonel) PR branch'ini main ile güncelle (fail olsa da akışı bozma)
           sha=$(gh pr view "$pr" --json headRefOid --jq .headRefOid)
           gh api -X PUT "repos/$slug/pulls/$pr/update-branch" \
-            -F expected_head_sha="$sha" \
+            -f expected_head_sha="$sha" \
             -H "Accept: application/vnd.github+json" || true
+
           # Onay + auto-merge
           gh pr review "$pr" --approve || true
           gh pr merge  "$pr" --squash --auto
