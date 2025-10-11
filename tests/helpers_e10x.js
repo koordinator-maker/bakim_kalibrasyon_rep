@@ -28,3 +28,64 @@ export async function gotoList(page){
   }
   return page;
 }
+
+export async function gotoAdd(page){
+  page = await ensureLogin(page);
+  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: "domcontentloaded" });
+  return page;
+}
+
+export async function fillAllRequired(page){
+  // Öncelik: code/name boşsa doldur
+  for (const sel of ['#id_code','input[name="code"]','#id_name','input[name="name"]']){
+    const el = page.locator(sel).first();
+    if (await el.count()){
+      const v = (await el.inputValue().catch(()=>'')) || '';
+      if (!v) await el.fill(`AUTO_${Date.now()}`).catch(()=>{});
+    }
+  }
+  // required alanlar
+  const req = page.locator('input[required]:not([type="hidden"]):not([type="submit"]), textarea[required], select[required]');
+  const n = await req.count();
+  for (let i=0;i<n;i++){
+    const el = req.nth(i);
+    const tag = await el.evaluate(e => e.tagName.toLowerCase());
+    const type = (await el.getAttribute('type')) || '';
+    if (tag === 'select'){
+      const options = await el.locator('option').all();
+      for (const opt of options){
+        const v = await opt.getAttribute('value');
+        if (v && v !== '' && v !== '__None'){ await el.selectOption(v).catch(()=>{}); break; }
+      }
+    } else if (type === 'checkbox'){
+      await el.check({ force:true }).catch(()=>{});
+    } else {
+      const cur = await el.inputValue().catch(()=> '');
+      if (!cur) await el.fill('auto').catch(()=>{});
+    }
+  }
+}
+
+export async function save(page){
+  const submit = page.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first();
+  await Promise.all([ page.waitForLoadState("domcontentloaded"), submit.click() ]);
+}
+
+export async function createMinimalEquipment(page){
+  page = await gotoAdd(page);
+  await page.locator('#id_code, input[name="code"]').first().fill(`C-${Date.now()}`).catch(()=>{});
+  await page.locator('#id_name, input[name="name"], input[id*="name"]').first().fill(`EQ-${Date.now()}`).catch(()=>{});
+  await fillAllRequired(page);
+  await save(page);
+  if (/\/add\/?$/i.test(page.url())){ // validation takılırsa bir tur daha
+    await fillAllRequired(page);
+    await save(page);
+  }
+  return page;
+}
+
+export async function successFlashExists(page){
+  const s = ['ul.messagelist li.success', '.alert-success', '.messagelist .success', '[class*="success"]', 'div.success'];
+  for (const sel of s){ if (await page.locator(sel).first().count() > 0) return true; }
+  return false;
+}
