@@ -1,3 +1,12 @@
+<<<<<<< HEAD
+{
+  "name": "bakim_kalibrasyon",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
+  }
+=======
 ﻿{
     "name":  "bakim_kalibrasyon_tests",
     "version":  "1.0.0",
@@ -17,4 +26,5 @@
                             "pixelmatch":  "^7.1.0",
                             "pngjs":  "^7.0.0"
                         }
+>>>>>>> origin/main
 }
