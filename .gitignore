@@ -17,3 +17,7 @@ var/bootreport.*
 targets/screens/*.png
 _otokodlama/**
 *.bak
+playwright-report/
+test-results/
+playwright/.cache/
+storage/user.json
