@@ -43,3 +43,4 @@ targets/screens/*.png
 _otokodlama/**
 *.bak
 >>>>>>> origin/main
+node_modules/
