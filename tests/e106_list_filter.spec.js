@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { ensureLogin, gotoList } from "./helpers_e10x";
+import { ensureLogin, gotoList } from "./helpers_e10x.js";
 
 test("E106 - Listeyi arama kutusuyla filtrele", async ({ page }) => {
   await ensureLogin(page);
