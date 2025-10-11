@@ -8,6 +8,7 @@ on:
 
 jobs:
   pipeline:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main'))
     runs-on: windows-latest
     timeout-minutes: 20
 

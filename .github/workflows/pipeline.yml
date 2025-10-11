@@ -5,6 +5,7 @@ name: pipeline
 on: [push, pull_request]
 jobs:
   run:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main'))
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
