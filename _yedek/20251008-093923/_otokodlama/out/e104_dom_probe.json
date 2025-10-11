@@ -1,0 +1,32 @@
+{
+  "url_after_nav": "http://127.0.0.1:8010/admin/maintenance/equipment/add/",
+  "form_visible": true,
+  "counts": {
+    "text_like": 1,
+    "number": 0,
+    "date": 0,
+    "select": 0
+  },
+  "buttons": {
+    "save": 1,
+    "continue": 1,
+    "submit_variants": 3
+  },
+  "recommended_selectors": {
+    "name_field_pref": [
+      "input[name=\"name\"]",
+      "#id_name"
+    ],
+    "save_button": "input[name=\"_save\"]",
+    "delete_confirm_form": [
+      "#content form:has(input[name=\"post\"])",
+      "form[action$=\"/delete/\"]",
+      "form button[type=\"submit\"], form input[type=\"submit\"]"
+    ]
+  },
+  "artifacts": {
+    "html": "test-results\\e104_add_page.html",
+    "screenshot": "test-results\\e104_add_page.png"
+  },
+  "ts": 1759775081126
+}

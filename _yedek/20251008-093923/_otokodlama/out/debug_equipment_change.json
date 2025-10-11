@@ -1,0 +1,13 @@
+{
+  "ok": false,
+  "results": [
+    {
+      "i": 1,
+      "cmd": "GOTO",
+      "arg": "/admin/login/",
+      "ok": false,
+      "error": "TargetClosedError: Page.goto: Target page, context or browser has been closed",
+      "url": "about:blank"
+    }
+  ]
+}

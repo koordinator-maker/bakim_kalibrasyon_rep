@@ -1,97 +1,70 @@
 ﻿param(
-  [string]$BacklogPath = "ops\backlog.json",
-  [string]$FlowsDir    = "ops\flows"
+    [string]$BacklogPath = "ops/backlog.json",
+    [string]$FlowsDir = "flows",
+    [string]$FlowGenScript = "tools/pw_flow.py"
 )
 
-if (!(Test-Path $BacklogPath)) { throw "Backlog bulunamadı: $BacklogPath" }
-$items = Get-Content $BacklogPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$ErrorActionPreference = "Stop"
 
-New-Item -ItemType Directory -Force -Path $FlowsDir | Out-Null
-New-Item -ItemType Directory -Force -Path _otokodlama\debug | Out-Null
-
-function New-LoginBlock([object]$loginMeta) {
-  $u = "/admin/login/"
-  if ($null -ne $loginMeta.url -and $loginMeta.url) { $u = [string]$loginMeta.url }
-@"
-GOTO $u
-WAIT SELECTOR input#id_username
-FILL input#id_username $($loginMeta.username)
-FILL input#id_password $($loginMeta.password)
-CLICK input[type=submit]
-WAIT SELECTOR body
-DUMPDOM _otokodlama/debug/login_after_submit_dom.txt
-SCREENSHOT _otokodlama/debug/login_after_submit.png
-WAIT SELECTOR #user-tools a[href$="/logout/"]
-"@
+if (-not (Test-Path $BacklogPath)) {
+    Write-Error "Backlog dosyası bulunamadı: $BacklogPath"
+    exit 1
+}
+if (-not (Test-Path $FlowsDir)) {
+    New-Item -ItemType Directory -Path $FlowsDir | Out-Null
+}
+if (-not (Test-Path $FlowGenScript)) {
+    Write-Error "Flow oluşturma betiği bulunamadı: $FlowGenScript"
+    exit 1
 }
 
-foreach ($it in $items) {
-  $id = [string]$it.id
-  if (-not $id) { continue }
+Write-Host "[gen] Flow üretimi BAŞLADI." -ForegroundColor Yellow
 
-  if ($it.type -eq "screen") {
-    $login = if ($it.login) { $it.login } else { @{ username="admin"; password="Admin!2345"; url=$it.url } }
-    $flow = New-LoginBlock -loginMeta $login
-    if ($it.url) { $flow += "GOTO $($it.url)`n" }
-    foreach ($sel in @($it.checks.must_have_selectors)) {
-      if ($sel) { $flow += "WAIT SELECTOR $sel`n" }
+try {
+    $jsonContent = Get-Content $BacklogPath -Raw -Encoding UTF8
+    $backlog = $jsonContent | ConvertFrom-Json -ErrorAction Stop
+} catch {
+    Write-Error "Backlog JSON dosyası okunamadı veya bozuk: "
+    exit 1
+}
+
+$generatedCount = 0
+foreach ($task in $backlog) {
+    if (-not $task.id) {
+        Write-Warning "Boş ID içeren görev atlandı."
+        continue
     }
-    $flow += "SCREENSHOT _otokodlama/debug/${id}_screen.png`n"
-    $outPath = Join-Path $FlowsDir "${id}.flow"
-    $flow | Set-Content $outPath -Encoding UTF8
-    continue
-  }
 
-  if ($it.type -eq "crud_admin") {
-    $urls = $it.urls
-    $sel  = $it.selectors
-    $dat  = $it.data
-    $loginBlock = New-LoginBlock -loginMeta @{ username="admin"; password="Admin!2345"; url="/admin/login/" }
+    $flowFileName = "_flow.json"
+    $flowFilePath = Join-Path -Path $FlowsDir -ChildPath $flowFileName
+    
+    $tempTaskPath = "temp_task_.json" 
+    (ConvertTo-Json $task -Depth 10) | Set-Content -Path $tempTaskPath -Encoding UTF8
 
-    # CREATE
-    $create = $loginBlock + @"
-GOTO $($urls.add)
-WAIT SELECTOR $($sel.form)
-FILL $($sel.code_input) $($dat.code)
-FILL $($sel.name_input) $($dat.name)
-CLICK input[name=_save]
-WAIT SELECTOR $($sel.msg)
-SCREENSHOT _otokodlama/debug/${id}_create.png
-"@
-    $createPath = Join-Path $FlowsDir "${id}_create.flow"
-    $create | Set-Content $createPath -Encoding UTF8
+    Write-Host "[DEBUG] Görev:  - Hedef dosya: $flowFilePath" -ForegroundColor DarkGray
 
-    # UPDATE
-    $update = $loginBlock + @"
-GOTO $($urls.list_direct)?q=$($dat.search_q)
-WAIT SELECTOR $($sel.list_table)
-WAIT SELECTOR $($sel.row_link)
-CLICK $($sel.row_link)
-WAIT SELECTOR $($sel.form)
-FILL $($sel.name_input) $($dat.name_updated)
-CLICK input[name=_save]
-WAIT SELECTOR $($sel.msg)
-SCREENSHOT _otokodlama/debug/${id}_update.png
-"@
-    $updatePath = Join-Path $FlowsDir "${id}_update.flow"
-    $update | Set-Content $updatePath -Encoding UTF8
+    $pythonArgs = @(
+        "-File", $FlowGenScript,
+        "--task-file", $tempTaskPath,
+        "--output", $flowFilePath
+    )
+    
+    $result = python @($pythonArgs)
+    
+    if (-not (Test-Path $flowFilePath)) {
+        Write-Warning "[WARN] $flowFileName oluşturulamadı. Python çıktısı: $result"
+    } else {
+        Write-Host "✅ $flowFileName başarıyla oluşturuldu." -ForegroundColor Green
+        $generatedCount++
+    }
 
-    # DELETE
-    $delete = $loginBlock + @"
-GOTO $($urls.list_direct)?q=$($dat.search_q)
-WAIT SELECTOR $($sel.list_table)
-WAIT SELECTOR $($sel.row_link)
-CLICK $($sel.row_link)
-WAIT SELECTOR $($sel.delete_btn)
-CLICK $($sel.delete_btn)
-WAIT SELECTOR $($sel.delete_confirm)
-CLICK $($sel.delete_confirm)
-WAIT SELECTOR $($sel.msg)
-SCREENSHOT _otokodlama/debug/${id}_delete.png
-"@
-    $deletePath = Join-Path $FlowsDir "${id}_delete.flow"
-    $delete | Set-Content $deletePath -Encoding UTF8
-  }
+    Remove-Item $tempTaskPath -ErrorAction SilentlyContinue
 }
 
-Write-Host "[gen] Flow üretimi tamam" -ForegroundColor Green
+Write-Host "[gen] Flow üretimi TAMAMLANDI. Toplam üretilen: $generatedCount" -ForegroundColor Yellow
+
+if ($generatedCount -gt 0) {
+    exit 0
+} else {
+    exit 1
+}

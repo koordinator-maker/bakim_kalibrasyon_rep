@@ -1,0 +1,2 @@
+﻿id,title,type,design_ref,visual_threshold
+EQP-002,Ekipman Admin Listesi Üretici Firma Kolonu Kontrolü,sanity_check,targets/EQP-002-manufacturer-column.png,0.1

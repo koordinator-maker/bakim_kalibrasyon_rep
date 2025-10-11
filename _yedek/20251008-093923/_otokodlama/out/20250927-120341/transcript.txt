@@ -1,0 +1,39 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20250927120341
+Username: LAPTOP-BJ5VB4RI\HP
+RunAs User: LAPTOP-BJ5VB4RI\HP
+Configuration Name: 
+Machine: LAPTOP-BJ5VB4RI (Microsoft Windows NT 10.0.19045.0)
+Host Application: C:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\dev\bakim_kalibrasyon\tools\serve_then_pipeline.ps1 -BindHost 127.0.0.1 -Port 8010
+Process ID: 18956
+PSVersion: 5.1.19041.6328
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.19041.6328
+BuildVersion: 10.0.19041.6328
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+==> blockcheck
+[blockcheck] OK. Toplam blok: 61
+==> guardrail_check
+[GUARDRAIL] OK
+==> line_limit_650
+[LONGFILES] OK (650 üstü yok)
+==> django_check (soft)
+Python OK 3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]
+Django OK 5.2.6
+System check identified no issues (0 silenced).
+Django check OK
+==> screenshot
+[SCREENSHOT] C:\dev\bakim_kalibrasyon\targets\screens\screenshot-20250927-120344.png
+==> playwright
+[PLAYWRIGHT] FAILED - total=4 fail=1
+  FAIL http://127.0.0.1:8010/admin/login/ status=None error=Page.goto: Target page, context or browser has been closed
+!  playwright FAILED
+**********************
+Windows PowerShell transcript end
+End time: 20250927120358
+**********************

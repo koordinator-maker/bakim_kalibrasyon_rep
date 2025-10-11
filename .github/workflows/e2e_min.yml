@@ -1,0 +1,19 @@
+name: E2E Minimal
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Base URL"
+        required: false
+        type: string
+        default: "http://127.0.0.1:8010"
+  push:
+    branches:
+      - ci/add-e2e-dispatcher
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - run: echo "HELLO from ${{ github.ref }} (BASE_URL=${{ github.event.inputs.base_url }})"

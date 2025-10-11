@@ -1,0 +1,30 @@
+﻿// Rev: 2025-10-02 15:20 r1
+// playwright.config.js
+const { defineConfig } = require("@playwright/test");
+
+module.exports = defineConfig({
+  timeout: 30000,
+  reporter: [["list"]],
+  use: {
+    baseURL: process.env.BASE_URL || "http://127.0.0.1:8010",
+    headless: true,
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
+  },
+  projects: [
+    {
+      name: "setup",
+      testMatch: /_setup\.spec\.js$/,
+    },
+    {
+      name: "e2e",
+      testMatch: /.*\.spec\.js$/,
+      // 🔴 _setup.spec.js e2e'de koşulmasın:
+      testIgnore: /_setup\.spec\.js$/,
+      dependencies: ["setup"],
+      use: {
+        storageState: "storage/user.json",
+      },
+    },
+  ],
+});

@@ -1,41 +1,19 @@
 ﻿[
   {
-    "id": "login_smoke",
-    "type": "screen",
-    "title": "Admin login duman testi",
-    "url": "/admin/login/",
-    "login": { "username": "admin", "password": "Admin!2345" },
-    "checks": {
-      "must_have_selectors": ["input#id_username", "input#id_password"]
-    }
-  },
-  {
-    "id": "equipment_ui",
-    "type": "crud_admin",
-    "title": "Equipment admin CRUD UI",
-    "app": "maintenance",
-    "model": "equipment",
-    "urls": {
-      "add": "/admin/maintenance/equipment/add/",
-      "list_direct": "/admin/maintenance/equipment/_direct/"
-    },
-    "selectors": {
-      "form": "form#equipment_form",
-      "code_input": "input#id_code",
-      "name_input": "input#id_name",
-      "list_table": "table#result_list",
-      "row_link": "table#result_list tbody tr:first-child th > a",
-      "delete_btn": "a.deletelink",
-      "delete_confirm": "form[action$=\"/delete/\"] input[type=submit]",
-      "msg": ".messagelist"
-    },
-    "data": {
-      "code": "EQ-CRUD-UI",
-      "name": "UI CRUD Cihazi 1",
-      "name_updated": "UI CRUD Cihazi 1 guncellendi",
-      "search_q": "EQ-CRUD-UI"
-    },
-    "ensure_cmd": "python manage.py ops_admin_crud --settings=core.settings_maintenance --action ensure --code EQ-CRUD-UI --name \"UI CRUD Cihazi 1\"",
-    "design_ref": ""
+    "id": "EQP-002",
+    "title": "Ekipman Admin Listesi Üretici Firma Kolonu Kontrolü",
+    "type": "sanity_check",
+    "design_ref": "targets/EQP-002-manufacturer-column.png",
+    "url": "/admin/maintenance/equipment/",
+    "actions": [
+      {
+        "action": "goto",
+        "params": { "url": "/admin/maintenance/equipment/" }
+      },
+      {
+        "action": "assert_selector_visible",
+        "params": { "selector": "th.column-manufacturer a" }
+      }
+    ]
   }
 ]

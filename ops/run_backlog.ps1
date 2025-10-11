@@ -1,83 +1,66 @@
 ﻿param(
-  [string[]]$Filter = @("*"),         # Birden çok desen destekli: "login_smoke*","equipment_ui_*"
-  [switch]$LinkSmoke,                 # Link smoke gate çalışsın mı?
-  [string]$BaseUrl    = "http://127.0.0.1:8010",
-  [int]   $SmokeDepth = 1,
-  [int]   $SmokeLimit = 150,
-  [string]$ExtraArgs  = ""            # pw_flow.py'ye geçer, ör: "--timeout 5000"
+    [string]$FlowsDir = "flows",
+    [string]$Filter = "*",
+    [string]$BaseUrl = "http://127.0.0.1:8010",
+    [bool]$LinkSmoke = $false,
+    [int]$SmokeDepth = 1,
+    [int]$SmokeLimit = 200,
+    [string]$ExtraArgs = ""
 )
 
-# --- Yardımcılar ---
 $ErrorActionPreference = "Stop"
-$here     = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = $here                        # projenizde ops klasörü kök dizinde ise bu yeterli
-$FlowsDir = Join-Path $here 'flows'
 
-# Filter normalize
-if ($Filter -is [string]) { $Filter = @($Filter) }
-Write-Host ("[run] Filters: {0}" -f ($Filter -join ", "))
+Write-Host "[run] Filters: $Filter" -ForegroundColor Yellow
 
-# Akışları topla (çoklu pattern)
-$files = @()
-foreach($pat in $Filter){
-  if ([string]::IsNullOrWhiteSpace($pat)) { continue }
-  $files += Get-ChildItem -Path $FlowsDir -Filter ("{0}.flow" -f $pat) -ErrorAction SilentlyContinue
-}
-$flows = $files | Sort-Object FullName -Unique
-if ($flows.Count -eq 0) {
-  Write-Host "[run] Akış bulunamadı." -ForegroundColor Yellow
-  return
-}
-Write-Host ("[run] Bulunan akış sayısı: {0}" -f $flows.Count)
-Write-Host ("[run] Flows:`n - {0}" -f (($flows | ForEach-Object { $_.Name }) -join "`n - "))
+$flowFiles = Get-ChildItem -Path $FlowsDir -Filter "*_flow.json" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like $Filter.Replace('*', '*') + "_flow.json" }
 
-# Ortam: unbuffered python
-$env:PYTHONUNBUFFERED = "1"
-
-# Çıktı klasörleri
-$outDir   = "_otokodlama\out"
-$smkDir   = "_otokodlama\smoke"
-$repDir   = "_otokodlama\reports"
-New-Item -ItemType Directory -Force -Path $outDir,$smkDir,$repDir | Out-Null
-
-# OkRedirectTo default
-if (-not $OkRedirectTo) { $OkRedirectTo = "/_direct/.*|/admin/.*" }
-
-# --- Ana döngü ---
-foreach ($f in $flows) {
-  $baseName = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
-  $outPath  = Join-Path $repoRoot (Join-Path $outDir  ("{0}.json" -f $baseName))
-  $smkOut   = $outPath  # link-smoke çıktısını da aynı dosyaya yazıyoruz (mevcut işleyişle uyumlu)
-  $startPath = "/admin/"
-
-  Write-Host ("[run] >>> {0}" -f $baseName) -ForegroundColor Cyan
-
-  # 1) Akışı çalıştır (ops\run_and_guard.ps1 mevcut davranışı korur)
-  powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $here "run_and_guard.ps1") `
-    -flow $f.FullName `
-    -outPath $outPath `
-    -BaseUrl $BaseUrl `
-    -ExtraArgs $ExtraArgs
-
-  # 2) İsteğe bağlı link smoke (DIŞARIDA -Out AMBIGUOUS YOK; doğrudan fonksiyon çağrısı)
-  if ($LinkSmoke) {
-    Write-Host "[run] Link smoke kontrolü başlıyor..." -ForegroundColor DarkGray
-    & (Join-Path $here "smoke_links.ps1") `
-      -Base        $BaseUrl `
-      -Start $startPath `
-      -Out         $smkOut `
-      -Depth       $SmokeDepth `
-      -Limit       $SmokeLimit `
-      -PathPrefix  "/" `
-      -Timeout     5000 `
-      -OkRedirectTo $OkRedirectTo
-  }
-
-  Write-Host ("[run] <<< {0} tamam" -f $baseName) -ForegroundColor Green
+if ($flowFiles.Count -eq 0) {
+    Write-Host "[run] Akış bulunamadı. Aranılan dizin: $FlowsDir" -ForegroundColor Red
+    Write-Host "[DEBUG] Filtre: $Filter.Replace('*', '*') + '_flow.json'" -ForegroundColor DarkGray
+    exit 1
 }
 
-# 3) Özet raporu isteğe bağlı (bozuk parametre geliyordu; burada dokunmuyoruz)
-Write-Host "[run] Tamamlandı"
+Write-Host "[run] 0 adet akış bulundu. Başlatılıyor..." -ForegroundColor Green
 
+foreach ($file in $flowFiles) {
+    $flowPath = $file.FullName
+    $id = $file.BaseName -replace '_flow$'
 
+    Write-Host "--- Başlatılıyor: $id ($flowPath) ---" -ForegroundColor Cyan
+    
+    $args = @(
+        "npx", 
+        "playwright", 
+        "flow", 
+        "run", 
+        "", 
+        "--base-url", 
+        ""
+    )
 
+    if ($LinkSmoke) {
+        $args += @(
+            "--extra-command", 
+            "powershell -ExecutionPolicy Bypass -File ops/smoke_links.ps1 -TargetUrl "" -TargetFlow "" -SmokeDepth $SmokeDepth -SmokeLimit $SmokeLimit -OkRedirectTo /_direct/.*",
+            "--log-file",
+            "logs/$id_smoke_$(Get-Date -Format 'yyyyMMddHHmmss').log"
+        )
+    }
+
+    if ($ExtraArgs) {
+        $args += $ExtraArgs.Split(' ') | Where-Object { -not [string]::IsNullOrEmpty($_) }
+    }
+
+    $commandLine = $args -join ' '
+    Write-Host "[DEBUG] Çalıştırılan Komut: $commandLine" -ForegroundColor DarkGray
+    
+    $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $commandLine" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "logs/$id_pw_$(Get-Date -Format 'yyyyMMddHHmmss').log" -RedirectStandardError "logs/$id_error_$(Get-Date -Format 'yyyyMMddHHmmss').log"
+    
+    if ($process.ExitCode -eq 0) {
+        Write-Host "✅ Başarılı: $id" -ForegroundColor Green
+    } else {
+        Write-Host "❌ Başarısız: $id (Exit Kodu: $(.ExitCode))" -ForegroundColor Red
+    }
+}
+
+Write-Host "--- Koşucu BİTTİ ---" -ForegroundColor Yellow

@@ -1,0 +1,86 @@
+name: Universal Suite (Manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+jobs:
+  universal:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run Universal Suite (FULL or DRY)
+        run: |
+          $repo = (Get-Location).Path
+          $base = "${{ secrets.UNIV_BASE_URL }}"
+          if (-not $base) {
+            Write-Host "[INFO] UNIV_BASE_URL yok; DRY-RUN yapılıyor."
+            New-Item -ItemType Directory -Force -Path "_otokodlama\reports\dashboard","_otokodlama\reports\junit","_otokodlama\bundle" | Out-Null
+            $ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
+            "Timestamp,PASS,WARN,FAIL`n$ts,0,0,0" | Out-File "_otokodlama\reports\dashboard\totals_$ts.csv" -Encoding utf8
+            "Section,Status,Message" | Out-File "_otokodlama\reports\dashboard\details_$ts.csv" -Encoding utf8
+          } else {
+            & "$repo\ops\run_universal_suite.ps1" -Repo $repo -BaseUrl $base -EntryPath "/admin/" -GateOnFail:$false
+          }
+          pwsh ".\ops\diagnostics\build_quicklinks_html.ps1" -Repo . -ReportsDir "_otokodlama\reports" -BundleDir "_otokodlama\bundle"
+      - name: Job summary (PASS/WARN/FAIL)
+        run: |
+          $dash = Join-Path (Join-Path (Join-Path (Get-Location).Path "_otokodlama") "reports") "dashboard"
+          $tot = Get-ChildItem $dash -File -Filter "totals_*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($tot) {
+            $o = Import-Csv $tot.FullName | Select-Object -First 1
+$md = @"
+### Universal Suite Summary
+**Timestamp:** $($o.Timestamp)
+- **PASS:** $($o.PASS)
+- **WARN:** $($o.WARN)
+- **FAIL:** $($o.FAIL)
+Quick links: `_otokodlama/reports/dashboard/quicklinks.html`
+"@
+            $md | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+          }
+      - name: Upload reports (full)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-reports
+          path: |
+            _otokodlama/reports/**
+            playwright-report/**
+      - name: Upload bundles
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-bundles
+          path: _otokodlama/bundle/**
+      - name: Upload JUnit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-junit
+          path: _otokodlama/reports/junit/**/*.xml
+  deploy-pages:
+    if: github.event_name == 'workflow_dispatch'    # manual tetikte yayımla
+    needs: universal
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload dashboard to Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _otokodlama/reports/dashboard
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,21 @@
+{
+  "ok": false,
+  "results": [
+    {
+      "i": 1,
+      "cmd": "COMMENT",
+      "arg": "calibration list (robust)",
+      "ok": true,
+      "error": "",
+      "url": "about:blank"
+    },
+    {
+      "i": 2,
+      "cmd": "GOTO",
+      "arg": "/admin/maintenance/calibration/_direct/",
+      "ok": false,
+      "error": "Error: Page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:8010/admin/maintenance/calibration/_direct/\nCall log:\n  - navigating to \"http://127.0.0.1:8010/admin/maintenance/calibration/_direct/\", waiting until \"domcontentloaded\"\n",
+      "url": "about:blank"
+    }
+  ]
+}

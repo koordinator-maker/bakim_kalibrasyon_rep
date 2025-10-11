@@ -1,0 +1,189 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "i": 1,
+      "cmd": "GOTO",
+      "arg": "/admin/login/",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/login/"
+    },
+    {
+      "i": 2,
+      "cmd": "WAIT",
+      "arg": "SELECTOR input[name=username]",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/login/"
+    },
+    {
+      "i": 3,
+      "cmd": "FILL",
+      "arg": "input[name=username]  admin",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/login/"
+    },
+    {
+      "i": 4,
+      "cmd": "FILL",
+      "arg": "input[name=password]  Admin!2345",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/login/"
+    },
+    {
+      "i": 5,
+      "cmd": "CLICK",
+      "arg": "input[type=submit]",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 6,
+      "cmd": "GOTO",
+      "arg": "/admin/maintenance/equipment/add/",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 7,
+      "cmd": "WAIT",
+      "arg": "SELECTOR form",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 8,
+      "cmd": "GOTO",
+      "arg": "/admin/maintenance/equipment/add/",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 9,
+      "cmd": "WAIT",
+      "arg": "SELECTOR form",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 10,
+      "cmd": "GOTO",
+      "arg": "/admin/maintenance/equipment/add/",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 11,
+      "cmd": "WAIT",
+      "arg": "SELECTOR form",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 12,
+      "cmd": "GOTO",
+      "arg": "/admin/maintenance/equipment/add/",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 13,
+      "cmd": "WAIT",
+      "arg": "SELECTOR form",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 14,
+      "cmd": "COMMENT",
+      "arg": "equipment list direct (robust)",
+      "ok": true,
+      "error": "",
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/add/"
+    },
+    {
+      "i": 15,
+      "cmd": "GOTO",
+      "arg": "/admin/maintenance/equipment/_direct/",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 16,
+      "cmd": "COMMENT",
+      "arg": "# Django admin temalar?na g?re: sonu? tablosu yoksa form/changelist kapsay?c?lar?n? da kabul et",
+      "ok": true,
+      "error": "",
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 17,
+      "cmd": "WAIT",
+      "arg": "SELECTOR #content-main",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 18,
+      "cmd": "DUMPDOM",
+      "arg": "_otokodlama/debug/equipment_list_dom.html",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 19,
+      "cmd": "SCREENSHOT",
+      "arg": "_otokodlama/debug/equipment_list.png",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 20,
+      "cmd": "WAIT",
+      "arg": "SELECTOR #content-main",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 21,
+      "cmd": "WAIT",
+      "arg": "SELECTOR .messagelist",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 22,
+      "cmd": "WAIT",
+      "arg": "SELECTOR form",
+      "ok": true,
+      "error": null,
+      "url": "http://127.0.0.1:8010/admin/"
+    },
+    {
+      "i": 23,
+      "cmd": "COMMENT",
+      "arg": "",
+      "ok": true,
+      "error": "",
+      "url": "http://127.0.0.1:8010/admin/"
+    }
+  ]
+}

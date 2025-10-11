@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿venv/
 .env
 *.sqlite3
@@ -21,3 +22,24 @@ playwright-report/
 test-results/
 playwright/.cache/
 storage/user.json
+=======
+﻿venv/
+.env
+*.sqlite3
+__pycache__/
+*.pyc
+.idea/
+.vscode/
+dist/
+build/
+_otokodlama/out/
+var/bootreport.json
+
+_otokodlama/INDEX.json
+# generated artifacts
+var/*.bak
+var/bootreport.*
+targets/screens/*.png
+_otokodlama/**
+*.bak
+>>>>>>> origin/main

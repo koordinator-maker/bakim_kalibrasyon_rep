@@ -1,0 +1,4 @@
+﻿"Flow","Pass","FirstFailStep","Cmd","Reason","ErrorSnippet","Url","Recall","VisualSim","OkWords","OkVisual","OkSelects","MissingCount","Log"
+"equipment_ui_create","True","","","passed","","http://127.0.0.1:8010/admin/login/?next=/admin/maintenance/equipment/_direct/","","","","","","","C:\dev\bakim_kalibrasyon\_otokodlama\out\equipment_ui_create.log"
+"equipment_ui_delete","True","","","passed","","http://127.0.0.1:8010/admin/login/?next=/admin/maintenance/equipment/_direct/","","","","","","","C:\dev\bakim_kalibrasyon\_otokodlama\out\equipment_ui_delete.log"
+"equipment_ui_update","True","","","passed","","http://127.0.0.1:8010/admin/login/?next=/admin/maintenance/equipment/_direct/","","","","","","","C:\dev\bakim_kalibrasyon\_otokodlama\out\equipment_ui_update.log"

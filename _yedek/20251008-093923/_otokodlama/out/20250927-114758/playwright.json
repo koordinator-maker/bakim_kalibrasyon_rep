@@ -1,0 +1,38 @@
+{
+  "total": 4,
+  "fail": 1,
+  "results": [
+    {
+      "url": "http://127.0.0.1:8010/admin/login/",
+      "status": null,
+      "title": null,
+      "console_errors": [],
+      "ok": false,
+      "error": "Page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "url": "http://127.0.0.1:8010/admin/maintenance/calibrations/",
+      "status": 200,
+      "title": "Log in | Bakım Kalibrasyon",
+      "console_errors": [],
+      "ok": true,
+      "error": null
+    },
+    {
+      "url": "http://127.0.0.1:8010/admin/maintenance/checklists/",
+      "status": 200,
+      "title": "Log in | Bakım Kalibrasyon",
+      "console_errors": [],
+      "ok": true,
+      "error": null
+    },
+    {
+      "url": "http://127.0.0.1:8010/admin/maintenance/equipment/",
+      "status": 200,
+      "title": "Log in | Bakım Kalibrasyon",
+      "console_errors": [],
+      "ok": true,
+      "error": null
+    }
+  ]
+}
