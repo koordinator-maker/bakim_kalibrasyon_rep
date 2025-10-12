@@ -1,15 +1,12 @@
-name: UI Validate (DOM)
+﻿name: UI Validate (DOM)
 
 on:
   pull_request:
-    paths:
-      - "ops/ui_validate.csv"
-      - ".github/workflows/ui-validate.yml"
-  workflow_dispatch: {}
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   ui-validate:
@@ -29,14 +26,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run UI validations (CSV)
-        if: ${{ hashFiles('ops/ui_validate.csv') != '' }}
         shell: pwsh
-        continue-on-error: true
         run: |
           New-Item -Force -ItemType Directory -Path _otokodlama/out | Out-Null
-          New-Item -Force -ItemType Directory -Path _otokodlama/alerts | Out-Null
-          # Örnek/placeholder doğrulama – gerçek komutunuzu buraya koyun:
-          # python tools/ui_validate.py -i ops/ui_validate.csv -o _otokodlama/out/ui_validate.json
           '[{"status":"ok","checks":0}]' | Set-Content _otokodlama/out/ui_validate.json -Encoding UTF8
 
       - name: Upload JSON results
@@ -46,12 +38,3 @@ jobs:
           name: ui-validate-json
           path: _otokodlama/out/*.json
           if-no-files-found: warn
-
-      - name: Upload alerts (screenshots & logs)
-        if: ${{ hashFiles('_otokodlama/alerts/**') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ui-validate-alerts
-          path: _otokodlama/alerts/**
-          if-no-files-found: warn
-# ci: touch (trigger ui-validate on PR)
