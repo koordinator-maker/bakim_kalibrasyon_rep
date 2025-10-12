@@ -4,36 +4,21 @@ $ErrorActionPreference = 'Stop'
 
 function Resolve-Root {
   try { $r = (git rev-parse --show-toplevel) 2>$null } catch { $r = $null }
-  if ($r -and (Test-Path $r)) { $r } else { (Get-Location).Path }
+  if ($r -and (Test-Path $r)) { return $r } else { return (Get-Location).Path }
 }
 
 function Write-Utf8([string]$Path,[string]$Content){
-  $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-  $full = [IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+  $Utf8NoBom = [Text.UTF8Encoding]::new($false)
+  if ([string]::IsNullOrWhiteSpace($Path)) { throw "Write-Utf8: empty path" }
+  $full = $Path
+  if (-not [IO.Path]::IsPathRooted($full)) { $full = Join-Path -Path ((Get-Location).Path) -ChildPath $full }
+  $full = [IO.Path]::GetFullPath($full)
   $dir  = [IO.Path]::GetDirectoryName($full)
-  if($dir){ New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+  if ($dir) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
   [IO.File]::WriteAllText($full,$Content,$Utf8NoBom)
 }
 
 function Publish-AIRequestToGitHub {
-<#
-.SYNOPSIS
-  AI istek paketini repo içine kopyalar, yeni branch açar, commit/push yapar ve PR oluşturur.
-.PARAMETER TaskId
-  Görev kimliği (ör. E103)
-.PARAMETER RequestPath
-  _otokodlama\out\ai_request_*.json
-.PARAMETER BundlePath
-  _otokodlama\out\bundle_*.zip
-.PARAMETER MainBranch
-  Ana dal (default: main)
-.PARAMETER Remote
-  Remote adı (default: origin)
-.PARAMETER ExchangeDir
-  Repo içi takas klasörü (default: ai_exchange)
-.PARAMETER NoPush
-  Push/PR yapma, sadece yerelde bırak
-#>
   param(
     [Parameter(Mandatory=$true)][string]$TaskId,
     [Parameter(Mandatory=$true)][string]$RequestPath,
@@ -47,7 +32,7 @@ function Publish-AIRequestToGitHub {
   $root = Resolve-Root
   Set-Location $root
 
-  if (-not (Test-Path $RequestPath)) { throw "Aİ istek dosyası yok: $RequestPath" }
+  if (-not (Test-Path $RequestPath)) { throw "AI istek dosyası yok: $RequestPath" }
   if (-not (Test-Path $BundlePath))  { throw "Bundle dosyası yok: $BundlePath" }
 
   $ts = Get-Date -Format yyyyMMdd-HHmmss
@@ -58,16 +43,12 @@ function Publish-AIRequestToGitHub {
   Copy-Item -LiteralPath $BundlePath  -Destination (Join-Path $relDir (Split-Path $BundlePath  -Leaf)) -Force
 
   $branch = "ai/$TaskId/$ts"
-
-  # Branch oluştur
   & git checkout -q -b $branch | Out-Null
-
   & git add -A | Out-Null
   $st = (git status --porcelain)
   if ([string]::IsNullOrWhiteSpace($st)) { return @{ status="no-change"; branch=$branch } }
 
   & git commit -m ("ai: {0} request {1}" -f $TaskId,$ts) | Out-Null
-
   if ($NoPush) { return @{ status="committed"; branch=$branch } }
 
   & git push -u $Remote $branch | Out-Null
@@ -80,21 +61,17 @@ function Publish-AIRequestToGitHub {
 
 Bu PR, AI tarafına analiz ve patch üretimi için açıldı.
 İçerik:
-- JSON: \`$relDir\`
-- Zip bundle: \`$relDir\`
+- JSON ve Zip: \`$relDir\`
 
-Lütfen yanıt/patche’i **\`_otokodlama/inbox\`** altına \`$TaskId\` geçen **ZIP** veya **TXT** olarak bırakın
-(örn: \`_otokodlama/inbox/patch_${TaskId}_$ts.zip\`). Betikler otomatik uygulayıp test edecek.
+Yanıt/patche'i **\`_otokodlama/inbox\`** altına \`$TaskId\` geçen bir **ZIP/TXT** olarak bırakın
+(örn: \`_otokodlama/inbox/patch_${TaskId}_$ts.zip\`). Otomasyon patch'i uygulayıp test edecektir.
 "@
 
   $tmp = Join-Path $env:TEMP ("ai_pr_{0}_{1}.md" -f $TaskId,$ts)
   Write-Utf8 $tmp $body
 
-  # PR aç
   $prUrl = ""
-  try {
-    $prUrl = (gh pr create --base $MainBranch --head $branch --title ("AI: {0} request {1}" -f $TaskId,$ts) --body-file $tmp --json url -q ".url")
-  } catch { }
+  try { $prUrl = (gh pr create --base $MainBranch --head $branch --title ("AI: {0} request {1}" -f $TaskId,$ts) --body-file $tmp --json url -q ".url") } catch { }
 
   return @{ status="pushed"; branch=$branch; pr=$prUrl }
 }
