@@ -54,3 +54,4 @@ jobs:
           name: ui-validate-alerts
           path: _otokodlama/alerts/**
           if-no-files-found: warn
+# ci: touch (trigger ui-validate on PR)
