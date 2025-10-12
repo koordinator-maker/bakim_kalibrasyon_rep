@@ -1,42 +1,54 @@
-﻿# ops/loop_once.ps1  (Windows PowerShell 5.1 — param() yok)
+﻿# ops/loop_once.ps1  (Windows PowerShell 5.1)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-trap { Write-Error $_; return }
+trap { Write-Error $_; try { Stop-Transcript | Out-Null } catch {}; return }
 
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $Utf8NoBom = [Text.UTF8Encoding]::new($false)
 
-# ======= Kullanıcı değişkenleri (tanımlı değilse varsayılan ata) =======
-if (-not (Get-Variable -Name CsvPath        -ErrorAction SilentlyContinue)) { $CsvPath = "todolist.csv" }
-if (-not (Get-Variable -Name Repo           -ErrorAction SilentlyContinue)) { $Repo    = "." }
-if (-not (Get-Variable -Name BaseUrl        -ErrorAction SilentlyContinue)) { $BaseUrl = "http://127.0.0.1:8010" }
-if (-not (Get-Variable -Name TaskId         -ErrorAction SilentlyContinue)) { $TaskId  = "" } # boşsa ilk TODO/PENDING seçilir
-if (-not (Get-Variable -Name NoPush         -ErrorAction SilentlyContinue)) { $NoPush = $false }
-if (-not (Get-Variable -Name NoServerStart  -ErrorAction SilentlyContinue)) { $NoServerStart = $false }
+# ---- Kullanıcı değişkenleri (tanımlı değilse varsayılan ata) ----
+if (-not (Get-Variable -Name CsvPath           -ErrorAction SilentlyContinue)) { $CsvPath = "todolist.csv" }
+if (-not (Get-Variable -Name Repo              -ErrorAction SilentlyContinue)) { $Repo    = "." }
+if (-not (Get-Variable -Name BaseUrl           -ErrorAction SilentlyContinue)) { $BaseUrl = "http://127.0.0.1:8010" }
+if (-not (Get-Variable -Name TaskId            -ErrorAction SilentlyContinue)) { $TaskId  = "" } # boşsa ilk TODO/PENDING seçilir
+if (-not (Get-Variable -Name NoPush            -ErrorAction SilentlyContinue)) { $NoPush = $false }
+if (-not (Get-Variable -Name NoServerStart     -ErrorAction SilentlyContinue)) { $NoServerStart = $false }
 if (-not (Get-Variable -Name ServerWaitSeconds -ErrorAction SilentlyContinue)) { $ServerWaitSeconds = 40 }
-if (-not (Get-Variable -Name NoScreenshot   -ErrorAction SilentlyContinue)) { $NoScreenshot = $false }
+if (-not (Get-Variable -Name NoScreenshot      -ErrorAction SilentlyContinue)) { $NoScreenshot = $false }
 
-# ======= Helpers =======
+# ---- Helpers ----
 function Resolve-Root {
   try { $r = (git rev-parse --show-toplevel) 2>$null } catch { $r = $null }
-  if ($r -and (Test-Path $r)) { return $r } else { return (Get-Location).Path }
+  if ($r -and (Test-Path $r)) { $r } else { (Get-Location).Path }
 }
+
 function Write-Utf8([string]$Path,[string]$Content){
   $full = [IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
   $dir  = [IO.Path]::GetDirectoryName($full)
   if($dir){ New-Item -ItemType Directory -Force -Path $dir | Out-Null }
   [IO.File]::WriteAllText($full,$Content,$Utf8NoBom)
 }
+
 function Read-CsvStrict([string]$Path){
   if(!(Test-Path $Path)){ throw "CSV bulunamadı: $Path" }
   $raw = Get-Content -LiteralPath $Path -Raw
   if([string]::IsNullOrWhiteSpace($raw)){ throw "CSV boş: $Path" }
-  $rows = Import-Csv -LiteralPath $Path
-  if($rows.Count -eq 0){ throw "CSV satır yok: $Path" }
+
+  # HER DURUMDA DİZİ
+  $rows = @(Import-Csv -LiteralPath $Path)
+
+  if($rows.Length -eq 0){ throw "CSV satır yok: $Path" }
+  $first = $rows[0]
+
   $need = @('id','title','severity','area','evidence','timestamp')
-  foreach($k in $need){ if(-not ($rows[0].PSObject.Properties.Name -contains $k)){ throw "Eksik sütun: $k" } }
+  foreach($k in $need){
+    if(-not ($first.PSObject.Properties.Name -contains $k)){
+      throw "Eksik sütun: $k"
+    }
+  }
   return $rows
 }
+
 function Convert-TodoCsvToJson([string]$Csv,[string]$OutJson){
   $rows = Read-CsvStrict $Csv
   foreach($r in $rows){
@@ -47,10 +59,12 @@ function Convert-TodoCsvToJson([string]$Csv,[string]$OutJson){
   Write-Utf8 $OutJson $json
   return $rows
 }
+
 function Select-NextTask($rows,[string]$Id){
   if($Id){ ($rows | Where-Object { $_.id -eq $Id } | Select-Object -First 1) }
   else   { ($rows | Where-Object { $_.status -match '^(todo|pending)$' } | Select-Object -First 1) }
 }
+
 function Test-ServerReachable([string]$Url){
   try{
     $u = [Uri]$Url
@@ -58,6 +72,7 @@ function Test-ServerReachable([string]$Url){
     return ($probe.StatusCode -ge 200 -and $probe.StatusCode -lt 500)
   } catch { return $false }
 }
+
 function Ensure-Server([string]$Url,[int]$WaitSeconds){
   if(Test-ServerReachable $Url){ return $true }
   if($NoServerStart){ return $false }
@@ -78,6 +93,7 @@ function Ensure-Server([string]$Url,[int]$WaitSeconds){
   }
   return (Test-ServerReachable $Url)
 }
+
 function Stamp-Rev([string]$Old,[ref]$NewText){
   $now = (Get-Date).ToString('yyyy-MM-dd HH:mm')
   if([string]::IsNullOrWhiteSpace($Old)){ $NewText.Value = "Rev: $now r1`r`n"; return }
@@ -86,17 +102,20 @@ function Stamp-Rev([string]$Old,[ref]$NewText){
     $n = [int]$Matches[1] + 1; $lines[0] = "Rev: $now r$n"; $NewText.Value = ($lines -join "`r`n")
   } else { $NewText.Value = "Rev: $now r1`r`n" + $Old }
 }
+
 function Stamp-And-Write([string]$Path,[string]$Content){
   $existing = ""; if(Test-Path $Path){ $existing = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 }
   $txt = ""; Stamp-Rev $existing ([ref]$txt)
   if($Content){ if($Content.Length -gt 0 -and $Content[0] -eq [char]0xFEFF){ $Content = $Content.Substring(1) }; $txt = $txt + $Content }
   Write-Utf8 $Path $txt
 }
+
 function Is-TextFile([string]$Path){
   $ext = [IO.Path]::GetExtension($Path); if($null -eq $ext){ $ext = "" }; $ext = $ext.ToLowerInvariant()
   $texts = @(".ps1",".psm1",".psd1",".py",".js",".cjs",".mjs",".ts",".json",".txt",".md",".css",".html",".htm",".yml",".yaml",".ini",".cfg",".toml")
   return ($texts -contains $ext)
 }
+
 function Apply-AIChangesFromInbox([string]$TaskId,[string]$Inbox,[string]$RepoRoot,[ref]$Changed){
   $Changed.Value = @()
   if(!(Test-Path $Inbox)){ return }
@@ -125,6 +144,7 @@ function Apply-AIChangesFromInbox([string]$TaskId,[string]$Inbox,[string]$RepoRo
     break
   }
 }
+
 function Git-CommitPush([string]$Repo,[string]$Message,[bool]$NoPush){
   try{
     & git add -A | Out-Null
@@ -134,6 +154,7 @@ function Git-CommitPush([string]$Repo,[string]$Message,[bool]$NoPush){
     if(-not $NoPush){ & git push | Out-Null; return "pushed" } else { return "committed" }
   } catch { return ("git-error: " + $_.Exception.Message) }
 }
+
 function Capture-Screenshot([string]$Path){
   try{
     Add-Type -AssemblyName System.Windows.Forms | Out-Null
@@ -146,6 +167,7 @@ function Capture-Screenshot([string]$Path){
     $g.Dispose(); $bmp.Dispose(); return $true
   } catch { return $false }
 }
+
 function New-Zip([string]$ZipPath,[string[]]$Items){
   if(Test-Path $ZipPath){ Remove-Item $ZipPath -Force }
   $temp = Join-Path "_otokodlama\tmp" ("zip_" + ([IO.Path]::GetFileNameWithoutExtension($ZipPath)))
@@ -160,7 +182,7 @@ function New-Zip([string]$ZipPath,[string[]]$Items){
   Compress-Archive -Path (Join-Path $temp '*') -DestinationPath $ZipPath -Force
 }
 
-# ======= Workspace =======
+# ---- Workspace ----
 $root = Resolve-Root
 Set-Location $root
 New-Item -ItemType Directory -Force -Path "_otokodlama\out","_otokodlama\inbox","_otokodlama\logs","_otokodlama\reports","_otokodlama\tmp","build" | Out-Null
@@ -169,7 +191,7 @@ $ts = (Get-Date).ToString('yyyyMMdd-HHmmss')
 $logPath = "_otokodlama\logs\loop_$ts.log"
 try { Start-Transcript -Path $logPath -Force | Out-Null } catch { }
 
-# ======= 1) CSV → JSON =======
+# ---- 1) CSV → JSON ----
 $tasksJson = "build\tasks.json"
 $rows = Convert-TodoCsvToJson -Csv $CsvPath -OutJson $tasksJson
 $task = Select-NextTask -rows $rows -Id $TaskId
@@ -180,7 +202,7 @@ if(!$task){
 }
 Write-Host ("Seçilen Görev: {0} — {1}" -f $task.id, $task.title)
 
-# ======= 2) AI İstek Paketi =======
+# ---- 2) AI İstek Paketi ----
 $aiReq = @{
   task = $task
   base_url = $BaseUrl
@@ -197,20 +219,20 @@ Write-Utf8 $reqPath (($aiReq | ConvertTo-Json -Depth 8))
 $details = Get-ChildItem "_otokodlama\reports" -Recurse -File -Filter "details_*.csv" -EA SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $totals  = Get-ChildItem "_otokodlama\reports" -Recurse -File -Filter "totals_*.csv"  -EA SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
-# ======= 3) Inbox → Yama Uygula =======
+# ---- 3) Inbox → Yama Uygula ----
 $changed = @()
 Apply-AIChangesFromInbox -TaskId $task.id -Inbox "_otokodlama\inbox" -RepoRoot (Get-Location).Path ([ref]$changed)
-if($changed.Count -gt 0){
+if((@($changed)).Length -gt 0){
   Write-Host ("AI kaynaklı değişen dosyalar: " + ($changed -join ", "))
   $gitState = Git-CommitPush -Repo $root -Message ("task:{0} apply AI patch" -f $task.id) -NoPush:$NoPush
   Write-Host ("Git: " + $gitState)
 }
 
-# ======= 4) Server Sağlığı =======
+# ---- 4) Server Sağlığı ----
 $serverOk = Ensure-Server -Url $BaseUrl -WaitSeconds $ServerWaitSeconds
 if(-not $serverOk){ Write-Warning ("Server erişimi sağlanamadı: {0}/admin/" -f $BaseUrl) }
 
-# ======= 5) Mevcut Playwright Testlerini Koş =======
+# ---- 5) Mevcut Playwright Testlerini Koş ----
 $testSummary = @{ invoked = $false; exitCode = $null; reportJson = $null; note = $null }
 try{
   $testSummary.invoked = $true
@@ -226,7 +248,7 @@ try{
   if($r){ $testSummary.reportJson = $r.FullName }
 } catch { $testSummary.note = $_.Exception.Message }
 
-# ======= 6) Artefaktlar =======
+# ---- 6) Artefaktlar ----
 $snap = $null
 if(-not $NoScreenshot){
   $snap = "_otokodlama\reports\screenshot_$ts.png"
@@ -241,7 +263,7 @@ if($snap){    $bundleItems += $snap }
 $zipPath = "_otokodlama\out\bundle_$($task.id)_$ts.zip"
 New-Zip -ZipPath $zipPath -Items $bundleItems
 
-# ======= 7) Sonuç Özeti (AI'ye geri paket) =======
+# ---- 7) Sonuç Özeti (AI'ye geri paket) ----
 $result = @{
   task_id   = $task.id
   title     = $task.title
@@ -260,9 +282,9 @@ $result = @{
 $resPath = "_otokodlama\out\ai_result_$($task.id)_$ts.json"
 Write-Utf8 $resPath (($result | ConvertTo-Json -Depth 9))
 
-# ======= 8) todolist.csv durum güncelle =======
+# ---- 8) todolist.csv durum güncelle ----
 function Update-TodoStatus([string]$Csv,[string]$Id,[string]$NewStatus,[string]$Note){
-  $all = Import-Csv -LiteralPath $Csv
+  $all = @(Import-Csv -LiteralPath $Csv)
   $hit = $false
   foreach($r in $all){
     if($r.id -eq $Id){
@@ -288,12 +310,12 @@ if($testSummary.invoked -and $testSummary.exitCode -eq 0){
   Update-TodoStatus -Csv $CsvPath -Id $task.id -NewStatus "pending" -Note ("not-run: " + $testSummary.note)
 }
 
-# ======= Konsol Özeti =======
+# ---- Konsol Özeti ----
 "=== LOOP ONCE SUMMARY ==="
 ("Task: {0} — {1}" -f $task.id, $task.title)
 ("Server OK: {0}" -f $serverOk)
 ("Tests: invoked={0} exitCode={1} note={2}" -f $testSummary.invoked,$testSummary.exitCode,$testSummary.note)
-("Changed files: {0}" -f $changed.Count)
+("Changed files: {0}" -f ((@($changed)).Length))
 ("Out: {0}" -f (Resolve-Path $resPath))
 ("Bundle: {0}" -f (Resolve-Path $zipPath))
 
