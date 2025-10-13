@@ -6,7 +6,7 @@ trap { Write-Error $_; try { Stop-Transcript | Out-Null } catch {} ; return }
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $Utf8NoBom = [Text.UTF8Encoding]::new($false)
 
-# Defaults (dışarıdan set edilmediyse)
+# Defaults (dÃ„Â±Ã…Å¸arÃ„Â±dan set edilmediyse)
 if (-not (Get-Variable -Name CsvPath       -EA 0)) { $CsvPath = "todolist.csv" }
 if (-not (Get-Variable -Name Repo          -EA 0)) { $Repo    = "." }
 if (-not (Get-Variable -Name BaseUrl       -EA 0)) { $BaseUrl = "http://127.0.0.1:8010" }
@@ -46,7 +46,7 @@ $ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
 $logPath = "_otokodlama\logs\loop_" + $ts + ".log"
 try { Start-Transcript -Path $logPath -Force | Out-Null } catch {}
 
-# 1) CSV & Görev
+# 1) CSV & GÃƒÂ¶rev
 $rows = Read-CsvStrict $CsvPath
 $task = Select-NextTask $rows $TaskId
 if(!$task){ Write-Host "Secilecek gorev bulunamadi (TODO/PENDING)."; try { Stop-Transcript | Out-Null } catch {} ; return }
@@ -80,24 +80,59 @@ if(Test-Path $inbox){
 # 4) Sunucu
 $serverOk = Test-Server $BaseUrl
 
-# 5) Test: subset (grep) -> PASS ise full, aksi halde full fallback
+# 5) Test: safe subset -> PASS then full; else full fallback
 $summary = @{ invoked=$true; exitCode=$null; reportJson=$null; note=$null }
 
-# Grep: ID tabanli haritalama; yoksa basligin ilk kelimesi, uc noktalama temiz
+# --- SUBSET SEÇİMİ (dosya öncelikli, sonra doğrulanmış grep) ---
+$testsRoot = Join-Path $root 'tests'
+$files = @()
+function Add-IfExists([string]$glob){
+  if([string]::IsNullOrWhiteSpace($glob)){ return }
+  $hit = Get-ChildItem -Path $testsRoot -Recurse -File -Include $glob -EA SilentlyContinue
+  if($hit){ $script:files += $hit.FullName }
+}
+
+# ID -> dosya eşleştirme
+if ($task.id -match '^(UH)\d{3}$'){
+  Add-IfExists 'univ-headings*.spec.*'
+  Add-IfExists 'univ-*.spec.*'
+} elseif ($task.id -match '^(UF)\d{3}$'){
+  Add-IfExists 'univ-forms*.spec.*'
+  Add-IfExists 'univ-*.spec.*'
+} elseif ($task.id -match '^E\d{3}$'){
+  $lower = $task.id.ToLower()
+  Add-IfExists ($lower + '*.spec.*')          # e103_*.spec.*
+  Add-IfExists ('*' + $lower + '*.spec.*')    # *e103*.spec.*
+  Add-IfExists ('e*.spec.*')                  # geniş emniyet ağı
+}
+
+# Dosya yoksa: grep üret ve test dosyalarında gerçekten geçtiğini doğrula
 $grep = $null
-if ($task.id -and $task.id -match '^[A-Z]{2}\d{3}$') {
-  if ($task.id -like 'UH*') { $grep = 'UNIV-HEADINGS' }
-  elseif ($task.id -like 'UF*') { $grep = 'UNIV-FORMS' }
-  else { $grep = $task.id }
-} elseif ($task.title) {
-  $first = ($task.title -split '\s+')[0]
-  $grep = ($first -replace '[:\-]+$','')  # sondaki ':' ve '-' sil
+if (-not $files -or $files.Count -eq 0){
+  if ($task.id -like 'UH*'){ $grep = 'UNIV-HEADINGS' }
+  elseif ($task.id -like 'UF*'){ $grep = 'UNIV-FORMS' }
+  elseif ($task.id){ $grep = $task.id }
+  elseif ($task.title){
+    $first = ($task.title -split '\s+')[0]
+    $grep = ($first -replace '[:\-]+$','')    # sondaki ':' veya '-' at
+  }
+  if ($grep){
+    $match = Select-String -Path (Join-Path $testsRoot '*') -Pattern $grep -SimpleMatch -EA SilentlyContinue
+    if(-not $match){ $grep = $null }          # eşleşme yoksa grep’i iptal et
+  }
 }
 
 $args = @('playwright','test','--config=playwright.all.config.cjs','--headed')
-if ($RunPlan -in @('auto','subset') -and $grep) {
-  $args += @('-g', $grep)
-  $summary.note = 'subset(grep:' + $grep + ')'
+if ($RunPlan -in @('auto','subset')){
+  if ($files -and $files.Count -gt 0){
+    $args += $files
+    $summary.note = 'subset(files:' + $files.Count + ')'
+  } elseif ($grep){
+    $args += @('-g', $grep)
+    $summary.note = 'subset(grep:' + $grep + ')'
+  } else {
+    $summary.note = 'full(fallback:no-subset)'
+  }
 } else {
   $summary.note = 'full'
 }
@@ -105,14 +140,14 @@ if ($RunPlan -in @('auto','subset') -and $grep) {
 & npx @args
 $summary.exitCode = $LASTEXITCODE
 
-# Raporu bul (Windows yolu ile)
+# report.json yakala (Windows yolu)
 $r = Get-ChildItem -Recurse -File -Filter 'report.json' |
      Where-Object { $_.FullName -like '*\playwright-report*\data\report.json' } |
      Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if($r){ $summary.reportJson = $r.FullName }
 
-# PASS ise ve subset koştuysek -> full
-if ($summary.exitCode -eq 0 -and $summary.note -like 'subset*' -and $FullAfterPass) {
+# PASS subset -> full
+if ($summary.exitCode -eq 0 -and $summary.note -like 'subset*' -and $FullAfterPass){
   & npx playwright test --config=playwright.all.config.cjs --headed
   $summary.exitCode = $LASTEXITCODE
   $summary.note = $summary.note + ' then full'
@@ -122,8 +157,8 @@ if ($summary.exitCode -eq 0 -and $summary.note -like 'subset*' -and $FullAfterPa
   if($r2){ $summary.reportJson = $r2.FullName }
 }
 
-# FAIL olduysa ve subset koştuysek -> full fallback
-if ($summary.exitCode -ne 0 -and $summary.note -like 'subset*') {
+# FAIL subset -> full fallback
+if ($summary.exitCode -ne 0 -and $summary.note -like 'subset*'){
   & npx playwright test --config=playwright.all.config.cjs --headed
   $summary.exitCode = $LASTEXITCODE
   $summary.note = $summary.note + ' -> full(fallback)'
@@ -132,7 +167,8 @@ if ($summary.exitCode -ne 0 -and $summary.note -like 'subset*') {
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
   if($r3){ $summary.reportJson = $r3.FullName }
 }
-
+# 6) Artefakt paketle
+# 6) Artefakt paketle
 # 6) Artefakt paketle
 $bundle = "_otokodlama\out\bundle_" + $task.id + "_" + $ts + ".zip"
 $items = @($reqPath,$logPath); if($summary.reportJson){ $items += $summary.reportJson }
@@ -143,7 +179,7 @@ New-Item -ItemType Directory -Force -Path $st | Out-Null
 foreach($i in $items){ if(Test-Path $i){ Copy-Item $i (Join-Path $st ([IO.Path]::GetFileName($i))) -Force } }
 Compress-Archive -Path (Join-Path $st '*') -DestinationPath $bundle -Force
 
-# 7) CSV güncelle
+# 7) CSV gÃƒÂ¼ncelle
 $all = @(Import-Csv -LiteralPath $CsvPath)
 foreach($row in $all){
   if($row.id -eq $task.id){
@@ -154,7 +190,7 @@ $bak = $CsvPath + ".bak_" + (Get-Date -Format yyyyMMddHHmmss)
 Copy-Item -LiteralPath $CsvPath -Destination $bak -Force
 $all | Export-Csv -LiteralPath $CsvPath -NoTypeInformation -Encoding UTF8
 
-# 8) Özet
+# 8) Ãƒâ€“zet
 "=== LOOP ONCE SUMMARY ==="
 "Task: " + $task.id + " - " + $task.title
 "Server OK: " + $serverOk
