@@ -218,7 +218,7 @@ if(!$task){
   try { Stop-Transcript | Out-Null } catch { }
   return
 }
-Write-Host ("Secilen Gorev: " + $task.id + " - " + $task.title)
+Write-Host ("Seçilen Görev: {0} — {1}" -f $task.id, $task.title)
 
 # 2) AI istek paketi
 $aiReq = @{
@@ -238,7 +238,99 @@ Write-Utf8 $reqPath (($aiReq | ConvertTo-Json -Depth 8))
 $changed = @()
 Apply-AIChangesFromInbox -TaskId $task.id -Inbox "_otokodlama\inbox" -RepoRoot (Get-Location).Path ([ref]$changed)
 if((@($changed)).Length -gt 0){
-  Write-Host ("Secilen Gorev: " + $task.id + " - " + $task.title)
+  Write-Host ("AI kaynaklı değişen dosyalar: " + ($changed -join ", "))
+  $gitState = Git-CommitPush -Repo $root -Message ("task:{0} apply AI patch" -f $task.id) -NoPush:$NoPush
+  Write-Host ("Git: " + $gitState)
+}
+
+# 4) Server
+$serverOk = Ensure-Server -Url $BaseUrl -WaitSeconds $ServerWaitSeconds
+if(-not $serverOk){ Write-Warning ("Server erişimi sağlanamadı: {0}/admin/" -f $BaseUrl) }
+
+# 5) TEST: subset -> PASS ise full
+$testSummary = @{ invoked = $false; exitCode = $null; reportJson = $null; note = $null }
+try{
+  $subset = @()
+  if ($RunPlan -in @('auto','subset')){ $subset = @(Get-TestFilesForTask $task.id) }
+  if ((@($subset)).Length -gt 0){
+    Invoke-Playwright -Files $subset -Summary ([ref]$testSummary)
+    $testSummary.note = ("subset:" + ((@($subset)) -join ', '))
+    if ($FullAfterPass -and $testSummary.exitCode -eq 0){
+      Invoke-Playwright -Files @() -Summary ([ref]$testSummary)  # FULL
+      $testSummary.note = ($testSummary.note + "; then full")
+    }
+  } else {
+    Invoke-Playwright -Files @() -Summary ([ref]$testSummary)    # FULL
+    $testSummary.note = "full"
+  }
+} catch { $testSummary.note = $_.Exception.Message }
+
+# 6) Artefaktlar
+$snap = $null
+if(-not $NoScreenshot){
+  $snap = "_otokodlama\reports\screenshot_$ts.png"
+  $okSnap = Capture-Screenshot $snap
+  if(-not $okSnap){ $snap = $null }
+}
+$bundleItems = @($reqPath, $logPath)
+if($testSummary.reportJson){ $bundleItems += $testSummary.reportJson }
+$det = Get-ChildItem "_otokodlama\reports" -Recurse -File -Filter "details_*.csv" -EA SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$tot = Get-ChildItem "_otokodlama\reports" -Recurse -File -Filter "totals_*.csv"  -EA SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if($det){ $bundleItems += $det.FullName }
+if($tot){ $bundleItems += $tot.FullName }
+if($snap){ $bundleItems += $snap }
+$zipPath = "_otokodlama\out\bundle_$($task.id)_$ts.zip"
+New-Zip -ZipPath $zipPath -Items $bundleItems
+
+# 7) Sonuç özeti
+$result = @{
+  task_id   = $task.id
+  title     = $task.title
+  base_url  = $BaseUrl
+  server_ok = $serverOk
+  tests     = $testSummary
+  changed_files = $changed
+  artifacts = @{
+    ai_request = (Resolve-Path $reqPath).Path
+    bundle_zip = (Resolve-Path $zipPath).Path
+    log        = (Resolve-Path $logPath).Path
+    screenshot = if($snap){ (Resolve-Path $snap).Path } else { $null }
+  }
+  when = $ts
+}
+$resPath = "_otokodlama\out\ai_result_$($task.id)_$ts.json"
+Write-Utf8 $resPath (($result | ConvertTo-Json -Depth 9))
+
+# 8) CSV durumu
+function Update-TodoStatus([string]$Csv,[string]$Id,[string]$NewStatus,[string]$Note){
+  $all = @(Import-Csv -LiteralPath $Csv)
+  $hit = $false
+  foreach($r in $all){
+    if($r.id -eq $Id){
+      $r.status = $NewStatus
+      if($Note){
+        if(-not ($r.PSObject.Properties.Name -contains 'note')){ $r | Add-Member -NotePropertyName note -NotePropertyValue "" }
+        $r.note = $Note
+      }
+      $hit = $true
+    }
+  }
+  if($hit){
+    $bak = ($Csv + ".bak_" + (Get-Date -Format yyyyMMddHHmmss))
+    Copy-Item -LiteralPath $Csv -Destination $bak -Force
+    $all | Export-Csv -LiteralPath $Csv -NoTypeInformation -Encoding UTF8
+  }
+}
+if($testSummary.invoked -and $testSummary.exitCode -eq 0){
+  Update-TodoStatus -Csv $CsvPath -Id $task.id -NewStatus "done" -Note ("OK; " + $testSummary.note + "; bundle: " + (Split-Path $zipPath -Leaf))
+} elseif($testSummary.invoked -and $testSummary.exitCode -ne $null){
+  Update-TodoStatus -Csv $CsvPath -Id $task.id -NewStatus "needs-work" -Note ("exitCode={0}; {1}" -f $testSummary.exitCode,$testSummary.note)
+} else {
+  Update-TodoStatus -Csv $CsvPath -Id $task.id -NewStatus "pending" -Note ("not-run: " + $testSummary.note)
+}
+
+"=== LOOP ONCE SUMMARY ==="
+("Task: {0} — {1}" -f $task.id, $task.title)
 ("Server OK: {0}" -f $serverOk)
 ("Tests: invoked={0} exitCode={1} note={2}" -f $testSummary.invoked,$testSummary.exitCode,$testSummary.note)
 ("Changed files: {0}" -f ((@($changed)).Length))
