@@ -45,7 +45,7 @@ try { Start-Transcript -Path $logPath -Force | Out-Null } catch {}
 # 1) CSV & GÃ¶rev
 $rows = Read-CsvStrict $CsvPath
 $task = Select-NextTask $rows $TaskId
-if(!$task){ Write-Host "SeÃ§ilecek gÃ¶rev bulunamadÄ± (TODO/PENDING)."; try { Stop-Transcript | Out-Null } catch {} ; return }
+if(!$task){ Write-Host "Write-Host "No selectable task (TODO/PENDING)."; try { Stop-Transcript | Out-Null } catch {}; return"; try { Stop-Transcript | Out-Null } catch {} ; return }
 Write-Host ("Selected Task: " + $task.id + " - " + $task.title)
 
 # 2) AI paket (istek)
