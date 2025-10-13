@@ -5,11 +5,9 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = (Get-Location).Path
 $CsvPath  = Join-Path $RepoRoot "todolist.csv"
 $OutDir   = Join-Path $RepoRoot "_otokodlama\out"
-if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Force -Path $OutDir | Out-Null }
-
-# BASE_URL (varsayılan localhost)
-$BaseUrl = $env:BASE_URL
+$BaseUrl  = $env:BASE_URL
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) { $BaseUrl = "http://127.0.0.1:8010" }
+if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Force -Path $OutDir | Out-Null }
 
 # --- Helpers ---
 function NowStamp { Get-Date -Format "yyyyMMdd-HHmmss" }
@@ -46,64 +44,50 @@ function Grep-ForTask($task){
   return $null
 }
 
-function Ensure-NpxOnPath {
-  # Oturum PATH'ine AppData\Roaming\npm ekle (npx bu klasörde olur)
-  $npmBin = Join-Path $env:APPDATA 'npm'
-  if (Test-Path $npmBin) {
-    if (-not ($env:Path -split ';' | Where-Object { $_ -eq $npmBin })) {
-      $env:Path = "$npmBin;$env:Path"
-    }
-  }
-}
-
-function Find-Launcher {
-  Ensure-NpxOnPath
-  # npx varsa onu kullan; yoksa local playwright.cmd
-  $npxHit = (cmd.exe /c "where npx" 2>$null | Select-Object -First 1)
-  if ($npxHit) { return @{ kind="npx"; path=$npxHit } }
+function Find-Playwright{
+  $npx = Get-Command npx -EA SilentlyContinue
+  if ($npx) { return @{ kind="npx"; path=$npx.Source } }
   $local = Join-Path $RepoRoot "node_modules\.bin\playwright.cmd"
   if (Test-Path $local) { return @{ kind="bin"; path=$local } }
-  throw "Playwright bulunamadı. Önce: npm install && npx playwright install chromium"
+  throw "Playwright launcher not found (install via npm or use npx)."
 }
 
 function Run-Playwright([string]$grep,[string]$label){
   $ts = NowStamp
   $stdoutPath = Join-Path $OutDir ("pw_" + $label + "_stdout_" + $ts + ".txt")
   $stderrPath = Join-Path $OutDir ("pw_" + $label + "_stderr_" + $ts + ".txt")
-
-  $launcher = Find-Launcher
-  if ($launcher.kind -eq "npx") {
-    $cmd = 'npx playwright test --config="playwright.all.config.cjs" --headed'
+  $launcher = Find-Playwright
+  if ($launcher.kind -eq "npx"){
+    $file = "npx"
+    $args = @("playwright","test","--config=playwright.all.config.cjs","--headed")
+    if ($grep) { $args += @("-g", $grep) }
   } else {
-    $cmd = '"' + $launcher.path + '" test --config="playwright.all.config.cjs" --headed'
+    $file = $launcher.path
+    $args = @("test","--config=playwright.all.config.cjs","--headed")
+    if ($grep) { $args += @("-g", $grep) }
   }
-  if ($grep) { $cmd += (' -g "' + $grep + '"') }
-
-  Push-Location $RepoRoot
-  try {
-    $all  = & $env:ComSpec /c $cmd 2>&1
-    $code = $LASTEXITCODE
-  } finally {
-    Pop-Location
-  }
-
-  $out = ($all | ForEach-Object { $_.ToString() }) -join "`r`n"
-  $enc = New-Object System.Text.UTF8Encoding($false)
-  [IO.File]::WriteAllText($stdoutPath, $out, $enc)
-  [IO.File]::WriteAllText($stderrPath, "", $enc)
-
-  return @{ code=$code; stdout=$stdoutPath; stderr=$stderrPath }
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = $file
+  $psi.Arguments = ($args -join " ")
+  $psi.WorkingDirectory = $RepoRoot
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError  = $true
+  $psi.UseShellExecute = $false
+  $p = [System.Diagnostics.Process]::Start($psi)
+  $out = $p.StandardOutput.ReadToEnd()
+  $err = $p.StandardError.ReadToEnd()
+  $p.WaitForExit()
+  Save-Utf8NoBom $stdoutPath $out
+  Save-Utf8NoBom $stderrPath $err
+  return @{ code=$p.ExitCode; stdout=$stdoutPath; stderr=$stderrPath }
 }
 
-# --- 1) Görev seç ---
+# --- 1) Select task ---
 $task = First-TodoTask $CsvPath
-if ($null -eq $task) {
-  Write-Host "No TODO/PENDING task found."
-  return
-}
+if ($null -eq $task){ Write-Host "No TODO/PENDING task found."; return }
 Write-Host ("Selected Task: {0} - {1}" -f $task.id, $task.title)
 
-# --- 2) AI request iskeleti (ileri slash kullanıyoruz) ---
+# --- 2) AI request skeleton (forward slash to avoid parser quirks) ---
 $ts = NowStamp
 $reqRel = "_otokodlama/out/ai_request_" + $task.id + "_" + $ts + ".json"
 $reqAbs = Join-Path $RepoRoot $reqRel
@@ -116,7 +100,7 @@ $payload = [pscustomobject]@{
 }
 Save-Utf8NoBom $reqAbs ($payload | ConvertTo-Json -Depth 5)
 
-# --- 3) Subset koşusu ---
+# --- 3) Subset run ---
 $grep = Grep-ForTask $task
 $subset = $null
 if ($grep) {
@@ -125,7 +109,7 @@ if ($grep) {
   Write-Host ("Subset ExitCode: {0}" -f $subset.code)
 }
 
-# --- 4) Full koşu kararı ---
+# --- 4) Full run decision ---
 $runPlan = $env:RunPlan
 $fullAfterPass = $true
 if ($env:FullAfterPass -match '^(?i:false|0|no)$') { $fullAfterPass = $false }
@@ -143,13 +127,13 @@ elseif ($runPlan -eq "subset") {
 }
 
 $full = $null
-if ($needFull) {
+if ($needFull){
   Write-Host "Running FULL..."
   $full = Run-Playwright -grep $null -label "full"
   Write-Host ("Full ExitCode: {0}" -f $full.code)
 }
 
-# --- 5) Özet ---
+# --- 5) Summary ---
 $sum = [pscustomobject]@{
   task    = "" + $task.id
   subset  = if ($subset) { $subset.code } else { $null }

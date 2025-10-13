@@ -1,0 +1,55 @@
+name: AI Patch Agent
+on:
+  push:
+    branches:
+      - "ai/**"
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+jobs:
+  build-patch:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, 'AI: build patch'))
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup PowerShell
+        shell: pwsh
+        run: $PSVersionTable.PSVersion
+      - name: Find ai_request JSON (branch scope)
+        id: findreq
+        shell: pwsh
+        run: |
+          $req = Get-ChildItem -Recurse -Filter "ai_request_*.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $req) { Write-Host "no ai_request found"; echo "found=no" >> $env:GITHUB_OUTPUT; exit 0 }
+          echo "found=yes" >> $env:GITHUB_OUTPUT
+          echo "reqpath=$($req.FullName)" >> $env:GITHUB_OUTPUT
+          Get-Content $req.FullName -Raw | Out-Host
+      - name: Run AI PatchBot
+        if: steps.findreq.outputs.found == 'yes'
+        id: patchbot
+        shell: pwsh
+        env:
+          AI_ENDPOINT: ${{ secrets.AI_ENDPOINT }}
+          AI_API_KEY:  ${{ secrets.AI_API_KEY }}
+        run: |
+          $zip = powershell -ExecutionPolicy Bypass -File ops/ai_patchbot.ps1 -RequestsDir "."
+          echo "zippath=$zip" >> $env:GITHUB_OUTPUT
+          Write-Host "ZIP => $zip"
+      - name: Upload artifact
+        if: steps.findreq.outputs.found == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: patch-zip
+          path: ${{ steps.patchbot.outputs.zippath }}
+      - name: Comment to PR with artifact name
+        if: steps.findreq.outputs.found == 'yes'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          body: |
+            ✅ AI patch üretildi. Artifact: **patch-zip**
+            Bot, loop tarafından indirilmeye hazır.
