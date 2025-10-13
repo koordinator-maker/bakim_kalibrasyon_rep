@@ -96,6 +96,8 @@ function Apply-PatchZip {
   $bakRoot    = Join-Path $OutDir ("backup_" + (Split-Path -Leaf $ZipPath) + "_" + $ts)
   New-U8Dir $bakRoot
 
+  # --- FIX: PS 5.1 için gerekli iki assembly'i yükle ---
+  Add-Type -AssemblyName System.IO.Compression
   Add-Type -AssemblyName System.IO.Compression.FileSystem
 
   $repoFull = [IO.Path]::GetFullPath($RepoRoot)
@@ -104,9 +106,9 @@ function Apply-PatchZip {
   $appliedCount = 0
   $skippedCount = 0
 
-  $fs = [IO.File]::OpenRead($ZipPath)
+  # --- FIX: Zip'i ZipFile::OpenRead ile aç ---
+  $zip = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
   try{
-    $zip = New-Object System.IO.Compression.ZipArchive($fs, [System.IO.Compression.ZipArchiveMode]::Read, $false)
     $entries = $zip.Entries
     $limit = $entries.Count
     if($limit -gt $global:PATCH_MAX_FILES){ $limit = $global:PATCH_MAX_FILES }
@@ -169,7 +171,9 @@ function Apply-PatchZip {
       $changed.Add($rel) | Out-Null
       $appliedCount++
     }
-  } finally { $fs.Dispose() }
+  } finally {
+    if($zip){ $zip.Dispose() }
+  }
 
   if($changed.Count -gt 0){ $changed | Out-File -FilePath $logChanged -Encoding UTF8 }
   if($skipped.Count -gt 0){ $skipped | Out-File -FilePath $logSkipped -Encoding UTF8 }
