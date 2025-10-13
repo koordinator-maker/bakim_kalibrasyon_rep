@@ -82,6 +82,8 @@ $serverOk = Test-Server $BaseUrl
 
 # 5) Test: safe subset -> PASS then full; else full fallback
 $summary = @{ invoked=$true; exitCode=$null; reportJson=$null; note=$null }
+if (-not (Get-Variable -Name files -EA 0)) { $files = @() }
+if (-not (Get-Variable -Name grep  -EA 0)) { $grep  = $null }
 
 # --- SUBSET SEÇİMİ (dosya öncelikli, sonra doğrulanmış grep) ---
 $testsRoot = Join-Path $root 'tests'
@@ -89,7 +91,7 @@ $files = @()
 function Add-IfExists([string]$glob){
   if([string]::IsNullOrWhiteSpace($glob)){ return }
   $hit = Get-ChildItem -Path $testsRoot -Recurse -File -Include $glob -EA SilentlyContinue
-  if($hit){ $script:files += $hit.FullName }
+  if($hit){ $files += $hit.FullName }
 }
 
 # ID -> dosya eşleştirme
