@@ -1,4 +1,4 @@
-﻿param(
+param(
   [string]$CsvPath = "todolist.csv",
   [string]$BaseUrl = "http://127.0.0.1:8010",
   [ValidateSet("local","github")][string]$Mode = "local",
@@ -49,7 +49,7 @@ for ($round=1; $round -le $MaxRounds; $round++) {
   $script:BaseUrl = $BaseUrl
   $script:NoPush  = $NoPush
 
-  & .\ops\loop_once.ps1
+  & "C:\dev\bakim_kalibrasyon\ops\loop_once.ps1"
 
   $res = Get-LastResult
   if (!$res) { throw "ai_result bulunamadı." }
@@ -85,7 +85,7 @@ for ($round=1; $round -le $MaxRounds; $round++) {
 
   # Patch’i uygulayıp test ediyoruz (TaskId vererek)
   $script:TaskId = $res.TaskId
-  & .\ops\loop_once.ps1
+  & "C:\dev\bakim_kalibrasyon\ops\loop_once.ps1"
 
   $res2 = Get-LastResult
   if (!$res2) { throw "İkinci sonuç dosyası yok." }
