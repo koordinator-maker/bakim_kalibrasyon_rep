@@ -1,0 +1,563 @@
+# ops/loop_once.ps1 (PS 5.1 minimal)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+trap { Write-Error $_; try { Stop-Transcript | Out-Null } catch {}; return }
+
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$Utf8NoBom = [Text.UTF8Encoding]::new($false)
+
+# Defaults (dışarıdan set edilmediyse)
+if (-not (Get-Variable -Name CsvPath           -EA SilentlyContinue)) { $CsvPath = "todolist.csv" }
+if (-not (Get-Variable -Name Repo              -EA SilentlyContinue)) { $Repo    = "." }
+if (-not (Get-Variable -Name BaseUrl           -EA SilentlyContinue)) { $BaseUrl = "http://127.0.0.1:8010" }
+if (-not (Get-Variable -Name TaskId            -EA SilentlyContinue)) { $TaskId  = "" }
+if (-not (Get-Variable -Name NoPush            -EA SilentlyContinue)) { $NoPush  = $false }
+if (-not (Get-Variable -Name RunPlan           -EA SilentlyContinue)) { $RunPlan = "subset" }
+if (-not (Get-Variable -Name FullAfterPass     -EA SilentlyContinue)) { $FullAfterPass = $true }
+
+function Write-Utf8([string]$Path,[string]$Content){
+  if ([string]::IsNullOrWhiteSpace($Path)) { throw "Write-Utf8: empty path" }
+  $full = $Path
+  if (-not [IO.Path]::IsPathRooted($full)) { $full = Join-Path -Path ((Get-Location).Path) -ChildPath $full }
+  try { $full = [IO.Path]::GetFullPath($full) } catch { throw ("Write-Utf8 GetFullPath error: " + $full + " - " + $_.Exception.Message) }
+  $dir = [IO.Path]::GetDirectoryName($full)
+  if ($dir) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+  [IO.File]::WriteAllText($full,$Content,$Utf8NoBom)
+}
+
+function Read-CsvStrict([string]$Path){
+  if(!(Test-Path $Path)){ throw ("CSV not found: " + $Path) }
+  $raw = Get-Content -LiteralPath $Path -Raw
+  if([string]::IsNullOrWhiteSpace($raw)){ throw ("CSV empty: " + $Path) }
+  $rows = @(Import-Csv -LiteralPath $Path)
+  if($rows.Length -eq 0){ throw "CSV has no rows" }
+  return $rows
+}
+
+function Select-NextTask($rows,[string]$Id){
+  if($Id -and $Id.Trim().Length -gt 0){ return ($rows | Where-Object { $_.id -eq $Id } | Select-Object -First 1) }
+  return ($rows | Where-Object { $_.status -match "^(todo|pending)$" } | Select-Object -First 1)
+}
+
+function Test-Server([string]$Url){
+  try{
+    $u = [Uri]$Url
+    $probe = Invoke-WebRequest -UseBasicParsing -Uri ($u.AbsoluteUri.TrimEnd("/") + "/admin/") -TimeoutSec 5
+    return ($probe.StatusCode -ge 200 -and $probe.StatusCode -lt 500)
+  } catch { return $false }
+}
+
+function Get-TestFilesForTask([string]$Id){
+  $map = @{}
+  $map["UF001"] = @("tests\univ-forms.spec.js")
+  $map["UH001"] = @("tests\univ-headings.spec.js","tests\univ-landmarks.spec.js","tests\univ-smoke.spec.js")
+  $map["EQ001"] = @("tests\e105_list_search_exact.spec.js","tests\e106_list_search_partial.spec.js","tests\e109_search_result_presence.spec.js","tests\e110_bulk_filter_reset.spec.js")
+  if ($Id -match '^E\d{3}$'){ return @("tests\*$Id*.spec.*") }
+  if ($map.ContainsKey($Id)) { return $map[$Id] } else { return @() }
+}
+
+# Workspace
+$root = (Get-Location).Path
+New-Item -ItemType Directory -Force -Path "_otokodlama\out","_otokodlama\inbox","_otokodlama\logs","_otokodlama\reports" | Out-Null
+$ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
+$logPath = "_otokodlama\logs\loop_" + $ts + ".log"
+try { Start-Transcript -Path $logPath -Force | Out-Null } catch {}
+
+# 1) CSV
+$rows = Read-CsvStrict $CsvPath
+$task = Select-NextTask $rows $TaskId
+if(!$task){
+  Write-Host "Seçilecek görev bulunamadı (TODO/PENDING)."
+  try { Stop-Transcript | Out-Null } catch {}
+  return
+}
+Write-Host ("Secilen Gorev: " + $task.id + " - " + $task.title)
+
+# 2) AI paket
+$aiReq = @{
+  task = $task
+  base_url = $BaseUrl
+  note = "Read-only paket; yanıtı _otokodlama/inbox altına bırak."
+}
+$reqPath = "_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"
+Write-Utf8 $reqPath (($aiReq | ConvertTo-Json -Depth 6))
+
+# 3) Inbox patch uygula (varsa)
+$changed = @()
+$inbox = "_otokodlama\inbox"
+if(Test-Path $inbox){
+  $cand = Get-ChildItem -Path $inbox -File | Where-Object { $_.Name -match [regex]::Escape($task.id) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if($cand){
+    $stg = Join-Path "_otokodlama\tmp" ("staging_" + [IO.Path]::GetFileNameWithoutExtension($cand.Name))
+    New-Item -ItemType Directory -Force -Path $stg | Out-Null
+    if($cand.Extension -match "\.zip$"){ Expand-Archive -LiteralPath $cand.FullName -DestinationPath $stg -Force } else { Copy-Item $cand.FullName $stg -Force }
+    $files = Get-ChildItem -Path $stg -Recurse -File
+    foreach($f in $files){
+      $rel = $f.FullName.Substring($stg.Length).TrimStart('\','/')
+      $dest = Join-Path $root $rel
+      $dDir = [IO.Path]::GetDirectoryName($dest)
+      if($dDir){ New-Item -ItemType Directory -Force -Path $dDir | Out-Null }
+      Copy-Item -LiteralPath $f.FullName -Destination $dest -Force
+      $changed += $dest
+    }
+  }
+}
+
+# 4) Server hazır mı?
+$serverOk = Test-Server $BaseUrl
+
+# 5) Test: subset -> PASS ise full  (dosya -> grep -> full fallback)
+$summary = @{ invoked=$false; exitCode=$null; reportJson=$null; note=$null }
+$subset = @()
+if ($RunPlan -in @("auto","subset")){ $subset = @(Get-TestFilesForTask $task.id) }
+
+# Mevcut dosyaları filtrele
+$present = @()
+foreach($s in $subset){
+  if([string]::IsNullOrWhiteSpace($s)){ continue }
+  if(Test-Path $s){ $present += $s }
+}
+
+# Grep ifadesi (örn: "UNIV-HEADINGS" başlığı)
+$grep = $null
+if($task.title -match '^\s*([A-Z0-9\-]+)\s*:'){ $grep = $Matches[1] }
+
+$summary.invoked = $true
+$args = @('playwright','test','--config=playwright.all.config.cjs','--headed')
+
+if ((@($present)).Length -gt 0){
+  $args += $present
+  $summary.note = "subset(files)"
+} elseif ($grep){
+  $args += @('-g', $grep)
+  $summary.note = "subset(grep:" + $grep + ")"
+} else {
+  $summary.note = "full"
+}
+
+& npx @args
+$summary.exitCode = $LASTEXITCODE
+
+$r = Get-ChildItem -Recurse -File -Filter "report.json" |
+     Where-Object { # ops/loop_once.ps1 (PS 5.1 minimal)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+trap { Write-Error $_; try { Stop-Transcript | Out-Null } catch {}; return }
+
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$Utf8NoBom = [Text.UTF8Encoding]::new($false)
+
+# Defaults (dışarıdan set edilmediyse)
+if (-not (Get-Variable -Name CsvPath           -EA SilentlyContinue)) { $CsvPath = "todolist.csv" }
+if (-not (Get-Variable -Name Repo              -EA SilentlyContinue)) { $Repo    = "." }
+if (-not (Get-Variable -Name BaseUrl           -EA SilentlyContinue)) { $BaseUrl = "http://127.0.0.1:8010" }
+if (-not (Get-Variable -Name TaskId            -EA SilentlyContinue)) { $TaskId  = "" }
+if (-not (Get-Variable -Name NoPush            -EA SilentlyContinue)) { $NoPush  = $false }
+if (-not (Get-Variable -Name RunPlan           -EA SilentlyContinue)) { $RunPlan = "subset" }
+if (-not (Get-Variable -Name FullAfterPass     -EA SilentlyContinue)) { $FullAfterPass = $true }
+
+function Write-Utf8([string]$Path,[string]$Content){
+  if ([string]::IsNullOrWhiteSpace($Path)) { throw "Write-Utf8: empty path" }
+  $full = $Path
+  if (-not [IO.Path]::IsPathRooted($full)) { $full = Join-Path -Path ((Get-Location).Path) -ChildPath $full }
+  try { $full = [IO.Path]::GetFullPath($full) } catch { throw ("Write-Utf8 GetFullPath error: " + $full + " - " + $_.Exception.Message) }
+  $dir = [IO.Path]::GetDirectoryName($full)
+  if ($dir) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+  [IO.File]::WriteAllText($full,$Content,$Utf8NoBom)
+}
+
+function Read-CsvStrict([string]$Path){
+  if(!(Test-Path $Path)){ throw ("CSV not found: " + $Path) }
+  $raw = Get-Content -LiteralPath $Path -Raw
+  if([string]::IsNullOrWhiteSpace($raw)){ throw ("CSV empty: " + $Path) }
+  $rows = @(Import-Csv -LiteralPath $Path)
+  if($rows.Length -eq 0){ throw "CSV has no rows" }
+  return $rows
+}
+
+function Select-NextTask($rows,[string]$Id){
+  if($Id -and $Id.Trim().Length -gt 0){ return ($rows | Where-Object { $_.id -eq $Id } | Select-Object -First 1) }
+  return ($rows | Where-Object { $_.status -match "^(todo|pending)$" } | Select-Object -First 1)
+}
+
+function Test-Server([string]$Url){
+  try{
+    $u = [Uri]$Url
+    $probe = Invoke-WebRequest -UseBasicParsing -Uri ($u.AbsoluteUri.TrimEnd("/") + "/admin/") -TimeoutSec 5
+    return ($probe.StatusCode -ge 200 -and $probe.StatusCode -lt 500)
+  } catch { return $false }
+}
+
+function Get-TestFilesForTask([string]$Id){
+  $map = @{}
+  $map["UF001"] = @("tests\univ-forms.spec.js")
+  $map["UH001"] = @("tests\univ-headings.spec.js","tests\univ-landmarks.spec.js","tests\univ-smoke.spec.js")
+  $map["EQ001"] = @("tests\e105_list_search_exact.spec.js","tests\e106_list_search_partial.spec.js","tests\e109_search_result_presence.spec.js","tests\e110_bulk_filter_reset.spec.js")
+  if ($Id -match '^E\d{3}$'){ return @("tests\*$Id*.spec.*") }
+  if ($map.ContainsKey($Id)) { return $map[$Id] } else { return @() }
+}
+
+# Workspace
+$root = (Get-Location).Path
+New-Item -ItemType Directory -Force -Path "_otokodlama\out","_otokodlama\inbox","_otokodlama\logs","_otokodlama\reports" | Out-Null
+$ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
+$logPath = "_otokodlama\logs\loop_" + $ts + ".log"
+try { Start-Transcript -Path $logPath -Force | Out-Null } catch {}
+
+# 1) CSV
+$rows = Read-CsvStrict $CsvPath
+$task = Select-NextTask $rows $TaskId
+if(!$task){
+  Write-Host "Seçilecek görev bulunamadı (TODO/PENDING)."
+  try { Stop-Transcript | Out-Null } catch {}
+  return
+}
+Write-Host ("Secilen Gorev: " + $task.id + " - " + $task.title)
+
+# 2) AI paket
+$aiReq = @{
+  task = $task
+  base_url = $BaseUrl
+  note = "Read-only paket; yanıtı _otokodlama/inbox altına bırak."
+}
+$reqPath = "_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"
+Write-Utf8 $reqPath (($aiReq | ConvertTo-Json -Depth 6))
+
+# 3) Inbox patch uygula (varsa)
+$changed = @()
+$inbox = "_otokodlama\inbox"
+if(Test-Path $inbox){
+  $cand = Get-ChildItem -Path $inbox -File | Where-Object { $_.Name -match [regex]::Escape($task.id) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if($cand){
+    $stg = Join-Path "_otokodlama\tmp" ("staging_" + [IO.Path]::GetFileNameWithoutExtension($cand.Name))
+    New-Item -ItemType Directory -Force -Path $stg | Out-Null
+    if($cand.Extension -match "\.zip$"){ Expand-Archive -LiteralPath $cand.FullName -DestinationPath $stg -Force } else { Copy-Item $cand.FullName $stg -Force }
+    $files = Get-ChildItem -Path $stg -Recurse -File
+    foreach($f in $files){
+      $rel = $f.FullName.Substring($stg.Length).TrimStart('\','/')
+      $dest = Join-Path $root $rel
+      $dDir = [IO.Path]::GetDirectoryName($dest)
+      if($dDir){ New-Item -ItemType Directory -Force -Path $dDir | Out-Null }
+      Copy-Item -LiteralPath $f.FullName -Destination $dest -Force
+      $changed += $dest
+    }
+  }
+}
+
+# 4) Server hazır mı?
+$serverOk = Test-Server $BaseUrl
+
+# 5) Test: subset -> PASS ise full
+$summary = @{ invoked=$false; exitCode=$null; reportJson=$null; note=$null }
+$subset = @()
+if ($RunPlan -in @("auto","subset")){ $subset = @(Get-TestFilesForTask $task.id) }
+$summary.invoked = $true
+$args = @('playwright','test','--config=playwright.all.config.cjs','--headed')
+if ((@($subset)).Length -gt 0){ $args += $subset; $summary.note = "subset" } else { $summary.note = "full" }
+& npx @args
+$summary.exitCode = $LASTEXITCODE
+$r = Get-ChildItem -Recurse -File -Filter "report.json" | Where-Object { $_.FullName -match 'playwright-report[\\/].*data[\\/]report\.json$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if($r){ $summary.reportJson = $r.FullName }
+if ($summary.exitCode -eq 0 -and $summary.note -eq "subset" -and $FullAfterPass){
+  & npx playwright test --config=playwright.all.config.cjs --headed
+  $summary.exitCode = $LASTEXITCODE
+  $summary.note = "subset then full"
+  $r2 = Get-ChildItem -Recurse -File -Filter "report.json" | Where-Object { $_.FullName -match 'playwright-report[\\/].*data[\\/]report\.json$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if($r2){ $summary.reportJson = $r2.FullName }
+}
+
+# 6) Artefakt paketle
+$bundle = "_otokodlama\out\bundle_" + $task.id + "_" + $ts + ".zip"
+$items = @($reqPath,$logPath)
+if($summary.reportJson){ $items += $summary.reportJson }
+if(Test-Path $bundle){ Remove-Item $bundle -Force }
+$st = Join-Path "_otokodlama\tmp" ("zip_" + $task.id + "_" + $ts)
+if(Test-Path $st){ Remove-Item $st -Recurse -Force -EA SilentlyContinue }
+New-Item -ItemType Directory -Force -Path $st | Out-Null
+foreach($i in $items){ if(Test-Path $i){ Copy-Item $i (Join-Path $st ([IO.Path]::GetFileName($i))) -Force } }
+Compress-Archive -Path (Join-Path $st '*') -DestinationPath $bundle -Force
+
+# 7) CSV güncelle
+$all = @(Import-Csv -LiteralPath $CsvPath)
+foreach($r in $all){
+  if($r.id -eq $task.id){
+    if($summary.exitCode -eq 0){ $r.status = "done" } else { $r.status = "needs-work" }
+  }
+}
+$bak = $CsvPath + ".bak_" + (Get-Date -Format yyyyMMddHHmmss)
+Copy-Item -LiteralPath $CsvPath -Destination $bak -Force
+$all | Export-Csv -LiteralPath $CsvPath -NoTypeInformation -Encoding UTF8
+
+# 8) Özet
+"=== LOOP ONCE SUMMARY ==="
+"Task: " + $task.id + " - " + $task.title
+"Server OK: " + $serverOk
+"Tests: invoked=" + $summary.invoked + " exitCode=" + $summary.exitCode + " note=" + $summary.note
+"Changed files: " + ((@($changed)).Length)
+"Out: " + (Resolve-Path ("_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"))
+"Bundle: " + (Resolve-Path $bundle)
+
+try { Stop-Transcript | Out-Null } catch {}.FullName -match 'playwright-report[\\/].*data[\\/]report\.json paketle
+$bundle = "_otokodlama\out\bundle_" + $task.id + "_" + $ts + ".zip"
+$items = @($reqPath,$logPath)
+if($summary.reportJson){ $items += $summary.reportJson }
+if(Test-Path $bundle){ Remove-Item $bundle -Force }
+$st = Join-Path "_otokodlama\tmp" ("zip_" + $task.id + "_" + $ts)
+if(Test-Path $st){ Remove-Item $st -Recurse -Force -EA SilentlyContinue }
+New-Item -ItemType Directory -Force -Path $st | Out-Null
+foreach($i in $items){ if(Test-Path $i){ Copy-Item $i (Join-Path $st ([IO.Path]::GetFileName($i))) -Force } }
+Compress-Archive -Path (Join-Path $st '*') -DestinationPath $bundle -Force
+
+# 7) CSV güncelle
+$all = @(Import-Csv -LiteralPath $CsvPath)
+foreach($r in $all){
+  if($r.id -eq $task.id){
+    if($summary.exitCode -eq 0){ $r.status = "done" } else { $r.status = "needs-work" }
+  }
+}
+$bak = $CsvPath + ".bak_" + (Get-Date -Format yyyyMMddHHmmss)
+Copy-Item -LiteralPath $CsvPath -Destination $bak -Force
+$all | Export-Csv -LiteralPath $CsvPath -NoTypeInformation -Encoding UTF8
+
+# 8) Özet
+"=== LOOP ONCE SUMMARY ==="
+"Task: " + $task.id + " - " + $task.title
+"Server OK: " + $serverOk
+"Tests: invoked=" + $summary.invoked + " exitCode=" + $summary.exitCode + " note=" + $summary.note
+"Changed files: " + ((@($changed)).Length)
+"Out: " + (Resolve-Path ("_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"))
+"Bundle: " + (Resolve-Path $bundle)
+
+try { Stop-Transcript | Out-Null } catch {} } |
+     Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if($r){ $summary.reportJson = $r.FullName }
+
+if ($summary.exitCode -eq 0 -and $summary.note -like 'subset*' -and $FullAfterPass){
+  & npx playwright test --config=playwright.all.config.cjs --headed
+  $summary.exitCode = $LASTEXITCODE
+  $summary.note = $summary.note + " then full"
+  $r2 = Get-ChildItem -Recurse -File -Filter "report.json" |
+        Where-Object { # ops/loop_once.ps1 (PS 5.1 minimal)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+trap { Write-Error $_; try { Stop-Transcript | Out-Null } catch {}; return }
+
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$Utf8NoBom = [Text.UTF8Encoding]::new($false)
+
+# Defaults (dışarıdan set edilmediyse)
+if (-not (Get-Variable -Name CsvPath           -EA SilentlyContinue)) { $CsvPath = "todolist.csv" }
+if (-not (Get-Variable -Name Repo              -EA SilentlyContinue)) { $Repo    = "." }
+if (-not (Get-Variable -Name BaseUrl           -EA SilentlyContinue)) { $BaseUrl = "http://127.0.0.1:8010" }
+if (-not (Get-Variable -Name TaskId            -EA SilentlyContinue)) { $TaskId  = "" }
+if (-not (Get-Variable -Name NoPush            -EA SilentlyContinue)) { $NoPush  = $false }
+if (-not (Get-Variable -Name RunPlan           -EA SilentlyContinue)) { $RunPlan = "subset" }
+if (-not (Get-Variable -Name FullAfterPass     -EA SilentlyContinue)) { $FullAfterPass = $true }
+
+function Write-Utf8([string]$Path,[string]$Content){
+  if ([string]::IsNullOrWhiteSpace($Path)) { throw "Write-Utf8: empty path" }
+  $full = $Path
+  if (-not [IO.Path]::IsPathRooted($full)) { $full = Join-Path -Path ((Get-Location).Path) -ChildPath $full }
+  try { $full = [IO.Path]::GetFullPath($full) } catch { throw ("Write-Utf8 GetFullPath error: " + $full + " - " + $_.Exception.Message) }
+  $dir = [IO.Path]::GetDirectoryName($full)
+  if ($dir) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+  [IO.File]::WriteAllText($full,$Content,$Utf8NoBom)
+}
+
+function Read-CsvStrict([string]$Path){
+  if(!(Test-Path $Path)){ throw ("CSV not found: " + $Path) }
+  $raw = Get-Content -LiteralPath $Path -Raw
+  if([string]::IsNullOrWhiteSpace($raw)){ throw ("CSV empty: " + $Path) }
+  $rows = @(Import-Csv -LiteralPath $Path)
+  if($rows.Length -eq 0){ throw "CSV has no rows" }
+  return $rows
+}
+
+function Select-NextTask($rows,[string]$Id){
+  if($Id -and $Id.Trim().Length -gt 0){ return ($rows | Where-Object { $_.id -eq $Id } | Select-Object -First 1) }
+  return ($rows | Where-Object { $_.status -match "^(todo|pending)$" } | Select-Object -First 1)
+}
+
+function Test-Server([string]$Url){
+  try{
+    $u = [Uri]$Url
+    $probe = Invoke-WebRequest -UseBasicParsing -Uri ($u.AbsoluteUri.TrimEnd("/") + "/admin/") -TimeoutSec 5
+    return ($probe.StatusCode -ge 200 -and $probe.StatusCode -lt 500)
+  } catch { return $false }
+}
+
+function Get-TestFilesForTask([string]$Id){
+  $map = @{}
+  $map["UF001"] = @("tests\univ-forms.spec.js")
+  $map["UH001"] = @("tests\univ-headings.spec.js","tests\univ-landmarks.spec.js","tests\univ-smoke.spec.js")
+  $map["EQ001"] = @("tests\e105_list_search_exact.spec.js","tests\e106_list_search_partial.spec.js","tests\e109_search_result_presence.spec.js","tests\e110_bulk_filter_reset.spec.js")
+  if ($Id -match '^E\d{3}$'){ return @("tests\*$Id*.spec.*") }
+  if ($map.ContainsKey($Id)) { return $map[$Id] } else { return @() }
+}
+
+# Workspace
+$root = (Get-Location).Path
+New-Item -ItemType Directory -Force -Path "_otokodlama\out","_otokodlama\inbox","_otokodlama\logs","_otokodlama\reports" | Out-Null
+$ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
+$logPath = "_otokodlama\logs\loop_" + $ts + ".log"
+try { Start-Transcript -Path $logPath -Force | Out-Null } catch {}
+
+# 1) CSV
+$rows = Read-CsvStrict $CsvPath
+$task = Select-NextTask $rows $TaskId
+if(!$task){
+  Write-Host "Seçilecek görev bulunamadı (TODO/PENDING)."
+  try { Stop-Transcript | Out-Null } catch {}
+  return
+}
+Write-Host ("Secilen Gorev: " + $task.id + " - " + $task.title)
+
+# 2) AI paket
+$aiReq = @{
+  task = $task
+  base_url = $BaseUrl
+  note = "Read-only paket; yanıtı _otokodlama/inbox altına bırak."
+}
+$reqPath = "_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"
+Write-Utf8 $reqPath (($aiReq | ConvertTo-Json -Depth 6))
+
+# 3) Inbox patch uygula (varsa)
+$changed = @()
+$inbox = "_otokodlama\inbox"
+if(Test-Path $inbox){
+  $cand = Get-ChildItem -Path $inbox -File | Where-Object { $_.Name -match [regex]::Escape($task.id) } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if($cand){
+    $stg = Join-Path "_otokodlama\tmp" ("staging_" + [IO.Path]::GetFileNameWithoutExtension($cand.Name))
+    New-Item -ItemType Directory -Force -Path $stg | Out-Null
+    if($cand.Extension -match "\.zip$"){ Expand-Archive -LiteralPath $cand.FullName -DestinationPath $stg -Force } else { Copy-Item $cand.FullName $stg -Force }
+    $files = Get-ChildItem -Path $stg -Recurse -File
+    foreach($f in $files){
+      $rel = $f.FullName.Substring($stg.Length).TrimStart('\','/')
+      $dest = Join-Path $root $rel
+      $dDir = [IO.Path]::GetDirectoryName($dest)
+      if($dDir){ New-Item -ItemType Directory -Force -Path $dDir | Out-Null }
+      Copy-Item -LiteralPath $f.FullName -Destination $dest -Force
+      $changed += $dest
+    }
+  }
+}
+
+# 4) Server hazır mı?
+$serverOk = Test-Server $BaseUrl
+
+# 5) Test: subset -> PASS ise full
+$summary = @{ invoked=$false; exitCode=$null; reportJson=$null; note=$null }
+$subset = @()
+if ($RunPlan -in @("auto","subset")){ $subset = @(Get-TestFilesForTask $task.id) }
+$summary.invoked = $true
+$args = @('playwright','test','--config=playwright.all.config.cjs','--headed')
+if ((@($subset)).Length -gt 0){ $args += $subset; $summary.note = "subset" } else { $summary.note = "full" }
+& npx @args
+$summary.exitCode = $LASTEXITCODE
+$r = Get-ChildItem -Recurse -File -Filter "report.json" | Where-Object { $_.FullName -match 'playwright-report[\\/].*data[\\/]report\.json$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if($r){ $summary.reportJson = $r.FullName }
+if ($summary.exitCode -eq 0 -and $summary.note -eq "subset" -and $FullAfterPass){
+  & npx playwright test --config=playwright.all.config.cjs --headed
+  $summary.exitCode = $LASTEXITCODE
+  $summary.note = "subset then full"
+  $r2 = Get-ChildItem -Recurse -File -Filter "report.json" | Where-Object { $_.FullName -match 'playwright-report[\\/].*data[\\/]report\.json$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if($r2){ $summary.reportJson = $r2.FullName }
+}
+
+# 6) Artefakt paketle
+$bundle = "_otokodlama\out\bundle_" + $task.id + "_" + $ts + ".zip"
+$items = @($reqPath,$logPath)
+if($summary.reportJson){ $items += $summary.reportJson }
+if(Test-Path $bundle){ Remove-Item $bundle -Force }
+$st = Join-Path "_otokodlama\tmp" ("zip_" + $task.id + "_" + $ts)
+if(Test-Path $st){ Remove-Item $st -Recurse -Force -EA SilentlyContinue }
+New-Item -ItemType Directory -Force -Path $st | Out-Null
+foreach($i in $items){ if(Test-Path $i){ Copy-Item $i (Join-Path $st ([IO.Path]::GetFileName($i))) -Force } }
+Compress-Archive -Path (Join-Path $st '*') -DestinationPath $bundle -Force
+
+# 7) CSV güncelle
+$all = @(Import-Csv -LiteralPath $CsvPath)
+foreach($r in $all){
+  if($r.id -eq $task.id){
+    if($summary.exitCode -eq 0){ $r.status = "done" } else { $r.status = "needs-work" }
+  }
+}
+$bak = $CsvPath + ".bak_" + (Get-Date -Format yyyyMMddHHmmss)
+Copy-Item -LiteralPath $CsvPath -Destination $bak -Force
+$all | Export-Csv -LiteralPath $CsvPath -NoTypeInformation -Encoding UTF8
+
+# 8) Özet
+"=== LOOP ONCE SUMMARY ==="
+"Task: " + $task.id + " - " + $task.title
+"Server OK: " + $serverOk
+"Tests: invoked=" + $summary.invoked + " exitCode=" + $summary.exitCode + " note=" + $summary.note
+"Changed files: " + ((@($changed)).Length)
+"Out: " + (Resolve-Path ("_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"))
+"Bundle: " + (Resolve-Path $bundle)
+
+try { Stop-Transcript | Out-Null } catch {}.FullName -match 'playwright-report[\\/].*data[\\/]report\.json paketle
+$bundle = "_otokodlama\out\bundle_" + $task.id + "_" + $ts + ".zip"
+$items = @($reqPath,$logPath)
+if($summary.reportJson){ $items += $summary.reportJson }
+if(Test-Path $bundle){ Remove-Item $bundle -Force }
+$st = Join-Path "_otokodlama\tmp" ("zip_" + $task.id + "_" + $ts)
+if(Test-Path $st){ Remove-Item $st -Recurse -Force -EA SilentlyContinue }
+New-Item -ItemType Directory -Force -Path $st | Out-Null
+foreach($i in $items){ if(Test-Path $i){ Copy-Item $i (Join-Path $st ([IO.Path]::GetFileName($i))) -Force } }
+Compress-Archive -Path (Join-Path $st '*') -DestinationPath $bundle -Force
+
+# 7) CSV güncelle
+$all = @(Import-Csv -LiteralPath $CsvPath)
+foreach($r in $all){
+  if($r.id -eq $task.id){
+    if($summary.exitCode -eq 0){ $r.status = "done" } else { $r.status = "needs-work" }
+  }
+}
+$bak = $CsvPath + ".bak_" + (Get-Date -Format yyyyMMddHHmmss)
+Copy-Item -LiteralPath $CsvPath -Destination $bak -Force
+$all | Export-Csv -LiteralPath $CsvPath -NoTypeInformation -Encoding UTF8
+
+# 8) Özet
+"=== LOOP ONCE SUMMARY ==="
+"Task: " + $task.id + " - " + $task.title
+"Server OK: " + $serverOk
+"Tests: invoked=" + $summary.invoked + " exitCode=" + $summary.exitCode + " note=" + $summary.note
+"Changed files: " + ((@($changed)).Length)
+"Out: " + (Resolve-Path ("_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"))
+"Bundle: " + (Resolve-Path $bundle)
+
+try { Stop-Transcript | Out-Null } catch {} } |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if($r2){ $summary.reportJson = $r2.FullName }
+# 6) Artefakt paketle paketle
+$bundle = "_otokodlama\out\bundle_" + $task.id + "_" + $ts + ".zip"
+$items = @($reqPath,$logPath)
+if($summary.reportJson){ $items += $summary.reportJson }
+if(Test-Path $bundle){ Remove-Item $bundle -Force }
+$st = Join-Path "_otokodlama\tmp" ("zip_" + $task.id + "_" + $ts)
+if(Test-Path $st){ Remove-Item $st -Recurse -Force -EA SilentlyContinue }
+New-Item -ItemType Directory -Force -Path $st | Out-Null
+foreach($i in $items){ if(Test-Path $i){ Copy-Item $i (Join-Path $st ([IO.Path]::GetFileName($i))) -Force } }
+Compress-Archive -Path (Join-Path $st '*') -DestinationPath $bundle -Force
+
+# 7) CSV güncelle
+$all = @(Import-Csv -LiteralPath $CsvPath)
+foreach($r in $all){
+  if($r.id -eq $task.id){
+    if($summary.exitCode -eq 0){ $r.status = "done" } else { $r.status = "needs-work" }
+  }
+}
+$bak = $CsvPath + ".bak_" + (Get-Date -Format yyyyMMddHHmmss)
+Copy-Item -LiteralPath $CsvPath -Destination $bak -Force
+$all | Export-Csv -LiteralPath $CsvPath -NoTypeInformation -Encoding UTF8
+
+# 8) Özet
+"=== LOOP ONCE SUMMARY ==="
+"Task: " + $task.id + " - " + $task.title
+"Server OK: " + $serverOk
+"Tests: invoked=" + $summary.invoked + " exitCode=" + $summary.exitCode + " note=" + $summary.note
+"Changed files: " + ((@($changed)).Length)
+"Out: " + (Resolve-Path ("_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"))
+"Bundle: " + (Resolve-Path $bundle)
+
+try { Stop-Transcript | Out-Null } catch {}

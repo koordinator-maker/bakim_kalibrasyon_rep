@@ -33,10 +33,8 @@ function Select-NextTask($rows,[string]$Id){
   return ($rows | Where-Object { $_.status -match '^(?i)(todo|pending)$' } | Select-Object -First 1)
 }
 function Test-Server([string]$Url){
-  try{
-    $probe = Invoke-WebRequest -UseBasicParsing -Uri (([Uri]$Url).AbsoluteUri.TrimEnd('/') + '/admin/') -TimeoutSec 5
-    return ($probe.StatusCode -ge 200 -and $probe.StatusCode -lt 500)
-  } catch { return $false }
+  try{ $probe = Invoke-WebRequest -UseBasicParsing -Uri (([Uri]$Url).AbsoluteUri.TrimEnd('/') + '/admin/') -TimeoutSec 5
+       return ($probe.StatusCode -ge 200 -and $probe.StatusCode -lt 500) } catch { return $false }
 }
 
 # Workspace
@@ -49,11 +47,11 @@ try { Start-Transcript -Path $logPath -Force | Out-Null } catch {}
 # 1) CSV & Görev
 $rows = Read-CsvStrict $CsvPath
 $task = Select-NextTask $rows $TaskId
-if(!$task){ Write-Host "Secilecek gorev bulunamadi (TODO/PENDING)."; try { Stop-Transcript | Out-Null } catch {} ; return }
+if(!$task){ Write-Host "Seçilecek görev bulunamadı (TODO/PENDING)."; try { Stop-Transcript | Out-Null } catch {} ; return }
 Write-Host ("Secilen Gorev: " + $task.id + " - " + $task.title)
 
 # 2) AI paket (istek)
-$aiReq = @{ task = $task; base_url = $BaseUrl; note = "Read-only paket; yaniti _otokodlama/inbox altina birak." }
+$aiReq = @{ task = $task; base_url = $BaseUrl; note = "Read-only paket; yanıtı _otokodlama/inbox altına bırak." }
 $reqPath = "_otokodlama\out\ai_request_" + $task.id + "_" + $ts + ".json"
 Write-Utf8 $reqPath (($aiReq | ConvertTo-Json -Depth 6))
 
@@ -83,24 +81,13 @@ $serverOk = Test-Server $BaseUrl
 # 5) Test: subset (grep) -> PASS ise full, aksi halde full fallback
 $summary = @{ invoked=$true; exitCode=$null; reportJson=$null; note=$null }
 
-# Grep: ID tabanli haritalama; yoksa basligin ilk kelimesi, uc noktalama temiz
+# Grep: önce ID (UH001), yoksa başlığın ilk kelimesi
 $grep = $null
-if ($task.id -and $task.id -match '^[A-Z]{2}\d{3}$') {
-  if ($task.id -like 'UH*') { $grep = 'UNIV-HEADINGS' }
-  elseif ($task.id -like 'UF*') { $grep = 'UNIV-FORMS' }
-  else { $grep = $task.id }
-} elseif ($task.title) {
-  $first = ($task.title -split '\s+')[0]
-  $grep = ($first -replace '[:\-]+$','')  # sondaki ':' ve '-' sil
-}
+if ($task.id -and $task.id -match '^[A-Z]{2}\d{3}$') { $grep = $task.id }
+elseif ($task.title) { $grep = ($task.title -split '\s+')[0] }
 
 $args = @('playwright','test','--config=playwright.all.config.cjs','--headed')
-if ($RunPlan -in @('auto','subset') -and $grep) {
-  $args += @('-g', $grep)
-  $summary.note = 'subset(grep:' + $grep + ')'
-} else {
-  $summary.note = 'full'
-}
+if ($RunPlan -in @('auto','subset') -and $grep) { $args += @('-g', $grep); $summary.note = 'subset(grep:' + $grep + ')' } else { $summary.note = 'full' }
 
 & npx @args
 $summary.exitCode = $LASTEXITCODE
