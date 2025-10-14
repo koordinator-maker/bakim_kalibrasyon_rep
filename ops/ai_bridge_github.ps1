@@ -84,7 +84,7 @@ YanÄ±t/patche'i **\`_otokodlama/inbox\`** altÄ±na \`$TaskId\` geÃ§en bir *
   Write-Utf8 $tmp $body
 
   $prUrl = ""
-  try { $prUrl = (gh pr create --base $MainBranch --head $branch --title ("AI: {0} request {1}" -f $TaskId,$ts) --body-file $tmp -q ".url") } catch { }
+  try { $prUrl = (gh pr create --base $MainBranch --head $branch --title ("AI: {0} request {1}" -f $TaskId,$ts) --body-file $tmp ".url") } catch { }
 
   return @{ status="pushed"; branch=$branch; pr=$prUrl }
 }
