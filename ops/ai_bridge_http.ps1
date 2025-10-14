@@ -1,16 +1,82 @@
-﻿param(
+param(
   [string]$TaskId = "UH001",
   [string]$RequestsDir = ".",
   [string]$OutDir = "_otokodlama\\inbox"
 )
+# --- safety inits (PS5.1) ---
+if (-not (Get-Variable -Name uploadOk   -ErrorAction SilentlyContinue)) { $uploadOk   = $false }
+if (-not (Get-Variable -Name statusOk   -ErrorAction SilentlyContinue)) { $statusOk   = $false }
+if (-not (Get-Variable -Name downloadOk -ErrorAction SilentlyContinue)) { $downloadOk = $false }
+if (-not (Get-Variable -Name resp       -ErrorAction SilentlyContinue)) { $resp       = $null  }
+# -- ai_request fallback: yoksa üret (PS5.1) --
+function New-Utf8([bool]$noBom=$true){ New-Object System.Text.UTF8Encoding($noBom) }
+function Write-Utf8([string]$p,[string]$t){ [IO.File]::WriteAllText($p,$t,(New-Utf8)) }
+New-Item -ItemType Directory -Force -Path $RequestsDir | Out-Null
+# mevcut istek var mı?
+$reqJson = Get-ChildItem -LiteralPath $RequestsDir -Filter 'ai_request_*.json' -File -ErrorAction SilentlyContinue |
+           Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $reqJson) {
+  $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
+  if ([string]::IsNullOrWhiteSpace($TaskId)) { $TaskId = "AUTO-$ts" }
+  # bağlam (opsiyonel)
+  $latestDetails = Get-ChildItem "_otokodlama\reports\dashboard" -Filter 'details_*.csv' -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Desc | Select-Object -First 1
+  $latestFind    = Get-ChildItem "_otokodlama\reports" -Filter 'universal_findings_*.txt' -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Desc | Select-Object -First 1
+  $bundleZip     = Get-ChildItem "_otokodlama\bundle" -Filter 'bundle_*.zip' -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Desc | Select-Object -First 1
+  $reports = @()
+  if ($latestDetails) { $reports += $latestDetails.FullName }
+  if ($latestFind)    { $reports += $latestFind.FullName }
+  $bundlePath = $null; if ($bundleZip) { $bundlePath = $bundleZip.FullName }
+  $reqObj = @{
+    task_id = $TaskId
+    base_url = $env:BASE_URL
+    reports  = $reports
+    bundle   = $bundlePath
+    meta     = @{ user=$env:USERNAME; host=$env:COMPUTERNAME; ts=(Get-Date).ToString('s') }
+  }
+  $reqPath = Join-Path $RequestsDir ("ai_request_{0}.json" -f $ts)
+  Write-Utf8 $reqPath (($reqObj | ConvertTo-Json -Depth 20))
+  $reqJson = Get-Item -LiteralPath $reqPath
+  Write-Host "[ai-http] fallback: $($reqJson.Name) oluşturuldu."
+}
+# burada $reqJson kesin
+$reqObj = Get-Content -LiteralPath $reqJson.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+
+$reqObj = Get-Content -LiteralPath $reqJson.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+# --- PS5.1-safe timings ---
+# Defaults
+$timeout    = 8      # dakika
+$pollSec    = 5      # saniye
+$maxPollSec = 600    # saniye
+# Env overrides
+if ($env:AI_TIMEOUT_MIN) { $timeout    = [int]$env:AI_TIMEOUT_MIN }
+if ($env:AI_POLL_SEC)    { $pollSec    = [int]$env:AI_POLL_SEC }
+if ($env:AI_MAX_SEC)     { $maxPollSec = [int]$env:AI_MAX_SEC }
+# Defaults
+$timeout    = 8      # dakika
+$pollSec    = 5      # saniye
+$maxPollSec = 600    # saniye
+# Env overrides
+if ($env:AI_TIMEOUT_MIN) { $timeout    = [int]$env:AI_TIMEOUT_MIN }
+if ($env:AI_POLL_SEC)    { $pollSec    = [int]$env:AI_POLL_SEC }
+if ($env:AI_MAX_SEC)     { $maxPollSec = [int]$env:AI_MAX_SEC }
+# Defaults
+$timeout    = 8      # dakika
+$pollSec    = 5      # saniye
+$maxPollSec = 600    # saniye
+# Env overrides
+if ($env:AI_TIMEOUT_MIN) { $timeout    = [int]$env:AI_TIMEOUT_MIN }
+if ($env:AI_POLL_SEC)    { $pollSec    = [int]$env:AI_POLL_SEC }
+if ($env:AI_MAX_SEC)     { $maxPollSec = [int]$env:AI_MAX_SEC }
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
 # Guard
 if(-not $env:AI_ENDPOINT -or -not $env:AI_API_KEY){ throw "AI_ENDPOINT / AI_API_KEY env değişkenlerini ayarla." }
 $baseUrl = $env:AI_ENDPOINT.TrimEnd('/')
-$pollSec = [int](if($env:AI_POLL_SEC){$env:AI_POLL_SEC}else{'5'})
-$timeout = [int](if($env:AI_TIMEOUT_MIN){$env:AI_TIMEOUT_MIN}else{'8'})
+$pollSec = 5
 # Son ai_request + bundle'ı bul
 $root = (Get-Location).Path
 $prefer = Join-Path $root ("ai_exchange\"+$TaskId)
@@ -19,36 +85,27 @@ $latest = Get-ChildItem $searchBase -Directory -ErrorAction SilentlyContinue | S
 if(-not $latest){ throw "ai_exchange/$TaskId altında paket yok." }
 $reqJson = Get-ChildItem $latest.FullName -Filter "ai_request_*.json" -File | Sort LastWriteTime -Desc | Select -First 1
 $bundle  = Get-ChildItem $latest.FullName -Filter "bundle_*.zip"      -File | Sort LastWriteTime -Desc | Select -First 1
-if(-not $reqJson){ throw "ai_request_*.json bulunamadı: $($latest.FullName)" }
-# 1) Upload: multipart/form-data dene; olmazsa JSON (base64) fallback
-$hdr = @{ Authorization = "Bearer $($env:AI_API_KEY)" }
-$uploadOk = $false; $resp = $null
-try {
-  $form = @{
-    "task_id"     = $TaskId
-    "request_json"= Get-Item -LiteralPath $reqJson.FullName
-    "bundle_zip"  = $(if($bundle){ Get-Item -LiteralPath $bundle.FullName } else { $null })
-  }
-  $resp = Invoke-RestMethod -Method Post -Uri ($baseUrl+"/requests") -Headers $hdr -Form $form -TimeoutSec 120
-  $uploadOk = $true
-} catch {
-  # Fallback: JSON + base64 (endpoint böyle istiyorsa)
-  try {
-    $payload = @{
-      task_id = $TaskId
-      request = (Get-Content -LiteralPath $reqJson.FullName -Raw)
-      bundle_b64 = $(if($bundle){ [Convert]::ToBase64String([IO.File]::ReadAllBytes($bundle.FullName)) } else { $null })
-      filename   = $(if($bundle){ Split-Path -Leaf $bundle.FullName } else { $null })
-    } | ConvertTo-Json -Depth 12
-    $resp = Invoke-RestMethod -Method Post -Uri ($baseUrl+"/requests") -Headers ($hdr + @{ "Content-Type"="application/json" }) -Body $payload -TimeoutSec 120
-    $uploadOk = $true
-  } catch {
-    throw "Upload başarısız: $($_.Exception.Message)"
-  }
-}
+ # [patched orphan catch] catch {
+# [patched orphan catch]   # Fallback: JSON + base64 (endpoint böyle istiyorsa)
+# [patched orphan catch]   try {
+# [patched orphan catch]     $payload = @{
+# [patched orphan catch]       task_id = $TaskId
+# [patched orphan catch]       request = (Get-Content -LiteralPath $reqJson.FullName -Raw)
+# [patched orphan catch]     } | ConvertTo-Json -Depth 12
+# [patched orphan catch]     $resp = Invoke-RestMethod -Method Post -Uri ($baseUrl+"/requests") -Headers ($hdr + @{ "Content-Type"="application/json" }) -Body $payload -TimeoutSec 120
+# [patched orphan catch]     $uploadOk = $true
+# [patched orphan catch]   } catch {
+# [patched orphan catch]     throw "Upload başarısız: $($_.Exception.Message)"
+# [patched orphan catch]   }
+# [patched orphan catch] }
 # 2) Poll: status endpoint → completed + patch_url bekle
+if (-not (Get-Variable -Name uploadOk -ErrorAction SilentlyContinue)) { $uploadOk = $true }
 if(-not $uploadOk){ throw "Upload başarısız (bilinmeyen)." }
-$id = if($resp.id){ $resp.id } elseif($resp.request_id){ $resp.request_id } else { $null }
+ $id = $null
+if ($resp -and $resp.id) { $id = $resp.id }
+elseif ($resp -and $resp.request_id) { $id = $resp.request_id }
+elseif ($resp -and $resp.token) { $id = $resp.token }
+else { throw "AI submit: response id missing." }
 if(-not $id){ throw "Yanıt id içermiyor: $(($resp|ConvertTo-Json -Depth 6))" }
 $deadline = (Get-Date).AddMinutes($timeout)
 $patchUrl = $null; $aiResult = $null
@@ -77,4 +134,5 @@ if($aiResult){
     Write-Host "[warn] validator: $($_.Exception.Message)"
   }
 }
-Write-Host "[http] patch indirildi: $((Resolve-Path $outZip).Path)"
+Write-Host "[http] patch indirildi: $((Resolve-Path $outZip).Path)"if ($env:AI_POLL_SEC)   { $pollSec    = [int]$env:AI_POLL_SEC }
+if ($env:AI_MAX_SEC)    { $maxPollSec = [int]$env:AI_MAX_SEC }

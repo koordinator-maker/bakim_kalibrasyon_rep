@@ -1,11 +1,11 @@
 param(
   [string]$CsvPath = "todolist.csv",
   [string]$BaseUrl = "http://127.0.0.1:8010",
-  [ValidateSet('local','github','direct')] [string]$Mode = "github",
+  [ValidateSet("local","github"). "$PSScriptRoot\quarantine.ps1"
+][string]$Mode = "github",
   [int]$MaxRounds = 999,
   [int]$InboxWaitSeconds = 600
 )
-. "$PSScriptRoot\quarantine.ps1"
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
