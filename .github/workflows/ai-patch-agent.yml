@@ -1,0 +1,43 @@
+name: AI Patch Agent
+on:
+  push:
+    branches: ["ai/**"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+jobs:
+  build-patch:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Generate patch.zip
+        shell: pwsh
+        run: |
+          $zip = pwsh -File ops/ai_patchbot.ps1 -TaskId UH001 -OutDir _ai_out -RequestsDir .
+          if (-not $zip -or -not (Test-Path $zip)) { throw "zip not created: $zip" }
+          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Upload patch artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: patch_zip
+          path: _ai_out/patch_*.zip
+          if-no-files-found: error
+      - name: Comment PR with artifact name
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const num = context.payload.pull_request.number;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: num,
+              body: "AI Patch Agent: artifact **patch_zip** yüklendi."
+            });
