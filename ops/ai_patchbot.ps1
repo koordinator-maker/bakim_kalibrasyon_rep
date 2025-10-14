@@ -1,86 +1,42 @@
-function Ensure-PR {
-  param([string]$Repo,[string]$Base,[string]$Head)
-  $url = gh pr list -R $Repo -H $Head --json url --jq ".[0].url"
-  if(-not $url -or $url -eq "") {
-    gh pr create -R $Repo -B $Base -H $Head -t "AI: $Head" -b "auto" --draft | Out-Null
-  }
-}
-# ops/ai_bridge_github.ps1  (Windows PowerShell 5.1)
+param(
+  [string]$TaskId,
+  [string]$OutDir,
+  [string]$RequestsDir
+)
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
-function Resolve-Root {
-  try { $r = (git rev-parse --show-toplevel) 2>$null } catch { $r = $null }
-  if ($r -and (Test-Path $r)) { return $r } else { return (Get-Location).Path }
+$ErrorActionPreference='Stop'
+[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+$UTF8=[Text.UTF8Encoding]::new($false)
+if ([string]::IsNullOrWhiteSpace($TaskId))     { $TaskId     = "UH001" }
+if ([string]::IsNullOrWhiteSpace($OutDir))     { $OutDir     = "_ai_out" }
+if ([string]::IsNullOrWhiteSpace($RequestsDir)){ $RequestsDir= "." }
+$root   = (Get-Location).Path
+$prefer = Join-Path $root ("ai_exchange\"+$TaskId)
+$searchBase = if (Test-Path $prefer) { $prefer } else { (Resolve-Path $RequestsDir).Path }
+$req = Get-ChildItem $searchBase -Recurse -Filter "ai_request_*.json" -File -ErrorAction SilentlyContinue |
+       Sort-Object LastWriteTime -Descending | Select-Object -First 1
+# Çalışma alanı
+$work = Join-Path $env:TEMP ("ai_patch_make_" + [guid]::NewGuid())
+New-Item -ItemType Directory -Force -Path $work | Out-Null
+# Minimal çözüm: Django admin H1 override
+$tplDir = Join-Path $work "templates\admin"
+New-Item -ItemType Directory -Force -Path $tplDir | Out-Null
+$tpl = "{% extends `"admin/base.html`" %}`n{% load i18n %}`n{% block content_title %}`n  <h1>{{ site_title|default:_(`"Site administration`") }}</h1>`n{% endblock %}`n"
+[IO.File]::WriteAllText((Join-Path $tplDir "base_site.html"), $tpl, $UTF8)
+# manifest.json (request olsa da olmasa da yaz)
+$manifestObj = @{
+  version = 1
+  task_id = $TaskId
+  items   = @(@{ path="templates/admin/base_site.html"; action="modify" })
 }
-
-function Write-Utf8([string]$Path,[string]$Content){
-  $Utf8NoBom = [Text.UTF8Encoding]::new($false)
-  if ([string]::IsNullOrWhiteSpace($Path)) { throw "Write-Utf8: empty path" }
-  $full = $Path
-  if (-not [IO.Path]::IsPathRooted($full)) { $full = Join-Path -Path ((Get-Location).Path) -ChildPath $full }
-  $full = [IO.Path]::GetFullPath($full)
-  $dir  = [IO.Path]::GetDirectoryName($full)
-  if ($dir) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-  [IO.File]::WriteAllText($full,$Content,$Utf8NoBom)
-}
-
-function Publish-AIRequestToGitHub {
-  param(
-    [Parameter(Mandatory=$true)][string]$TaskId,
-    [Parameter(Mandatory=$true)][string]$RequestPath,
-    [Parameter(Mandatory=$true)][string]$BundlePath,
-    [string]$MainBranch="main",
-    [string]$Remote="origin",
-    [string]$ExchangeDir="ai_exchange",
-    [switch]$NoPush
-  )
-
-  $root = Resolve-Root
-  Set-Location $root
-
-  if (-not (Test-Path $RequestPath)) { throw "AI istek dosyası yok: $RequestPath" }
-  if (-not (Test-Path $BundlePath))  { throw "Bundle dosyası yok: $BundlePath" }
-
-  $ts = Get-Date -Format yyyyMMdd-HHmmss
-  $relDir = Join-Path $ExchangeDir (Join-Path $TaskId $ts)
-  New-Item -ItemType Directory -Force -Path $relDir | Out-Null
-
-  Copy-Item -LiteralPath $RequestPath -Destination (Join-Path $relDir (Split-Path $RequestPath -Leaf)) -Force
-  Copy-Item -LiteralPath $BundlePath  -Destination (Join-Path $relDir (Split-Path $BundlePath  -Leaf)) -Force
-
-  $branch = "ai/$TaskId/$ts"
-  & git checkout -q -b $branch | Out-Null
-  & git add -A | Out-Null
-  $st = (git status --porcelain)
-  if ([string]::IsNullOrWhiteSpace($st)) { return @{ status="no-change"; branch=$branch } }
-
-  & git commit -m ("ai: {0} request {1}" -f $TaskId,$ts) | Out-Null
-  if ($NoPush) { return @{ status="committed"; branch=$branch } }
-
-  & git push -u $Remote $branch | Out-Null
-
-  $gh = Get-Command gh -ErrorAction SilentlyContinue
-  if (-not $gh) { return @{ status="pushed"; branch=$branch; note="gh CLI yok; PR manuel açılmalı." } }
-
-  $body = @"
-**AI Request for $TaskId** — $ts
-
-Bu PR, AI tarafına analiz ve patch üretimi için açıldı.
-İçerik:
-- JSON ve Zip: \`$relDir\`
-
-Yanıt/patche'i **\`_otokodlama/inbox\`** altına \`$TaskId\` geçen bir **ZIP/TXT** olarak bırakın
-(örn: \`_otokodlama/inbox/patch_${TaskId}_$ts.zip\`). Otomasyon patch'i uygulayıp test edecektir.
-"@
-
-  $tmp = Join-Path $env:TEMP ("ai_pr_{0}_{1}.md" -f $TaskId,$ts)
-  Write-Utf8 $tmp $body
-
-  $prUrl = ""
-  try { $prUrl = (gh pr create --base $MainBranch --head $branch --title ("AI: {0} request {1}" -f $TaskId,$ts) --body-file $tmp -q ".url") } catch { }
-
-  return @{ status="pushed"; branch=$branch; pr=$prUrl }
-}
-
-Ensure-PR -Repo $env:GH_REPO -Base $base -Head $env:GH_BRANCH
+$manifest = $manifestObj | ConvertTo-Json -Depth 6
+[IO.File]::WriteAllText((Join-Path $work "manifest.json"), $manifest, $UTF8)
+# Zip oluştur
+$outDirFull = Join-Path $root $OutDir
+if (!(Test-Path $outDirFull)) { New-Item -ItemType Directory -Force -Path $outDirFull | Out-Null }
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$zip = Join-Path $outDirFull ("patch_"+$TaskId+"_"+$stamp+".zip")
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+if (Test-Path $zip) { Remove-Item $zip -Force }
+[IO.Compression.ZipFile]::CreateFromDirectory($work, $zip)
+Write-Output $zip

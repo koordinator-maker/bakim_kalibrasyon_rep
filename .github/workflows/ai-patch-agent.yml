@@ -39,5 +39,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: num,
-              body: "AI Patch Agent: artifact **patch_zip** yüklendi."
+              body: "AI Patch Agent: artifact **patch_zip** uploaded."
             });
