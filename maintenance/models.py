@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 import uuid
 
 # Manufacturer modelini ekliyoruz (Equipment modeli için ForeignKey gerektirebiliriz)

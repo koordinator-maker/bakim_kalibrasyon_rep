@@ -1,4 +1,4 @@
-const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+﻿const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
 const USER = process.env.ADMIN_USER || "admin";
 const PASS = process.env.ADMIN_PASS || "admin123!";
 
@@ -36,7 +36,6 @@ export async function gotoAdd(page){
 }
 
 export async function fillAllRequired(page){
-  // Öncelik: code/name boşsa doldur
   for (const sel of ['#id_code','input[name="code"]','#id_name','input[name="name"]']){
     const el = page.locator(sel).first();
     if (await el.count()){
@@ -44,7 +43,6 @@ export async function fillAllRequired(page){
       if (!v) await el.fill(`AUTO_${Date.now()}`).catch(()=>{});
     }
   }
-  // required alanlar
   const req = page.locator('input[required]:not([type="hidden"]):not([type="submit"]), textarea[required], select[required]');
   const n = await req.count();
   for (let i=0;i<n;i++){
@@ -77,7 +75,7 @@ export async function createMinimalEquipment(page){
   await page.locator('#id_name, input[name="name"], input[id*="name"]').first().fill(`EQ-${Date.now()}`).catch(()=>{});
   await fillAllRequired(page);
   await save(page);
-  if (/\/add\/?$/i.test(page.url())){ // validation takılırsa bir tur daha
+  if (/\/add\/?$/i.test(page.url())){
     await fillAllRequired(page);
     await save(page);
   }

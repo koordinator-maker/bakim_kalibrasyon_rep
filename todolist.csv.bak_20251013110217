@@ -1,0 +1,4 @@
+﻿"id","title","severity","area","evidence","timestamp","status","note"
+"UF001","UNIV-FORMS: response sonrası doğrulama","high","universal","page.response() yerine waitForResponse","2025-10-12T23:21:22","needs-work","exitCode=1; "
+"UH001","UNIV-HEADINGS: admin heading görünürlüğü","medium","universal","missing h1 / [role=heading]","2025-10-12T23:21:22","needs-work","exitCode=1; subset:tests\univ-headings.spec.js, tests\univ-landmarks.spec.js, tests\univ-smoke.spec.js"
+"EQ001","EQUIP-ADMIN-NAV: equipment list nav/arama","high","ui","link veya input[name=q] görünmüyor","2025-10-12T23:21:22","needs-work",""
