@@ -92,7 +92,7 @@ YanÄ±t/patche'i **\`_otokodlama/inbox\`** altÄ±na \`$TaskId\` geÃ§en bir *
 # ensure PR exists for the live branch
 Ensure-PR -Repo $env:GH_REPO -Base $base -Head $env:GH_BRANCH
 
-## artifact pull
+
 try {
   Remove-Item -ErrorAction SilentlyContinue _otokodlama\inbox\patch_*.zip
   $wf = "ai-patch-agent.yml"
@@ -119,3 +119,29 @@ try {
 } catch {
   Write-Host ("GH publish: status=pushed branch="+$branch+" pr=")
 }
+## artifact pull (JSON-based)
+try {
+  Remove-Item -ErrorAction SilentlyContinue _otokodlama\inbox\patch_*.zip
+  $wf = "ai-patch-agent.yml"
+  $repoSlug = $env:GH_REPO
+  # runId'i JSON ile bul
+  $deadline = (Get-Date).AddMinutes(5)
+  $runId = $null
+  do {
+    Start-Sleep 5
+    $runId = gh run list -R $repoSlug --workflow $wf -b $branch --limit 1 `
+              --json databaseId,status,displayTitle,headBranch `
+              --jq '.[0].databaseId' 2>$null
+  } while(-not $runId -and (Get-Date) -lt $deadline)
+  if($runId){
+    $names = gh api repos/$repoSlug/actions/runs/$runId/artifacts --jq '.artifacts[].name' 2>$null
+    if($names -match '^patch_zip$'){
+      gh run download $runId -R $repoSlug -n patch_zip -D _otokodlama\inbox | Out-Null
+      Write-Host "GH publish: patch_zip indirildi."
+    } else {
+      Write-Host ("GH publish: artifact listesi: " + $names)
+    }
+  } else {
+    Write-Host "GH publish: run bulunamadı (workflow=$wf, branch=$branch)"
+  }
+} catch { Write-Host ("GH publish: artifact indirme hatasi: " + $_.Exception.Message) }
