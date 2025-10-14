@@ -50,7 +50,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "[pr] $prUrl" -ForegroundColor Cyan
 
 # 5) PR numarası
-$pr = gh pr list --state open --head $branch --json number --jq '.[0].number'
+$pr = gh pr list --state open --head $branch  
 
 # 6) Label + reviewer + auto-merge
 gh label create "ui-tests" --color "5319e7" --description "UI pipeline checks" --force 2>$null | Out-Null
@@ -69,7 +69,7 @@ if ($WaitForMerge) {
   $deadline = (Get-Date).AddSeconds($WaitTimeoutSec)
   do {
     Start-Sleep -Seconds 5
-    $state = gh pr view $pr --json state --jq .state
+    $state = gh pr view $pr  
     if ($state -eq "MERGED") { break }
   } while ((Get-Date) -lt $deadline)
 

@@ -7,7 +7,7 @@ if (-not $base) { $base = "main" }
 # --- /injected ---
 function Ensure-PR {
   param([string]$Repo,[string]$Base,[string]$Head)
-  $url = gh pr list -R $Repo -H $Head --json url --jq ".[0].url"
+  $url = gh pr list -R $Repo -H $Head  
   if(-not $url -or $url -eq "") {
 
   }
@@ -56,7 +56,7 @@ function Publish-AIRequestToGitHub {
   Copy-Item -LiteralPath $RequestPath -Destination (Join-Path $relDir (Split-Path $RequestPath -Leaf)) -Force
   Copy-Item -LiteralPath $BundlePath  -Destination (Join-Path $relDir (Split-Path $BundlePath  -Leaf)) -Force
 $branch = $env:GH_BRANCH
-  & git checkout -q -b $branch | Out-Null
+  & git checkout -B $env:GH_BRANCHbranch | Out-Null
   & git add -A | Out-Null
   $st = (git status --porcelain)
   if ([string]::IsNullOrWhiteSpace($st)) { return @{ status="no-change"; branch=$branch } }
@@ -100,11 +100,11 @@ try {
   # Son run'ı bul (workflow filtresi + branch)
   for($i=0;$i -lt 30;$i++){
     Start-Sleep 5
-    $run = gh run list -R $repoSlug --workflow $wf -b $env:GH_BRANCH --limit 1 --json databaseId --jq '.[0].databaseId' 2>$null
+    $run = gh run list -R $repoSlug --workflow $wf -b $env:GH_BRANCH --limit 1   2>$null
     if($run){ break }
   }
   if($run){
-    $names = gh api repos/$repoSlug/actions/runs/$run/artifacts --jq '.artifacts[].name'
+    $names = gh api repos/$repoSlug/actions/runs/$run/artifacts 
     if($names -match '^patch_zip$'){
       gh run download $run -R $repoSlug -n patch_zip -D _otokodlama\inbox | Out-Null
       Write-Host "GH publish: patch_zip indirildi."
@@ -113,3 +113,9 @@ try {
     }
   }
 } catch { Write-Host ("GH publish: artifact indirme hatasi: " + $_.Exception.Message) }
+try {
+  $pr = gh pr view -R $env:GH_REPO -H $branch   2>$null
+  Write-Host ("GH publish: status=pushed branch="+$branch+" pr="+$pr)
+} catch {
+  Write-Host ("GH publish: status=pushed branch="+$branch+" pr=")
+}
