@@ -1,4 +1,4 @@
-Rev: 2025-09-30 19:21 r1
+﻿Rev: 2025-09-30 19:21 r1
 param(
   [string]$PlanJson = "plan/tasks.json",
   [switch]$DryRun
@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 
 if (-not (Test-Path $PlanJson)) { throw "Plan yok: $PlanJson" }
 
-# main’i referans al
+# mainâ€™i referans al
 git fetch origin | Out-Null
 
 $tasks = Get-Content $PlanJson -Raw | ConvertFrom-Json
@@ -16,12 +16,12 @@ foreach ($t in $tasks) {
   $branch = $t.branch_name
   if (-not $branch) { Write-Warning "Branch yok: $($t.id)"; continue }
 
-  # remote’ta var mı?
+  # remoteâ€™ta var mÄ±?
   $remote = git ls-remote --heads origin $branch
   if ($remote) { Write-Host "(skip) zaten var: $branch" -ForegroundColor DarkYellow; continue }
 
   if (-not $DryRun) {
-    git switch -c $branch origin/main | Out-Null
+    git switch -C $env:GH_BRANCHbranch origin/main | Out-Null
 
     New-Item -ItemType Directory -Force ".github" | Out-Null
     "task: $($t.id) - $($t.title)" | Set-Content -Encoding UTF8 ".github\pr-bumper.md"
@@ -46,17 +46,17 @@ $ac
 
   $title = "auto: $($t.id) $($t.title)"
   $prUrl = gh pr create -t $title -b $body -B main -H $branch
-  if ($LASTEXITCODE -ne 0) { Write-Warning "PR açılamadı: $branch"; continue }
+  if ($LASTEXITCODE -ne 0) { Write-Warning "PR aÃ§Ä±lamadÄ±: $branch"; continue }
 
   # etiketler
   if ($t.labels) {
     foreach ($lbl in $t.labels) { gh pr edit $prUrl --add-label $lbl | Out-Null }
   }
 
-  # otomatik merge (koşullar sağlanınca)
+  # otomatik merge (koÅŸullar saÄŸlanÄ±nca)
   gh pr merge $prUrl --squash --auto | Out-Null
 
-  Write-Host "[ok] PR hazır: $prUrl" -ForegroundColor Green
+  Write-Host "[ok] PR hazÄ±r: $prUrl" -ForegroundColor Green
 
   # ana dala geri
   if (-not $DryRun) {

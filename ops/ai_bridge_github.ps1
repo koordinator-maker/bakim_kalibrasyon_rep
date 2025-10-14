@@ -9,7 +9,7 @@ function Ensure-PR {
   param([string]$Repo,[string]$Base,[string]$Head)
   $url = gh pr list -R $Repo -H $Head --json url --jq ".[0].url"
   if(-not $url -or $url -eq "") {
-    gh pr create -R $Repo -B $Base -H $Head -t "AI: $Head" -b "auto" --draft | Out-Null
+
   }
 }
 # ops/ai_bridge_github.ps1  (Windows PowerShell 5.1)

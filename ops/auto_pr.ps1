@@ -22,7 +22,7 @@ $ts     = (Get-Date -Format "yyyyMMdd-HHmmss")
 $branch = "$FeaturePrefix$ts"
 
 # 1) Yeni feature dalı + küçük fark
-git checkout -b $branch | Out-Null
+git checkout -B $env:GH_BRANCHbranch | Out-Null
 New-Item -ItemType Directory -Force ".github" | Out-Null
 "trigger $(Get-Date -Format s)" | Set-Content ".github\pr-bumper.md"
 git add ".github\pr-bumper.md"
