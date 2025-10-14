@@ -66,3 +66,39 @@ if ($rid) {
 } else {
   Write-Host "GH publish: run bulunamadı."
 }
+## artifact pull (robust: dispatch → watch → artifact)
+try {
+  $wf        = "ai-patch-agent.yml"
+  $repoSlug  = $script:RepoSlug
+  # 1) Manuel dispatch (push zaten tetikliyor ama race'i önlemek için)
+  gh workflow run $wf --ref $script:Branch | Out-Null
+  # 2) runId bul (JSON) - max 2dk
+  $runId = $null; $t0 = Get-Date
+  do {
+    Start-Sleep 5
+    $runId = gh run list -R $repoSlug --workflow $wf -b $script:Branch --limit 1 `
+              --json databaseId,status,displayTitle,headBranch `
+              --jq '.[0].databaseId' 2>$null
+  } while(-not $runId -and (Get-Date) -lt $t0.AddMinutes(2))
+  if($runId){
+    # 3) Koşuyu tamamlanana kadar bekle
+    gh run watch $runId -R $repoSlug | Out-Null
+    # 4) Artefaktı görünce indir - max 2dk
+    $deadline = (Get-Date).AddMinutes(2)
+    do {
+      $names = gh api repos/$repoSlug/actions/runs/$runId/artifacts --jq '.artifacts[].name' 2>$null
+      if($names -match '^patch_zip$'){
+        Remove-Item -ErrorAction SilentlyContinue _otokodlama\inbox\patch_*.zip
+        gh run download $runId -R $repoSlug -n patch_zip -D _otokodlama\inbox | Out-Null
+        Write-Host "GH publish: patch_zip indirildi."
+        break
+      }
+      Start-Sleep 5
+    } while ((Get-Date) -lt $deadline)
+    if(-not (Get-ChildItem _otokodlama\inbox -Filter patch_*.zip -ErrorAction SilentlyContinue)){
+      Write-Host ("GH publish: artifact yok (runId="+$runId+")")
+    }
+  } else {
+    Write-Host "GH publish: run bulunamadı (workflow=ai-patch-agent.yml, branch=$script:Branch)"
+  }
+} catch { Write-Host ("GH publish: artifact hatası: " + $_.Exception.Message) }
