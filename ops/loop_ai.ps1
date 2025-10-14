@@ -1,3 +1,18 @@
+﻿# --- injected guards ---
+if (-not $env:GH_BRANCH -or $env:GH_BRANCH -eq "") { $env:GH_BRANCH = "ai/UH001/live" }
+if (-not $env:GH_REPO   -or $env:GH_REPO   -eq "") { throw "GH_REPO not set" }
+$script:Branch   = $env:GH_BRANCH
+$script:RepoSlug = $env:GH_REPO
+try {
+  $base = (git remote show origin | Select-String "HEAD branch:" | % { (($_ -split ":")[1]).Trim() })
+} catch { $base =  }
+if (-not $base -or $base -eq "") { $base = "main" }
+function Get-LatestRunId([string]$Repo,[string]$Workflow,[string]$Branch){
+  
+    --json databaseId,status,displayTitle,headBranch 
+    --jq '.[0].databaseId' 2>$null
+}
+# --- /injected ---
 param(
   [string]$CsvPath = "todolist.csv",
   [string]$BaseUrl = "http://127.0.0.1:8010",
@@ -44,7 +59,7 @@ function Get-LastResult {
 for ($round=1; $round -le $MaxRounds; $round++) {
   Write-Host ("=== ROUND {0}/{1} ===" -f $round,$MaxRounds)
 
-  # loop_once.ps1 paramlarını üst scope’ta veriyoruz
+  # loop_once.ps1 paramlarÄ±nÄ± Ã¼st scopeâ€™ta veriyoruz
   $script:CsvPath = $CsvPath
   $script:BaseUrl = $BaseUrl
   $script:NoPush  = $NoPush
@@ -52,8 +67,8 @@ for ($round=1; $round -le $MaxRounds; $round++) {
   & "C:\dev\bakim_kalibrasyon\ops\loop_once.ps1"
 
   $res = Get-LastResult
-  if (!$res) { throw "ai_result bulunamadı." }
-  if ([string]::IsNullOrWhiteSpace($res.TaskId)) { throw "TaskId boş geldi." }
+  if (!$res) { throw "ai_result bulunamadÄ±." }
+  if ([string]::IsNullOrWhiteSpace($res.TaskId)) { throw "TaskId boÅŸ geldi." }
 
   Write-Host ("Task: {0}, ExitCode(after first run) = {1}, ServerOK={2}" -f $res.TaskId,$res.ExitCode,$res.ServerOk)
 
@@ -61,7 +76,7 @@ for ($round=1; $round -le $MaxRounds; $round++) {
     $pub = Publish-AIRequestToGitHub -TaskId $res.TaskId -RequestPath $res.RequestPath -BundlePath $res.BundlePath -NoPush:$NoPush
     Write-Host ("GH publish: status={0} branch={1} pr={2}" -f $pub.status,$pub.branch,($pub.pr|Out-String).Trim())
   } else {
-    Write-Host "LOCAL mode: AI cevabını _otokodlama\inbox altına bırakın (ZIP/TXT, adında $($res.TaskId) geçsin)."
+    Write-Host "LOCAL mode: AI cevabÄ±nÄ± _otokodlama\inbox altÄ±na bÄ±rakÄ±n (ZIP/TXT, adÄ±nda $($res.TaskId) geÃ§sin)."
   }
 
   $deadline = (Get-Date).AddSeconds($InboxWaitSeconds)
@@ -77,24 +92,48 @@ for ($round=1; $round -le $MaxRounds; $round++) {
   }
 
   if (!$picked) {
-    Write-Warning "Inbox'ta $($res.TaskId) için patch bulunamadı; round tamamlandı."
+    Write-Warning "Inbox'ta $($res.TaskId) iÃ§in patch bulunamadÄ±; round tamamlandÄ±."
     continue
   } else {
     Write-Host ("Patch bulundu: {0}" -f $picked.FullName)
   }
 
-  # Patch’i uygulayıp test ediyoruz (TaskId vererek)
+  # Patchâ€™i uygulayÄ±p test ediyoruz (TaskId vererek)
   $script:TaskId = $res.TaskId
   & "C:\dev\bakim_kalibrasyon\ops\loop_once.ps1"
 
   $res2 = Get-LastResult
-  if (!$res2) { throw "İkinci sonuç dosyası yok." }
+  if (!$res2) { throw "Ä°kinci sonuÃ§ dosyasÄ± yok." }
   Write-Host ("After patch: ExitCode={0} (0=PASS)" -f $res2.ExitCode)
 
   if ($res2.ExitCode -eq 0) {
-    Write-Host "🎉 Tüm testler geçti. Döngü tamamlandı."
+    Write-Host "ğŸ‰ TÃ¼m testler geÃ§ti. DÃ¶ngÃ¼ tamamlandÄ±."
     break
   } else {
-    Write-Host "❗ Testler hala kırık. Sonuçlar AI'ye yeniden iletilecek (sonraki round)."
+    Write-Host "â— Testler hala kÄ±rÄ±k. SonuÃ§lar AI'ye yeniden iletilecek (sonraki round)."
   }
 }
+
+# --- injected: safe artifact poll (JSON) ---
+try {
+  Remove-Item -ErrorAction SilentlyContinue _otokodlama\inbox\patch_*.zip
+  $wf   = "ai-patch-agent.yml"
+  $rid  = $null
+  $till = (Get-Date).AddMinutes(5)
+  do {
+    Start-Sleep 5
+    $rid = Get-LatestRunId -Repo $script:RepoSlug -Workflow $wf -Branch $script:Branch
+  } while(-not $rid -and (Get-Date) -lt $till)
+  if($rid){
+    $names = gh api repos/$script:RepoSlug/actions/runs/$rid/artifacts --jq '.artifacts[].name' 2>$null
+    if($names -match '^patch_zip$'){
+      gh run download $rid -R $script:RepoSlug -n patch_zip -D _otokodlama\inbox | Out-Null
+      Write-Host "GH publish: patch_zip indirildi."
+    } else {
+      Write-Host ("GH publish: artifact listesi: " + $names)
+    }
+  } else {
+    Write-Host ("GH publish: run bulunamadı (workflow=$wf, branch="+$script:Branch+")")
+  }
+} catch { Write-Host ("GH publish: artifact indirme hatasi: " + $_.Exception.Message) }
+# --- /injected ---

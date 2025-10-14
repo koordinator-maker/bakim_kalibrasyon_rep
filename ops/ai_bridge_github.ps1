@@ -1,4 +1,19 @@
-﻿$head = $env:GH_BRANCH
+﻿# --- injected guards ---
+if (-not $env:GH_BRANCH -or $env:GH_BRANCH -eq "") { $env:GH_BRANCH = "ai/UH001/live" }
+if (-not $env:GH_REPO   -or $env:GH_REPO   -eq "") { throw "GH_REPO not set" }
+$script:Branch   = $env:GH_BRANCH
+$script:RepoSlug = $env:GH_REPO
+try {
+  $base = (git remote show origin | Select-String "HEAD branch:" | % { (($_ -split ":")[1]).Trim() })
+} catch { $base =  }
+if (-not $base -or $base -eq "") { $base = "main" }
+function Get-LatestRunId([string]$Repo,[string]$Workflow,[string]$Branch){
+  
+    --json databaseId,status,displayTitle,headBranch 
+    --jq '.[0].databaseId' 2>$null
+}
+# --- /injected ---
+$head = $env:GH_BRANCH
 # --- injected: ensure base branch ---
 try {
   $base = (git remote show origin | Select-String "HEAD branch:" | % { ($_ -split ":")[1].Trim() })
@@ -56,7 +71,7 @@ function Publish-AIRequestToGitHub {
   Copy-Item -LiteralPath $RequestPath -Destination (Join-Path $relDir (Split-Path $RequestPath -Leaf)) -Force
   Copy-Item -LiteralPath $BundlePath  -Destination (Join-Path $relDir (Split-Path $BundlePath  -Leaf)) -Force
 $branch = $env:GH_BRANCH
-  & git checkout -B $env:GH_BRANCHbranch | Out-Null
+  & git checkout -B $script:Branch
   & git add -A | Out-Null
   $st = (git status --porcelain)
   if ([string]::IsNullOrWhiteSpace($st)) { return @{ status="no-change"; branch=$branch } }
@@ -100,7 +115,7 @@ try {
   # Son run'ı bul (workflow filtresi + branch)
   for($i=0;$i -lt 30;$i++){
     Start-Sleep 5
-    $run = gh run list -R $repoSlug --workflow $wf -b $env:GH_BRANCH --limit 1   2>$null
+    $run = 
     if($run){ break }
   }
   if($run){
@@ -119,7 +134,7 @@ try {
 } catch {
   Write-Host ("GH publish: status=pushed branch="+$branch+" pr=")
 }
-## artifact pull (JSON-based)
+
 try {
   Remove-Item -ErrorAction SilentlyContinue _otokodlama\inbox\patch_*.zip
   $wf = "ai-patch-agent.yml"
@@ -129,7 +144,7 @@ try {
   $runId = $null
   do {
     Start-Sleep 5
-    $runId = gh run list -R $repoSlug --workflow $wf -b $branch --limit 1 `
+    $runId = 
               --json databaseId,status,displayTitle,headBranch `
               --jq '.[0].databaseId' 2>$null
   } while(-not $runId -and (Get-Date) -lt $deadline)
@@ -145,3 +160,32 @@ try {
     Write-Host "GH publish: run bulunamadı (workflow=$wf, branch=$branch)"
   }
 } catch { Write-Host ("GH publish: artifact indirme hatasi: " + $_.Exception.Message) }
+try {
+  $pr = gh pr view -R koordinator-maker/bakim_kalibrasyon_rep -H ai/UH001/live --json url --jq .url 2>$null
+  Write-Host ("GH publish: status=pushed branch="+ai/UH001/live+" pr="+$pr)
+} catch {
+  Write-Host ("GH publish: status=pushed branch="+ai/UH001/live+" pr=")
+}
+# --- injected: safe artifact poll (JSON) ---
+try {
+  Remove-Item -ErrorAction SilentlyContinue _otokodlama\inbox\patch_*.zip
+  $wf   = "ai-patch-agent.yml"
+  $rid  = $null
+  $till = (Get-Date).AddMinutes(5)
+  do {
+    Start-Sleep 5
+    $rid = Get-LatestRunId -Repo $script:RepoSlug -Workflow $wf -Branch $script:Branch
+  } while(-not $rid -and (Get-Date) -lt $till)
+  if($rid){
+    $names = gh api repos/$script:RepoSlug/actions/runs/$rid/artifacts --jq '.artifacts[].name' 2>$null
+    if($names -match '^patch_zip$'){
+      gh run download $rid -R $script:RepoSlug -n patch_zip -D _otokodlama\inbox | Out-Null
+      Write-Host "GH publish: patch_zip indirildi."
+    } else {
+      Write-Host ("GH publish: artifact listesi: " + $names)
+    }
+  } else {
+    Write-Host ("GH publish: run bulunamadı (workflow=$wf, branch="+$script:Branch+")")
+  }
+} catch { Write-Host ("GH publish: artifact indirme hatasi: " + $_.Exception.Message) }
+# --- /injected ---
