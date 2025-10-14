@@ -1,0 +1,21 @@
+{
+    "base_url":  "http://127.0.0.1:8010",
+    "context":  {
+                    "latest_commit":  "9019efd7",
+                    "git_branch":  "main"
+                },
+    "task":  {
+                 "id":  "UH001",
+                 "title":  "UNIV-HEADINGS: admin heading görünürlüğü",
+                 "severity":  "medium",
+                 "area":  "universal",
+                 "evidence":  "missing h1 / [role=heading]",
+                 "timestamp":  "2025-10-12T23:21:22",
+                 "status":  "needs-work",
+                 "note":  "exitCode=1; subset:tests\\univ-headings.spec.js, tests\\univ-landmarks.spec.js, tests\\univ-smoke.spec.js"
+             },
+    "note":  "Read-only paket; AI cevabını _otokodlama/inbox altına ZIP/TXT olarak bırak.",
+    "artifacts":  [
+
+                  ]
+}
