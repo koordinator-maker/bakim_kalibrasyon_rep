@@ -1,4 +1,11 @@
-﻿# ops/ai_bridge_github.ps1  (Windows PowerShell 5.1)
+function Ensure-PR {
+  param([string]$Repo,[string]$Base,[string]$Head)
+  $url = gh pr list -R $Repo -H $Head --json url --jq ".[0].url"
+  if(-not $url -or $url -eq "") {
+    gh pr create -R $Repo -B $Base -H $Head -t "AI: $Head" -b "auto" --draft | Out-Null
+  }
+}
+# ops/ai_bridge_github.ps1  (Windows PowerShell 5.1)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -71,7 +78,9 @@ Yanıt/patche'i **\`_otokodlama/inbox\`** altına \`$TaskId\` geçen bir **ZIP/T
   Write-Utf8 $tmp $body
 
   $prUrl = ""
-  try { $prUrl = (gh pr create --base $MainBranch --head $branch --title ("AI: {0} request {1}" -f $TaskId,$ts) --body-file $tmp --json url -q ".url") } catch { }
+  try { $prUrl = (gh pr create --base $MainBranch --head $branch --title ("AI: {0} request {1}" -f $TaskId,$ts) --body-file $tmp -q ".url") } catch { }
 
   return @{ status="pushed"; branch=$branch; pr=$prUrl }
 }
+
+Ensure-PR -Repo $env:GH_REPO -Base $base -Head $env:GH_BRANCH
