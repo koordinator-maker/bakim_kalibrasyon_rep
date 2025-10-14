@@ -1,72 +1,49 @@
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-trap { throw }
-
-param(
-  [string]$RequestsDir = ".",
-  [string]$OutDir = "ai_out",
-  [switch]$VerboseLog
+﻿param(
+  [string]$TaskId,
+  [string]$OutDir,
+  [string]$RequestsDir
 )
-
-[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-$aiEndpoint = $env:AI_ENDPOINT
-$aiKey      = $env:AI_API_KEY
-
-# En yeni ai_request_*.json
-$req = Get-ChildItem -LiteralPath $RequestsDir -Recurse -Filter "ai_request_*.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not $req) { Write-Host "[ai_patchbot] istek bulunamadı"; exit 78 }
-
-$requestJson = Get-Content -LiteralPath $req.FullName -Raw | ConvertFrom-Json
-$task   = if ($requestJson.task) { $requestJson.task } else { "TASK" }
-$stamp  = Get-Date -Format "yyyyMMdd-HHmmss"
-$outDir = Join-Path (Resolve-Path ".").Path $OutDir
-New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-
-$zipName = "patch_{0}_{1}.zip" -f $task, $stamp
-$zipPath = Join-Path $outDir $zipName
-
-function New-Zip {
-  param([string]$ZipPath,[hashtable]$Files)
-  if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
-  $tmp = New-Item -ItemType Directory -Force -Path (Join-Path ([IO.Path]::GetTempPath()) ("ai_zip_" + [guid]::NewGuid()))
-  foreach($rel in $Files.Keys){
-    $dstFull = Join-Path $tmp $rel
-    New-Item -ItemType Directory -Force -Path (Split-Path $dstFull) | Out-Null
-    [IO.File]::WriteAllText($dstFull, $Files[$rel], [Text.UTF8Encoding]::new($false))
-  }
-  Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath $ZipPath -Force
-  Remove-Item $tmp -Recurse -Force
+Set-StrictMode -Version Latest
+$ErrorActionPreference='Stop'
+[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+$UTF8=[Text.UTF8Encoding]::new($false)
+# defaults
+if ([string]::IsNullOrWhiteSpace($TaskId))     { $TaskId     = "UH001" }
+if ([string]::IsNullOrWhiteSpace($OutDir))     { $OutDir     = "_ai_out" }
+if ([string]::IsNullOrWhiteSpace($RequestsDir)){ $RequestsDir= "." }
+# find latest ai_request_*.json (prefer ai_exchange/<TaskId>)
+$root   = (Get-Location).Path
+$prefer = Join-Path $root ("ai_exchange\"+$TaskId)
+$searchBase = if (Test-Path $prefer) { $prefer } else { (Resolve-Path $RequestsDir).Path }
+$req = Get-ChildItem $searchBase -Recurse -Filter "ai_request_*.json" -File -ErrorAction SilentlyContinue |
+       Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $req) {
+  Write-Host "[patchbot] no ai_request found under $searchBase"
+  exit 0
 }
-
-if ($aiEndpoint -and $aiKey) {
-  Write-Host "[ai_patchbot] REAL mode: $aiEndpoint"
-  $body = @{
-    task     = $task
-    request  = (Get-Content $req.FullName -Raw)
-  } | ConvertTo-Json -Depth 6
-  $resp = Invoke-WebRequest -Uri $aiEndpoint -Headers @{ "Authorization"="Bearer $aiKey"; "Content-Type"="application/json"} -Method POST -Body $body
-  if ($resp.StatusCode -ge 300) { throw "AI endpoint HTTP $($resp.StatusCode)" }
-  if ($resp.ContentLength -gt 0 -and $resp.Headers.'Content-Type' -like "application/zip*") {
-    [IO.File]::WriteAllBytes($zipPath, $resp.Content)
-  } else {
-    $obj = $resp.Content | ConvertFrom-Json
-    if ($obj.patch_zip_base64) {
-      [IO.File]::WriteAllBytes($zipPath, [Convert]::FromBase64String($obj.patch_zip_base64))
-    } else {
-      throw "AI yanıtında patch bulunamadı."
-    }
-  }
+# working dir
+$work = Join-Path $env:TEMP ("ai_patch_make_" + [guid]::NewGuid())
+New-Item -ItemType Directory -Force -Path $work | Out-Null
+# minimal fix: visible H1 in Django admin via override
+$tplDir = Join-Path $work "templates\admin"
+New-Item -ItemType Directory -Force -Path $tplDir | Out-Null
+$tpl = "{% extends `"admin/base.html`" %}`n{% load i18n %}`n{% block content_title %}`n  <h1>{{ site_title|default:_(`"Site administration`") }}</h1>`n{% endblock %}`n"
+[IO.File]::WriteAllText((Join-Path $tplDir "base_site.html"), $tpl, $UTF8)
+# manifest.json
+$manifestObj = @{
+  version = 1
+  task_id = $TaskId
+  items   = @(@{ path="templates/admin/base_site.html"; action="modify" })
 }
-else {
-  # DUMMY PoC: görünür H1 kancası
-  $files = @{
-    "templates/otokodlama/_ai_probe_h1.html" = @"
-{% comment %} Added by AI patchbot (dummy). Safe partial for H1 presence. {% endcomment %}
-<h1 style=""position:static;opacity:0.001;height:1px;overflow:hidden"">AI-Injected H1</h1>
-"@
-  }
-  New-Zip -ZipPath $zipPath -Files $files
-  Write-Host "[ai_patchbot] DUMMY mode: $zipName üretildi."
-}
-
-Write-Output ($zipPath)
+$manifest = $manifestObj | ConvertTo-Json -Depth 6
+[IO.File]::WriteAllText((Join-Path $work "manifest.json"), $manifest, $UTF8)
+# create zip to $OutDir
+$outDirFull = Join-Path $root $OutDir
+if (!(Test-Path $outDirFull)) { New-Item -ItemType Directory -Force -Path $outDirFull | Out-Null }
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$zip = Join-Path $outDirFull ("patch_"+$TaskId+"_"+$stamp+".zip")
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+if (Test-Path $zip) { Remove-Item $zip -Force }
+[IO.Compression.ZipFile]::CreateFromDirectory($work, $zip)
+# print only the zip path (workflow step can capture)
+Write-Output $zip
