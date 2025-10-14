@@ -1,4 +1,5 @@
-﻿# --- injected: ensure base branch ---
+﻿$head = $env:GH_BRANCH
+# --- injected: ensure base branch ---
 try {
   $base = (git remote show origin | Select-String "HEAD branch:" | % { ($_ -split ":")[1].Trim() })
 } catch { $base = $null }
@@ -54,8 +55,7 @@ function Publish-AIRequestToGitHub {
 
   Copy-Item -LiteralPath $RequestPath -Destination (Join-Path $relDir (Split-Path $RequestPath -Leaf)) -Force
   Copy-Item -LiteralPath $BundlePath  -Destination (Join-Path $relDir (Split-Path $BundlePath  -Leaf)) -Force
-
-  $branch = "ai/$TaskId/$ts"
+$branch = $env:GH_BRANCH
   & git checkout -q -b $branch | Out-Null
   & git add -A | Out-Null
   $st = (git status --porcelain)
