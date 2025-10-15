@@ -1,0 +1,514 @@
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\calibration_reminder.ps1
+# REV: 1.0 | 2025-09-24 | Hash: 504d2bb6 | Parça: 1/1
+param(
+  [string]$Days = "30,60,90",
+  [string]$Roles = "Bakım Yöneticisi",
+  [ValidateSet("csv","xlsx","both")][string]$Attach = "both",
+  [switch]$DryRun,
+  [string]$Settings = "core.settings_maintenance"  # <— yeni: hangi settings kullanılacak
+)
+
+$ErrorActionPreference = "Stop"
+
+& "$env:WINDIR\System32\chcp.com" 65001 > $null
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding  = [System.Text.Encoding]::UTF8
+$env:PYTHONIOENCODING = "utf-8"
+
+$proj = "C:\dev\bakim_kalibrasyon"
+if (-not (Test-Path $proj)) { Write-Error "[ERR] Proje klasörü yok: $proj"; exit 1 }
+Set-Location $proj
+
+$venv = ".\venv\Scripts\Activate.ps1"
+if (-not (Test-Path $venv)) { Write-Error "[ERR] venv bulunamadı: $venv"; exit 1 }
+. $venv
+
+# günler
+$daysList = @()
+foreach ($p in $Days.Split(",")) { $p2 = $p.Trim(); if ($p2 -match '^\d+$') { $daysList += [int]$p2 } }
+if ($daysList.Count -eq 0) { $daysList = @(30) }
+
+$rolesArg  = $Roles
+$attachArg = $Attach
+$extraArgs = ""
+if ($DryRun) { $extraArgs = "--dry-run --no-asset-emails" }
+
+$cmd = "python manage.py calibration_reminder --days " + ($daysList -join ' ') + `
+       " --roles `"${rolesArg}`" --attach $attachArg --settings=$Settings $extraArgs"
+
+Write-Host "[INFO] Çalıştırılıyor: $cmd"
+cmd /c $cmd
+$ec = $LASTEXITCODE
+Write-Host "[INFO] ExitCode=$ec"
+exit $ec
+### DOSYA BİTİŞ: calibration_reminder.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\django_check.ps1
+# REV: 1.3 | 2025-09-24 | Hash: b9028e1a | Parça: 1/1
+# Her dosya başında revizyon bilgisi sistemi olacak.
+# >>> BLOK: DJCHECK | manage.py check (soft destekli) | ID:PS1-DJC-7M4N2Q9X
+Param(
+  [string]$Settings = "core.settings",
+  [switch]$Soft
+)
+$ErrorActionPreference = "Stop"
+
+if (!(Test-Path ".\manage.py")) {
+  Write-Host "manage.py yok; atlandi."
+  exit 0
+}
+
+$here = (Get-Location).Path
+$env:PYTHONPATH = "$here"
+$env:DJANGO_SETTINGS_MODULE = $Settings
+
+try {
+  python -c "import sys; print('Python OK', sys.version)"
+  python -c "import django; print('Django OK', django.get_version())"
+  python manage.py check -v 2 --traceback
+  Write-Host "Django check OK"
+} catch {
+  Write-Host "Django check FAILED:"
+  Write-Host $_
+  if ($Soft) { exit 0 } else { throw }
+}
+# <<< BLOK SONU: ID:PS1-DJC-7M4N2Q9X
+### DOSYA BİTİŞ: django_check.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\list-changes.ps1
+# REV: 1.0 | 2025-09-24 | Hash: 76692279 | Parça: 1/1
+param(
+  [Parameter(Mandatory=$true)] [string]$Root,
+  [Parameter(Mandatory=$true)] [string]$Start,
+  [Parameter(Mandatory=$true)] [string]$End
+)
+
+# ---- Yardimci: bircok formati tolere eden tarih parse ----
+function Parse-Dt([string]$Text) {
+  $formats = @(
+    'dd.MM.yyyy HH:mm','yyyy-MM-dd HH:mm','dd/MM/yyyy HH:mm',
+    'dd.MM.yyyy HH:mm:ss','yyyy-MM-dd HH:mm:ss','dd/MM/yyyy HH:mm:ss'
+  )
+  foreach ($f in $formats) {
+    try {
+      return [datetime]::ParseExact($Text, $f, [Globalization.CultureInfo]::InvariantCulture)
+    } catch {}
+  }
+  try { return [datetime]::Parse($Text, [Globalization.CultureInfo]::InvariantCulture) } catch {
+    throw "Tarih/saat formati hatali: '$Text'. Ornek: '31.08.2025 10:00' veya '2025-08-31 10:00'"
+  }
+}
+
+$startDt = Parse-Dt $Start
+$endDt   = Parse-Dt $End
+
+Write-Host "[INFO] KOK: $Root"
+Write-Host "[INFO] TARiH: $($startDt.ToString('yyyy-MM-dd HH:mm')) -> $($endDt.ToString('yyyy-MM-dd HH:mm'))"
+
+# ---- Filtreler ----
+$excludeDirs = @('\.git\','\venv\','\__pycache__\','\node_modules\','\var\','.pytest_cache\','.mypy_cache\')
+$includeExt  = @('.py','.html','.css','.js','.ts','.tsx','.json','.yml','.yaml','.toml','.ini',
+                 '.cfg','.md','.sql','.ps1','.bat')
+
+# ---- Dosyalari topla ----
+$all = Get-ChildItem -Path $Root -Recurse -File -ErrorAction SilentlyContinue
+
+# Dizin filtreleme
+$filtered = $all | Where-Object {
+  $p = $_.FullName
+  -not ($excludeDirs | Where-Object { $p -match [regex]::Escape($_) })
+}
+
+# Zaman araligi
+$changed = $filtered | Where-Object {
+  ($_.LastWriteTime -ge $startDt) -and ($_.LastWriteTime -le $endDt)
+}
+
+# Sadece belirli uzantilar (binary karmasini engeller)
+$changed = $changed | Where-Object { $includeExt -contains $_.Extension.ToLower() }
+
+# ---- Cikti ----
+"=== EN TAZE KODLAR / DEGİSEN-DOSYALAR ==="
+"Root        : $Root"
+"Interval    : $($startDt.ToString('yyyy-MM-dd HH:mm')) -> $($endDt.ToString('yyyy-MM-dd HH:mm'))"
+"Generated   : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+""
+"{0,-20}  {1,10}  {2}" -f "LastWriteTime","Size(KB)","RelativePath"
+"{0,-20}  {1,10}  {2}" -f "-------------------","---------","------------------------------"
+
+$rootFixed = (Resolve-Path $Root).Path
+$changed | Sort-Object LastWriteTime | ForEach-Object {
+  $rel = $_.FullName.Substring($rootFixed.Length).TrimStart('\','/')
+  $kb  = [Math]::Round(($_.Length/1KB),2)
+  "{0,-20}  {1,10}  {2}" -f ($_.LastWriteTime.ToString('yyyy-MM-dd HH:mm')), $kb, $rel
+}
+
+# Toplam sayi
+""
+"Toplam dosya: {0}" -f ($changed | Measure-Object | Select-Object -ExpandProperty Count)
+### DOSYA BİTİŞ: list-changes.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\register_task.ps1
+# REV: 1.0 | 2025-09-24 | Hash: 96858568 | Parça: 1/1
+<#
+  Windows Task Scheduler kaydı (PowerShell ScheduledTasks modülü ile)
+  Çalışma klasörü, tetikleyici ve haklar düzgün ayarlanır.
+#>
+
+$ProjectRoot = "C:\dev\bakim_kalibrasyon"
+$CmdPath     = Join-Path $ProjectRoot "scripts\calibration_reminders.cmd"
+$TaskName    = "bk_calibration_reminders"
+$Hour        = 9     # 09:00
+$Minute      = 0
+
+# Erişim: Mevcut kullanıcı ile en yüksek ayrıcalık
+$Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+
+# GÜNLÜK tetikleyici (09:00)
+$Trigger   = New-ScheduledTaskTrigger -Daily -At ([datetime]::Today.AddHours($Hour).AddMinutes($Minute).TimeOfDay)
+
+# Eylem: .cmd sarmalayıcıyı çalıştır
+$Action    = New-ScheduledTaskAction -Execute $CmdPath
+
+# Görev tanımı
+$Settings  = New-ScheduledTaskSettingsSet -Compatibility Win8 -AllowStartIfOnBatteries -StartWhenAvailable
+$Task      = New-ScheduledTask -Action $Action -Principal $Principal -Trigger $Trigger -Settings $Settings
+
+# Var ise sil (force) ve yeniden oluştur
+if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+  Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+}
+Register-ScheduledTask -TaskName $TaskName -InputObject $Task | Out-Null
+
+Write-Host "OK -> Task '$TaskName' registered to run daily at $Hour:$('{0:00}' -f $Minute)."
+### DOSYA BİTİŞ: register_task.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\test_smtp_login.py
+# REV: 1.1 | 2025-09-25 | Hash: aaf24dc1 | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-5ZBWA3HA
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import os
+import ssl
+import smtplib
+import base64
+
+# <<< BLOK SONU: ID:PY-IMP-5ZBWA3HA
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-JQAJBVNA
+host = os.getenv("SMTP_HOST", "smtp.office365.com")
+port = int(os.getenv("SMTP_PORT", "587"))
+user = os.getenv("SMTP_USER", "")
+pwd  = os.getenv("SMTP_PASS", "")
+
+print("Host:", host)
+print("Port:", port)
+print("User:", user)
+
+if not user or not pwd:
+    raise SystemExit("SMTP_USER/SMTP_PASS boş.")
+
+ctx = ssl.create_default_context()
+smtp = smtplib.SMTP(host, port, timeout=30)
+smtp.set_debuglevel(1)
+smtp.ehlo()
+smtp.starttls(context=ctx)
+smtp.ehlo()
+
+# AUTH LOGIN (UTF-8 base64)
+code, resp = smtp.docmd("AUTH", "LOGIN")
+if code != 334:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+u = base64.b64encode(user.encode("utf-8")).decode("ascii")
+code, resp = smtp.docmd(u)
+if code != 334:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+p = base64.b64encode(pwd.encode("utf-8")).decode("ascii")
+code, resp = smtp.docmd(p)
+if code != 235:
+    raise smtplib.SMTPAuthenticationError(code, resp)
+
+print("LOGIN OK")
+smtp.quit()
+# <<< BLOK SONU: ID:PY-HEL-JQAJBVNA
+### DOSYA BİTİŞ: test_smtp_login.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\manage.py
+# REV: 1.1 | 2025-09-25 | Hash: 1cc1418a | Parça: 1/1
+# >>> BLOK: IMPORTS | Temel importlar | ID:PY-IMP-XX3Z0KQ7
+#!/usr/bin/env python
+# <<< BLOK SONU: ID:PY-IMP-XX3Z0KQ7
+# >>> BLOK: HELPERS | Yardimci fonksiyonlar | ID:PY-HEL-JNKMP1V0
+"""Django's command-line utility for administrative tasks."""
+import os
+import sys
+
+
+def main():
+    """Run administrative tasks."""
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+    try:
+        from django.core.management import execute_from_command_line
+    except ImportError as exc:
+        raise ImportError(
+            "Couldn't import Django. Are you sure it's installed and "
+            "available on your PYTHONPATH environment variable? Did you "
+            "forget to activate a virtual environment?"
+        ) from exc
+    execute_from_command_line(sys.argv)
+
+
+if __name__ == '__main__':
+    main()
+# <<< BLOK SONU: ID:PY-HEL-JNKMP1V0
+### DOSYA BİTİŞ: manage.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\capture_screenshot.ps1
+# REV: 1.0 | 2025-09-25 | Hash: TBD | Parça: 1/1
+Param(
+  [string]$OutDir = "targets/screens",
+  [string]$AlsoCopyTo = ""
+)
+$ErrorActionPreference = "Stop"
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+if (!(Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
+
+$ts = Get-Date -Format "yyyyMMdd-HHmmss"
+$path = Join-Path $OutDir ("screenshot-$ts.png")
+
+$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+$gfx = [System.Drawing.Graphics]::FromImage($bmp)
+$gfx.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+$bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+$gfx.Dispose()
+$bmp.Dispose()
+
+Write-Host "[SCREENSHOT] $path"
+
+if ($AlsoCopyTo -and (Test-Path $AlsoCopyTo)) {
+  Copy-Item $path -Destination (Join-Path $AlsoCopyTo ("screenshot-$ts.png")) -Force
+}
+### DOSYA BİTİŞ: capture_screenshot.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\open_mail_draft.ps1
+# REV: 1.0 | 2025-09-24 | Hash: 611925f3 | Parça: 1/1
+# scripts/open_mail_draft.ps1
+
+param(
+  [string[]] $To,
+  [string[]] $Cc,
+  [string[]] $Bcc,
+
+  [Parameter(Mandatory = $true)]
+  [string]   $Subject,
+
+  [Parameter(Mandatory = $true)]
+  [string]   $BodyText,
+
+  [string[]] $Attachments,     # Varsayılanı gövdede vereceğiz
+  [switch]   $AsHtml,          # HTML gövde isterse
+  [string]   $FromAccount      # Outlook profilindeki gönderen hesap
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# Varsayılanlar
+if (-not $Attachments) { $Attachments = @() }
+$asHtmlFlag = $PSBoundParameters.ContainsKey('AsHtml') -and $AsHtml.IsPresent
+
+function Get-OutlookApp {
+  try { [Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application') }
+  catch { New-Object -ComObject Outlook.Application }
+}
+
+$ol = Get-OutlookApp
+$mail = $ol.CreateItem(0)  # olMailItem
+
+# Gönderen hesabı (varsa)
+if ($FromAccount) {
+  $acct = @($ol.Session.Accounts) | Where-Object { $_.SmtpAddress -ieq $FromAccount }
+  if ($acct) { $mail.SendUsingAccount = $acct }
+  else { Write-Warning "Outlook profilinde bu gönderici hesabı yok: $FromAccount" }
+}
+
+# Alıcılar
+if ($To)  { $mail.To  = ($To  -join '; ') }
+if ($Cc)  { $mail.CC  = ($Cc  -join '; ') }
+if ($Bcc) { $mail.BCC = ($Bcc -join '; ') }
+
+# Konu
+$mail.Subject = $Subject
+
+# Gövde
+if ($asHtmlFlag) {
+  Add-Type -AssemblyName System.Web
+  $enc = [System.Web.HttpUtility]::HtmlEncode($BodyText)
+  $mail.HTMLBody = "<pre style='font-family:Segoe UI Emoji, Segoe UI, Arial; font-size:11pt; white-space:pre-wrap;'>$enc</pre>"
+} else {
+  $mail.Body = $BodyText
+}
+
+# Ekler
+foreach ($a in $Attachments) {
+  if ([string]::IsNullOrWhiteSpace($a)) { continue }
+  if (-not (Test-Path $a)) {
+    Write-Warning "Ek bulunamadı: $a"
+    continue
+  }
+  $mail.Attachments.Add((Resolve-Path $a).Path) | Out-Null
+}
+
+# Taslağı aç
+$mail.Display() | Out-Null
+### DOSYA BİTİŞ: open_mail_draft.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\probe_admin_500.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.test import Client
+c = Client()
+r = c.get("/admin/")
+print("status:", r.status_code)
+print((r.content[:800]).decode("utf-8","ignore"))
+### DOSYA BİTİŞ: probe_admin_500.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\list_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.contrib import admin
+from django.urls import reverse, NoReverseMatch
+
+print("site.name:", getattr(admin.site, "name", None))
+
+# kritik üç reverse:
+for name, kwargs in [
+    ("admin:index", None),
+    ("admin:login", None),
+    ("admin:app_list", {"app_label":"maintenance"}),
+]:
+    try:
+        print(name, "->", reverse(name, kwargs=kwargs))
+    except NoReverseMatch as e:
+        print(name, "-> NoReverseMatch:", e)
+
+# model bazlı reverse'lar
+from maintenance.models import Equipment
+from django.contrib.admin.templatetags.admin_urls import admin_urlname
+nm_cl = admin_urlname(Equipment._meta, "changelist")
+nm_add = admin_urlname(Equipment._meta, "add")
+for nm in [nm_cl, nm_add]:
+    try:
+        print(nm, "->", reverse(nm))
+    except NoReverseMatch as e:
+        print(nm, "-> NoReverseMatch:", e)
+### DOSYA BİTİŞ: list_admin_urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\diag_dupes.py
+import os, sys, django
+ROOT = os.path.abspath(".")
+if ROOT not in sys.path: sys.path.insert(0, ROOT)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db.models import Count
+from maintenance.models import Equipment
+
+dupes = (Equipment.objects
+         .values("serial_number")
+         .annotate(c=Count("id"))
+         .filter(c__gt=1))
+print("Kalan duplike sayısı:", dupes.count())
+print(list(dupes[:20]))
+### DOSYA BİTİŞ: diag_dupes.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\ensure_superuser.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.contrib.auth import get_user_model
+User = get_user_model()
+u, _ = User.objects.get_or_create(username="admin",
+    defaults={"email":"admin@example.com","is_staff":True,"is_superuser":True})
+u.is_staff = True; u.is_superuser = True
+u.set_password("admin123!")
+u.save()
+print("ok ->", u.username, u.is_superuser, u.is_staff)
+### DOSYA BİTİŞ: ensure_superuser.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\fix_serial_dupes_runner.py
+import os, sys, django
+
+# --- PROJE KÖKÜNÜ sys.path'E EKLE ---
+HERE = os.path.abspath(os.path.dirname(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+
+from django.db import transaction
+from maintenance.models import Equipment
+
+MAX_LEN = 120
+SUFFIX_DUP = "__DUP__{id}"
+SUFFIX_EMPTY = "__EMPTY__{id}"
+
+def safe_unique_value(original: str, suffix: str) -> str:
+    room = MAX_LEN - len(suffix)
+    base = (original or "")[:room] if room > 0 else ""
+    return (base + suffix)[:MAX_LEN]
+
+# 1) Duplikeleri grupla (case-insensitive). Boş/whitespace -> özel anahtar.
+by_norm = {}
+for e in Equipment.objects.all().order_by("id"):
+    raw = e.serial_number
+    s = (raw or "")
+    norm = s.strip().lower()
+    key = norm if norm != "" else "__EMPTY__"
+    by_norm.setdefault(key, []).append((e.id, s))
+
+dupe_groups = {k:v for k,v in by_norm.items() if len(v) > 1}
+print("Duplike grup sayısı:", len(dupe_groups))
+
+changed = 0
+with transaction.atomic():
+    for key, rows in dupe_groups.items():
+        keeper_id, keeper_val = rows[0]  # ilk kaydı koru
+        for (pk, val) in rows[1:]:
+            if key == "__EMPTY__":
+                new_val = safe_unique_value("", SUFFIX_EMPTY.format(id=pk))
+            else:
+                new_val = safe_unique_value(val, SUFFIX_DUP.format(id=pk))
+            # ekstra güvenlik: yine çakışırsa hafif varyasyon
+            q = Equipment.objects.filter(serial_number=new_val).exclude(pk=pk)
+            if q.exists():
+                new_val = safe_unique_value(val, (SUFFIX_DUP.format(id=pk) + "_X"))
+            Equipment.objects.filter(pk=pk).update(serial_number=new_val)
+            changed += 1
+
+print("Güncellenen kayıt:", changed)
+### DOSYA BİTİŞ: fix_serial_dupes_runner.py
+
+### DOSYA BAŞLANGIÇ: .\\_gh_artifacts\playwright-report_20251009_082735\trace\index.BFsek2M6.css
+.drop-target{display:flex;align-items:center;justify-content:center;flex:auto;flex-direction:column;background-color:var(--vscode-editor-background);position:absolute;top:0;right:0;bottom:0;left:0;z-index:100;line-height:24px}body .drop-target{background:#fffc}body.dark-mode .drop-target{background:#000c}.drop-target .title{font-size:24px;font-weight:700;margin-bottom:30px}.drop-target .processing-error{font-size:24px;color:#e74c3c;font-weight:700;text-align:center;margin:30px}.drop-target input{margin-top:50px}.drop-target button{color:#fff;background-color:#007acc;padding:8px 12px;border:none;margin:30px 0;cursor:pointer}.progress-dialog{width:400px;top:0;right:0;bottom:0;left:0;border:none;outline:none;background-color:var(--vscode-sideBar-background)}.progress-dialog::backdrop{background-color:#0006}.progress-content{padding:16px}.progress-content .title{background-color:unset;font-size:18px;font-weight:700;padding:0}.progress-wrapper{background-color:var(--vscode-commandCenter-activeBackground);width:100%;margin-top:16px;margin-bottom:8px}.inner-progress{background-color:var(--vscode-progressBar-background);height:4px}.header{display:flex;background-color:#000;flex:none;flex-basis:48px;line-height:48px;font-size:16px;color:#ccc}.workbench-loader{contain:size}.workbench-loader .header .toolbar-button{margin:12px;padding:8px 4px}.workbench-loader .logo{margin-left:16px;display:flex;align-items:center}.workbench-loader .logo img{height:32px;width:32px;pointer-events:none;flex:none}.workbench-loader .product{font-weight:600;margin-left:16px;flex:none}.workbench-loader .header .title{margin-left:16px;overflow:hidden;text-overflow:ellipsis;text-wrap:nowrap}html,body{min-width:550px;min-height:450px;overflow:auto}
+### DOSYA BİTİŞ: index.BFsek2M6.css
+
+### DOSYA BAŞLANGIÇ: .\\_gh_artifacts\playwright-report_20251009_082735\trace\index.CheexZ4_.js
+import{r,j as e,T as z,D as I,M as k,a as A,W as O,b as F,c as V,d as $}from"./assets/defaultSettingsView-BA25Usqk.js";const M=({className:n,style:o,open:s,isModal:a,width:l,verticalOffset:m,requestClose:u,anchor:x,dataTestId:p,children:T})=>{const g=r.useRef(null),[E,b]=r.useState(0);let j=o;if(x!=null&&x.current){const h=x.current.getBoundingClientRect();j={position:"fixed",margin:0,top:h.bottom+(m??0),left:G(h,l??0),width:l,zIndex:1,...o}}return r.useEffect(()=>{const h=y=>{!g.current||!(y.target instanceof Node)||g.current.contains(y.target)||u==null||u()},L=y=>{y.key==="Escape"&&(u==null||u())};return s?(document.addEventListener("mousedown",h),document.addEventListener("keydown",L),()=>{document.removeEventListener("mousedown",h),document.removeEventListener("keydown",L)}):()=>{}},[s,u]),r.useEffect(()=>{const h=()=>b(L=>L+1);return window.addEventListener("resize",h),()=>{window.removeEventListener("resize",h)}},[]),r.useLayoutEffect(()=>{g.current&&(s?a?g.current.showModal():g.current.show():g.current.close())},[s,a]),e.jsx("dialog",{ref:g,style:j,className:n,"data-testid":p,children:T})},G=(n,o)=>{const s=U(n,o,"left");if(s.inBounds)return s.value;const a=U(n,o,"right");return a.inBounds?a.value:s.value},U=(n,o,s)=>{const a=document.documentElement.clientWidth;if(s==="left"){const l=n.left;return{value:l,inBounds:l+o<=a}}else return{value:n.right-o,inBounds:n.right-o>=0}},H=()=>{const n=r.useRef(null),[o,s]=r.useState(!1);return e.jsxs(e.Fragment,{children:[e.jsx(z,{ref:n,icon:"settings-gear",title:"Settings",onClick:()=>s(a=>!a)}),e.jsx(M,{style:{backgroundColor:"var(--vscode-sideBar-background)",padding:"4px 8px"},open:o,width:200,verticalOffset:8,requestClose:()=>s(!1),anchor:n,dataTestId:"settings-toolbar-dialog",children:e.jsx(I,{})})]})},K=()=>{const[n,o]=r.useState(!1),[s,a]=r.useState([]),[l,m]=r.useState([]),[u,x]=r.useState(W),[p,T]=r.useState({done:0,total:0}),[g,E]=r.useState(!1),[b,j]=r.useState(null),[h,L]=r.useState(null),[y,N]=r.useState(!1),S=r.useCallback(t=>{const c=[],d=[],i=new URL(window.location.href);for(let f=0;f<t.length;f++){const w=t.item(f);if(!w)continue;const P=URL.createObjectURL(w);c.push(P),d.push(w.name),i.searchParams.append("trace",P),i.searchParams.append("traceFileName",w.name)}const v=i.toString();window.history.pushState({},"",v),a(c),m(d),E(!1),j(null)},[]);r.useEffect(()=>{const t=async c=>{var d;if((d=c.clipboardData)!=null&&d.files.length){for(const i of c.clipboardData.files)if(i.type!=="application/zip")return;c.preventDefault(),S(c.clipboardData.files)}};return document.addEventListener("paste",t),()=>document.removeEventListener("paste",t)}),r.useEffect(()=>{const t=c=>{const{method:d,params:i}=c.data;if(d!=="load"||!((i==null?void 0:i.trace)instanceof Blob))return;const v=new File([i.trace],"trace.zip",{type:"application/zip"}),f=new DataTransfer;f.items.add(v),S(f.files)};return window.addEventListener("message",t),()=>window.removeEventListener("message",t)});const B=r.useCallback(t=>{t.preventDefault(),S(t.dataTransfer.files)},[S]),C=r.useCallback(t=>{t.preventDefault(),t.target.files&&S(t.target.files)},[S]);r.useEffect(()=>{const t=new URL(window.location.href).searchParams,c=t.getAll("trace");o(t.has("isServer"));for(const d of c)if(d.startsWith("file:")){L(d||null);return}if(t.has("isServer")){const d=new URLSearchParams(window.location.search).get("ws"),i=new URL(`../${d}`,window.location.toString());i.protocol=window.location.protocol==="https:"?"wss:":"ws:";const v=new A(new O(i));v.onLoadTraceRequested(async f=>{a(f.traceUrl?[f.traceUrl]:[]),E(!1),j(null)}),v.initialize({}).catch(()=>{})}else c.some(d=>d.startsWith("blob:"))||a(c)},[]),r.useEffect(()=>{(async()=>{if(s.length){const t=i=>{i.data.method==="progress"&&T(i.data.params)};navigator.serviceWorker.addEventListener("message",t),T({done:0,total:1});const c=[];for(let i=0;i<s.length;i++){const v=s[i],f=new URLSearchParams;f.set("trace",v),l.length&&f.set("traceFileName",l[i]),f.set("limit",String(s.length));const w=await fetch(`contexts?${f.toString()}`);if(!w.ok){n||a([]),j((await w.json()).error);return}c.push(...await w.json())}navigator.serviceWorker.removeEventListener("message",t);const d=new k(c);T({done:0,total:0}),x(d)}else x(W)})()},[n,s,l]);const D=p.done!==p.total&&p.total!==0;r.useEffect(()=>{if(D){const t=setTimeout(()=>{N(!0)},200);return()=>clearTimeout(t)}else N(!1)},[D]);const R=!!(!n&&!g&&!h&&(!s.length||b));return e.jsxs("div",{className:"vbox workbench-loader",onDragOver:t=>{t.preventDefault(),E(!0)},children:[e.jsxs("div",{className:"hbox header",...R?{inert:"true"}:{},children:[e.jsx("div",{className:"logo",children:e.jsx("img",{src:"playwright-logo.svg",alt:"Playwright logo"})}),e.jsx("div",{className:"product",children:"Playwright"}),u.title&&e.jsx("div",{className:"title",children:u.title}),e.jsx("div",{className:"spacer"}),e.jsx(H,{})]}),e.jsx(F,{model:u,inert:R}),h&&e.jsxs("div",{className:"drop-target",children:[e.jsx("div",{children:"Trace Viewer uses Service Workers to show traces. To view trace:"}),e.jsxs("div",{style:{paddingTop:20},children:[e.jsxs("div",{children:["1. Click ",e.jsx("a",{href:h,children:"here"})," to put your trace into the download shelf"]}),e.jsxs("div",{children:["2. Go to ",e.jsx("a",{href:"https://trace.playwright.dev",children:"trace.playwright.dev"})]}),e.jsx("div",{children:"3. Drop the trace from the download shelf into the page"})]})]}),e.jsx(M,{open:y,isModal:!0,className:"progress-dialog",children:e.jsxs("div",{className:"progress-content",children:[e.jsx("div",{className:"title",role:"heading","aria-level":1,children:"Loading Playwright Trace..."}),e.jsx("div",{className:"progress-wrapper",children:e.jsx("div",{className:"inner-progress",style:{width:p.total?100*p.done/p.total+"%":0}})})]})}),R&&e.jsxs("div",{className:"drop-target",children:[e.jsx("div",{className:"processing-error",role:"alert",children:b}),e.jsx("div",{className:"title",role:"heading","aria-level":1,children:"Drop Playwright Trace to load"}),e.jsx("div",{children:"or"}),e.jsx("button",{onClick:()=>{const t=document.createElement("input");t.type="file",t.multiple=!0,t.click(),t.addEventListener("change",c=>C(c))},type:"button",children:"Select file(s)"}),e.jsx("div",{style:{maxWidth:400},children:"Playwright Trace Viewer is a Progressive Web App, it does not send your trace anywhere, it opens it locally."})]}),n&&!s.length&&e.jsx("div",{className:"drop-target",children:e.jsx("div",{className:"title",children:"Select test to see the trace"})}),g&&e.jsx("div",{className:"drop-target",onDragLeave:()=>{E(!1)},onDrop:t=>B(t),children:e.jsx("div",{className:"title",children:"Release to analyse the Playwright Trace"})})]})},W=new k([]),_=({traceJson:n})=>{const[o,s]=r.useState(void 0),[a,l]=r.useState(0),m=r.useRef(null);return r.useEffect(()=>(m.current&&clearTimeout(m.current),m.current=setTimeout(async()=>{try{const u=await J(n);s(u)}catch{const u=new k([]);s(u)}finally{l(a+1)}},500),()=>{m.current&&clearTimeout(m.current)}),[n,a]),e.jsx(F,{model:o,isLive:!0})};async function J(n){const o=new URLSearchParams;o.set("trace",n),o.set("limit","1");const a=await(await fetch(`contexts?${o.toString()}`)).json();return new k(a)}(async()=>{const n=new URLSearchParams(window.location.search);if(V(),window.location.protocol!=="file:"){if(n.get("isUnderTest")==="true"&&await new Promise(l=>setTimeout(l,1e3)),!navigator.serviceWorker)throw new Error(`Service workers are not supported.
+Make sure to serve the Trace Viewer (${window.location}) via HTTPS or localhost.`);navigator.serviceWorker.register("sw.bundle.js"),navigator.serviceWorker.controller||await new Promise(l=>{navigator.serviceWorker.oncontrollerchange=()=>l()}),setInterval(function(){fetch("ping")},1e4)}const o=n.get("trace"),a=(o==null?void 0:o.endsWith(".json"))?e.jsx(_,{traceJson:o}):e.jsx(K,{});$.createRoot(document.querySelector("#root")).render(a)})();
+### DOSYA BİTİŞ: index.CheexZ4_.js
+
