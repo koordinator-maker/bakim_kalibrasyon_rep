@@ -245,11 +245,7 @@ if(-not $uploadOk){ throw "Upload başarısız - HTTP ayrıntıları yukarıda (
 if ($resp -and $resp.id) { $id = $resp.id }
 elseif ($resp -and $resp.request_id) { $id = $resp.request_id }
 elseif ($resp -and $resp.token) { $id = $resp.token }
-else {
-  # Fallback: yanitta id yok → sentetik id ile devam
-  $id = "mock-" + ([Guid]::NewGuid().ToString("N"))
-  Write-Host "[ai-http] submit OK fakat id yok; fallback id = $id"
-}
+else { throw "AI submit: response id missing." }
 if(-not $id){ throw "Yanıt id içermiyor: $(($resp|ConvertTo-Json -Depth 6))" }
 $deadline = (Get-Date).AddMinutes($timeout)
 $patchUrl = $null; $aiResult = $null

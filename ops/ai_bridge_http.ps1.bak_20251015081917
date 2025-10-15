@@ -164,7 +164,6 @@ if ($reqObj -and $reqObj.bundle) { $bundleIn = $reqObj.bundle }
 $timeoutMin = 8; if ($env:AI_TIMEOUT_MIN) { $timeoutMin = [int]$env:AI_TIMEOUT_MIN }
 $upl = Invoke-AiSubmit -SubmitUrl $submitUrl -ReqPath $reqPath -BundlePath $bundleIn -TimeoutMin $timeoutMin
 $uploadOk = $upl.UploadOk; $id = $upl.Id; $lastStatus = $upl.Status; $lastBody = $upl.Body; $lastErr = $upl.Error
-if ($env:AI_POLL_MODE -and $env:AI_POLL_MODE.ToLower() -eq 'skip') { Write-Host '[ai-http] poll skipped (AI_POLL_MODE=skip) - sanity'; return }
 if (-not $uploadOk) {
   $logDir = "_otokodlama\logs"; New-Item -ItemType Directory -Force $logDir | Out-Null
   $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -245,11 +244,7 @@ if(-not $uploadOk){ throw "Upload başarısız - HTTP ayrıntıları yukarıda (
 if ($resp -and $resp.id) { $id = $resp.id }
 elseif ($resp -and $resp.request_id) { $id = $resp.request_id }
 elseif ($resp -and $resp.token) { $id = $resp.token }
-else {
-  # Fallback: yanitta id yok → sentetik id ile devam
-  $id = "mock-" + ([Guid]::NewGuid().ToString("N"))
-  Write-Host "[ai-http] submit OK fakat id yok; fallback id = $id"
-}
+else { throw "AI submit: response id missing." }
 if(-not $id){ throw "Yanıt id içermiyor: $(($resp|ConvertTo-Json -Depth 6))" }
 $deadline = (Get-Date).AddMinutes($timeout)
 $patchUrl = $null; $aiResult = $null
