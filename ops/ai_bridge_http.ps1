@@ -46,7 +46,12 @@ try {
   $body = $reqJson | ConvertTo-Json -Compress -Depth 10
   $response = Invoke-RestMethod -Uri $endpoint -Method Post -Body $body -Headers $headers
   
-  Write-Host "Submit OK" -ForegroundColor Green
+  Write-Host "Submit OK" -ForegroundColor Green  
+  # OpenAI response'u kaydet
+  $responsePath = Join-Path $InboxDir "response_${TaskId}_$(Get-Date -Format yyyyMMddHHmmss).json"
+  if(!(Test-Path $InboxDir)){ New-Item -ItemType Directory -Force $InboxDir | Out-Null }
+  $response | ConvertTo-Json -Depth 10 | Set-Content $responsePath -Encoding UTF8
+  Write-Host "Response saved -> $responsePath" -ForegroundColor Gray
   
   # Extract ID
   foreach($k in 'id','run_id','request_id'){
