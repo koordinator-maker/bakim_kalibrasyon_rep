@@ -1,10 +1,16 @@
-# === ai_bridge_http.ps1 (PowerShell 7 optimized) ===
+# === ai_bridge_http.ps1 (PowerShell 7 - TLS 1.2 explicit) ===
 param(
   [Parameter(Mandatory=$false)][string]$RequestsDir = "_otokodlama\out",
   [Parameter(Mandatory=$false)][string]$InboxDir    = "_otokodlama\inbox",
   [Parameter(Mandatory=$true)][string]$TaskId
 )
 $ErrorActionPreference='Stop'
+
+# === TLS 1.2 EXPLICIT (PS7) ===
+$PSDefaultParameterValues = @{
+  'Invoke-RestMethod:SslProtocol' = 'Tls12'
+  'Invoke-WebRequest:SslProtocol' = 'Tls12'
+}
 
 # === CONFIG ===
 $endpoint       = $env:AI_ENDPOINT
@@ -38,7 +44,7 @@ try {
   }
   
   $body = $reqJson | ConvertTo-Json -Compress -Depth 10
-  $response = Invoke-RestMethod -Uri $endpoint -Method Post -Body $body -Headers $headers -SkipCertificateCheck
+  $response = Invoke-RestMethod -Uri $endpoint -Method Post -Body $body -Headers $headers
   
   Write-Host "Submit OK" -ForegroundColor Green
   
@@ -51,7 +57,7 @@ try {
   }
   if(-not $id){
     $id = "mock-{0:yyyyMMddHHmmss}" -f (Get-Date)
-    Write-Host "No ID in response; fallback = $id" -ForegroundColor Yellow
+    Write-Host "No ID; fallback = $id" -ForegroundColor Yellow
   } else {
     Write-Host "ID = $id" -ForegroundColor Green
   }
@@ -65,20 +71,20 @@ try {
 
 if(-not $uploadOk){ throw 'AI submit failed' }
 
-# 3) POLL-SKIP CHECK
+# 3) POLL-SKIP
 if($pollMode -eq 'skip'){
-  Write-Host 'Poll skipped (AI_POLL_MODE=skip)' -ForegroundColor Gray
+  Write-Host 'Poll skipped' -ForegroundColor Gray
   return
 }
 
 # 4) POLL STATUS
 if([string]::IsNullOrWhiteSpace($statusTemplate)){
-  Write-Host 'AI_STATUS_TEMPLATE empty; skipping poll' -ForegroundColor Gray
+  Write-Host 'No status template; skipping poll' -ForegroundColor Gray
   return
 }
 
 $statusUrl = $statusTemplate -replace '\{id\}', $id
-Write-Host "Polling status at $statusUrl ..." -ForegroundColor Cyan
+Write-Host "Polling: $statusUrl ..." -ForegroundColor Cyan
 
 $start = Get-Date
 while(((Get-Date) - $start).TotalSeconds -lt $pollTimeout){
@@ -90,7 +96,7 @@ while(((Get-Date) - $start).TotalSeconds -lt $pollTimeout){
       $headers2[$authHeader] = "Bearer $apiKey"
     }
     
-    $sobj = Invoke-RestMethod -Uri $statusUrl -Method Get -Headers $headers2 -SkipCertificateCheck
+    $sobj = Invoke-RestMethod -Uri $statusUrl -Method Get -Headers $headers2
     $st = $sobj.status
     Write-Host "Status = $st" -ForegroundColor Gray
     
@@ -104,7 +110,7 @@ while(((Get-Date) - $start).TotalSeconds -lt $pollTimeout){
         
         if(!(Test-Path $InboxDir)){ New-Item -ItemType Directory -Force $InboxDir | Out-Null }
         
-        Invoke-RestMethod -Uri $purl -OutFile $ppath -Headers $headers2 -SkipCertificateCheck
+        Invoke-RestMethod -Uri $purl -OutFile $ppath -Headers $headers2
         Write-Host "Patch downloaded -> $ppath" -ForegroundColor Green
         return
       } else {

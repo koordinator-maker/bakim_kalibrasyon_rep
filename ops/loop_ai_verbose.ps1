@@ -1,4 +1,4 @@
-﻿param(
+param(
   [string]$Mode = "direct",
   [int]$MaxRounds = 1,
   [string]$TaskId = "UH001"
@@ -50,7 +50,7 @@ for($i=1; $i -le $MaxRounds; $i++){
   try {
     $job = Start-Job -ScriptBlock {
       param($Script, $TaskId, $ReqDir, $InboxDir)
-      & powershell -ExecutionPolicy Bypass -File $Script `
+      & pwsh -File $Script `
         -RequestsDir $ReqDir -InboxDir $InboxDir -TaskId $TaskId 2>&1
     } -ArgumentList $bridgeScript, $TaskId, $reqDir, $inboxDir
     
@@ -83,7 +83,7 @@ for($i=1; $i -le $MaxRounds; $i++){
     if(Test-Path $patchScript){
       Write-Host "Applying patch..."
       try {
-        & powershell -ExecutionPolicy Bypass -File $patchScript -ZipPath $patch.FullName 2>&1 |
+        & pwsh -File $patchScript -ZipPath $patch.FullName 2>&1 |
           ForEach-Object { Write-Host "  $_" }
         $patchSuccess = $true
       } catch {
