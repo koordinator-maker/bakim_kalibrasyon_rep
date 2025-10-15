@@ -173,7 +173,7 @@ url: $submitUrl
 status: $lastStatus
 error: $lastErr
 body[0..2000]: $lastBody
-api_key_len: $(if([string]::IsNullOrEmpty($env:AI_API_KEY)){0}else{$env:AI_API_KEY.Length})
+api_key_len: $([string]::IsNullOrEmpty($env:AI_API_KEY) ? 0 : $env:AI_API_KEY.Length)
 "@
   $logPath = Join-Path $logDir "ai_http_submit_$ts.txt"
   [IO.File]::WriteAllText($logPath, $diag, [Text.UTF8Encoding]::new($false))

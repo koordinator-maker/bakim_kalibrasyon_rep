@@ -3,33 +3,6 @@ param(
   [string]$RequestsDir = ".",
   [string]$OutDir = "_otokodlama\\inbox"
 )
-function Test-AiEndpointQuick {
-  param([string]$Url, [int]$TimeoutSec = 15)
-  $o = [ordered]@{ Ok=$false; Code=0; Body=''; Error='' }
-  if ([string]::IsNullOrWhiteSpace($Url) -or ($Url -match '<GERCEK|YOUR-REAL|ENDPOINT>')) {
-    $o.Error = "AI_ENDPOINT placeholder/boş: '$Url'"; return [pscustomobject]$o
-  }
-  try {
-    $ProgressPreference='SilentlyContinue'
-    $resp = Invoke-WebRequest -Method Head -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -ErrorAction Stop
-    $o.Ok = ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500)
-    $o.Code = $resp.StatusCode
-  } catch {
-    # Bazı sunucular HEAD'e 405 verir → GET ile kısa dene
-    try {
-      $resp = Invoke-WebRequest -Method Get -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -ErrorAction Stop
-      $o.Ok = ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500)
-      $o.Code = $resp.StatusCode
-      if ($resp.Content) {
-        $max=[Math]::Min(500,[Text.Encoding]::UTF8.GetByteCount($resp.Content))
-        $o.Body = $resp.Content.Substring(0,[Math]::Min($max,$resp.Content.Length))
-      }
-    } catch {
-      $o.Error = $_.Exception.Message
-    }
-  }
-  return [pscustomobject]$o
-}
 function Invoke-AiSubmit {
   param(
     [Parameter(Mandatory=$true)][string]$SubmitUrl,
@@ -154,32 +127,6 @@ if (-not $reqJson) {
 }
 # burada $reqJson kesin
 $reqObj = Get-Content -LiteralPath $reqJson.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-# --- EARLY preflight + upload (üstte koşsun) ---
-$submitUrl = $env:AI_ENDPOINT
-$pf = Test-AiEndpointQuick -Url $submitUrl -TimeoutSec 10
-Write-Host "[ai-http] preflight EARLY url=$submitUrl  ok=$($pf.Ok) code=$($pf.Code) err=$($pf.Error)"
-$reqPath   = $reqJson.FullName
-$bundleIn  = $null
-if ($reqObj -and $reqObj.bundle) { $bundleIn = $reqObj.bundle }
-$timeoutMin = 8; if ($env:AI_TIMEOUT_MIN) { $timeoutMin = [int]$env:AI_TIMEOUT_MIN }
-$upl = Invoke-AiSubmit -SubmitUrl $submitUrl -ReqPath $reqPath -BundlePath $bundleIn -TimeoutMin $timeoutMin
-$uploadOk = $upl.UploadOk; $id = $upl.Id; $lastStatus = $upl.Status; $lastBody = $upl.Body; $lastErr = $upl.Error
-if (-not $uploadOk) {
-  $logDir = "_otokodlama\logs"; New-Item -ItemType Directory -Force $logDir | Out-Null
-  $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-  $diag = @"
-[ai-http] submit FAIL (EARLY)
-url: $submitUrl
-status: $lastStatus
-error: $lastErr
-body[0..2000]: $lastBody
-api_key_len: $(if([string]::IsNullOrEmpty($env:AI_API_KEY)){0}else{$env:AI_API_KEY.Length})
-"@
-  $logPath = Join-Path $logDir "ai_http_submit_$ts.txt"
-  [IO.File]::WriteAllText($logPath, $diag, [Text.UTF8Encoding]::new($false))
-  Write-Host "[ai-http] FAIL detail (EARLY) → $logPath"
-}
-
 
 $reqObj = Get-Content -LiteralPath $reqJson.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
 # --- PS5.1-safe timings ---
