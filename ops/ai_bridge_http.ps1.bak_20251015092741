@@ -1,8 +1,7 @@
 param(
   [string]$TaskId = "UH001",
-  [string]$RequestsDir = "_otokodlama\out",
-  [string]$InboxDir    = "_otokodlama\inbox",
-  [int]   $InboxWaitSeconds = 60
+  [string]$RequestsDir = ".",
+  [string]$OutDir = "_otokodlama\\inbox"
 )
 function New-HttpClient {
   param([int]$TimeoutMin = 8)
