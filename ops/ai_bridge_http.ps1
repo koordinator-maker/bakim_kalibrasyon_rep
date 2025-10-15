@@ -1,174 +1,123 @@
-# === ai_bridge_http.ps1 (PS5.1, TLS + cert bypass) ===
+# === ai_bridge_http.ps1 (PowerShell 7 optimized) ===
 param(
   [Parameter(Mandatory=$false)][string]$RequestsDir = "_otokodlama\out",
   [Parameter(Mandatory=$false)][string]$InboxDir    = "_otokodlama\inbox",
   [Parameter(Mandatory=$true)][string]$TaskId
 )
-Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-
-# === TLS 1.2 + 1.3 (agresif) ===
-try {
-  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
-} catch {
-  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-}
-
-# === CERT BYPASS (sadece test için!) ===
-add-type @"
-    using System.Net;
-    using System.Security.Cryptography.X509Certificates;
-    public class TrustAllCertsPolicy : ICertificatePolicy {
-        public bool CheckValidationResult(
-            ServicePoint srvPoint, X509Certificate certificate,
-            WebRequest request, int certificateProblem) {
-            return true;
-        }
-    }
-"@
-[Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
 
 # === CONFIG ===
 $endpoint       = $env:AI_ENDPOINT
 $statusTemplate = $env:AI_STATUS_TEMPLATE
 $apiKey         = $env:AI_API_KEY
 $authHeader     = if($env:AI_AUTH_HEADER){ $env:AI_AUTH_HEADER } else { 'Authorization' }
-$uploadMode     = if($env:AI_UPLOAD_MODE){ $env:AI_UPLOAD_MODE.ToLower() } else { 'multipart' }
 $pollMode       = if($env:AI_POLL_MODE){ $env:AI_POLL_MODE.ToLower() } else { '' }
 $pollInterval   = if($env:AI_POLL_INTERVAL){ [int]$env:AI_POLL_INTERVAL } else { 5 }
 $pollTimeout    = if($env:AI_POLL_TIMEOUT){ [int]$env:AI_POLL_TIMEOUT } else { 300 }
 
 if([string]::IsNullOrWhiteSpace($endpoint)){ throw 'AI_ENDPOINT bos' }
 
-Write-Host "=== AI Bridge HTTP ==="
+Write-Host "=== AI Bridge HTTP ===" -ForegroundColor Cyan
 Write-Host "TaskId: $TaskId"
 Write-Host "Endpoint: $endpoint"
+Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor Gray
 
 # 1) REQUEST JSON
 $reqPath = Join-Path $RequestsDir "$TaskId.json"
 if(!(Test-Path $reqPath)){ throw "Request JSON yok: $reqPath" }
-$reqJson = Get-Content $reqPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$reqJson = Get-Content $reqPath -Raw | ConvertFrom-Json
 
 # 2) SUBMIT
 Write-Host "Submitting to $endpoint ..."
 
-$wc = New-Object System.Net.WebClient
-$wc.Encoding = [Text.Encoding]::UTF8
-if(![string]::IsNullOrWhiteSpace($apiKey)){
-  $wc.Headers.Add($authHeader, "Bearer $apiKey")
-}
-
-$uploadOk = $false; $id = $null; $body = $null
+$uploadOk = $false; $id = $null
 try {
-  if($uploadMode -eq 'json'){
-    $wc.Headers.Add('Content-Type', 'application/json')
-    $jsonBody = $reqJson | ConvertTo-Json -Compress -Depth 10
-    $body = $wc.UploadString($endpoint, 'POST', $jsonBody)
-  } else {
-    $wc.Headers.Add('Content-Type', 'application/json')
-    $jsonBody = $reqJson | ConvertTo-Json -Compress -Depth 10
-    $body = $wc.UploadString($endpoint, 'POST', $jsonBody)
+  $headers = @{'Content-Type'='application/json'}
+  if(![string]::IsNullOrWhiteSpace($apiKey)){
+    $headers[$authHeader] = "Bearer $apiKey"
   }
   
-  Write-Host "Submit OK (HTTP 200)"
+  $body = $reqJson | ConvertTo-Json -Compress -Depth 10
+  $response = Invoke-RestMethod -Uri $endpoint -Method Post -Body $body -Headers $headers -SkipCertificateCheck
   
-  # Parse response
-  $obj = $null
-  try { $obj = $body | ConvertFrom-Json } catch {}
+  Write-Host "Submit OK" -ForegroundColor Green
   
   # Extract ID
-  if($obj){
-    foreach($k in 'id','run_id','request_id'){
-      if($obj.PSObject.Properties[$k] -and $obj.$k){
-        $id = [string]$obj.$k
-        break
-      }
+  foreach($k in 'id','run_id','request_id'){
+    if($response.PSObject.Properties.Name -contains $k -and $response.$k){
+      $id = [string]$response.$k
+      break
     }
   }
   if(-not $id){
     $id = "mock-{0:yyyyMMddHHmmss}" -f (Get-Date)
-    Write-Host "No ID in response; fallback = $id"
+    Write-Host "No ID in response; fallback = $id" -ForegroundColor Yellow
   } else {
-    Write-Host "ID = $id"
+    Write-Host "ID = $id" -ForegroundColor Green
   }
   $uploadOk = $true
 } catch {
-  Write-Host "Submit FAIL: $($_.Exception.Message)"
-  if($_.Exception.InnerException){
-    Write-Host "Inner: $($_.Exception.InnerException.Message)"
+  Write-Host "Submit FAIL: $($_.Exception.Message)" -ForegroundColor Red
+  if($_.ErrorDetails.Message){
+    Write-Host "Details: $($_.ErrorDetails.Message)" -ForegroundColor Yellow
   }
-} finally {
-  $wc.Dispose()
 }
 
 if(-not $uploadOk){ throw 'AI submit failed' }
 
 # 3) POLL-SKIP CHECK
 if($pollMode -eq 'skip'){
-  Write-Host 'Poll skipped (AI_POLL_MODE=skip)'
+  Write-Host 'Poll skipped (AI_POLL_MODE=skip)' -ForegroundColor Gray
   return
 }
 
 # 4) POLL STATUS
 if([string]::IsNullOrWhiteSpace($statusTemplate)){
-  Write-Host 'AI_STATUS_TEMPLATE empty; skipping poll'
+  Write-Host 'AI_STATUS_TEMPLATE empty; skipping poll' -ForegroundColor Gray
   return
 }
 
 $statusUrl = $statusTemplate -replace '\{id\}', $id
-Write-Host "Polling status at $statusUrl ..."
+Write-Host "Polling status at $statusUrl ..." -ForegroundColor Cyan
 
 $start = Get-Date
 while(((Get-Date) - $start).TotalSeconds -lt $pollTimeout){
   Start-Sleep -Seconds $pollInterval
   
-  $wc2 = New-Object System.Net.WebClient
-  $wc2.Encoding = [Text.Encoding]::UTF8
-  if(![string]::IsNullOrWhiteSpace($apiKey)){
-    $wc2.Headers.Add($authHeader, "Bearer $apiKey")
-  }
-  
   try {
-    $sbody = $wc2.DownloadString($statusUrl)
-    $sobj = $sbody | ConvertFrom-Json
+    $headers2 = @{}
+    if(![string]::IsNullOrWhiteSpace($apiKey)){
+      $headers2[$authHeader] = "Bearer $apiKey"
+    }
+    
+    $sobj = Invoke-RestMethod -Uri $statusUrl -Method Get -Headers $headers2 -SkipCertificateCheck
     $st = $sobj.status
-    Write-Host "Status = $st"
+    Write-Host "Status = $st" -ForegroundColor Gray
     
     if($st -match 'complete|done|success|succeeded'){
       if($sobj.patch_url){
         $purl = $sobj.patch_url
-        Write-Host "Patch URL = $purl"
+        Write-Host "Patch URL = $purl" -ForegroundColor Green
         
         $pname = "patch_${TaskId}_$(Get-Date -Format yyyyMMddHHmmss).zip"
         $ppath = Join-Path $InboxDir $pname
         
         if(!(Test-Path $InboxDir)){ New-Item -ItemType Directory -Force $InboxDir | Out-Null }
         
-        $wc3 = New-Object System.Net.WebClient
-        if(![string]::IsNullOrWhiteSpace($apiKey)){
-          $wc3.Headers.Add($authHeader, "Bearer $apiKey")
-        }
-        $wc3.DownloadFile($purl, $ppath)
-        $wc3.Dispose()
-        
-        Write-Host "Patch downloaded -> $ppath"
-        $wc2.Dispose()
+        Invoke-RestMethod -Uri $purl -OutFile $ppath -Headers $headers2 -SkipCertificateCheck
+        Write-Host "Patch downloaded -> $ppath" -ForegroundColor Green
         return
       } else {
-        Write-Host 'Complete but no patch_url'
-        $wc2.Dispose()
+        Write-Host 'Complete but no patch_url' -ForegroundColor Yellow
         return
       }
     }
     if($st -match 'fail|error'){
-      $wc2.Dispose()
       throw "AI task failed: $st"
     }
   } catch {
-    Write-Host "Poll error: $($_.Exception.Message)"
-  } finally {
-    if($wc2){ $wc2.Dispose() }
+    Write-Host "Poll error: $($_.Exception.Message)" -ForegroundColor Red
   }
 }
-Write-Host "Poll timeout ($pollTimeout s)"
+Write-Host "Poll timeout ($pollTimeout s)" -ForegroundColor Red
 throw 'AI poll timeout'
