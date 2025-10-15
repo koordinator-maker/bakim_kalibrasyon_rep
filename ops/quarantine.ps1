@@ -1,57 +1,110 @@
-﻿Set-StrictMode -Version Latest
-$ErrorActionPreference='Stop'
+﻿# === quarantine.ps1 (PS5.1 compatible) ===
+$script:RepoRoot = Split-Path -Parent $PSScriptRoot
+$script:QuarantineFile = Join-Path $script:RepoRoot "_otokodlama\quarantine.json"
 
-function Get-Env([string]$name,[string]$fallback){
-  # PS5.1 güvenli env okuma (Process→User→Machine)
-  $v = [Environment]::GetEnvironmentVariable($name,'Process')
-  if([string]::IsNullOrWhiteSpace($v)){ $v = [Environment]::GetEnvironmentVariable($name,'User') }
-  if([string]::IsNullOrWhiteSpace($v)){ $v = [Environment]::GetEnvironmentVariable($name,'Machine') }
-  if([string]::IsNullOrWhiteSpace($v)){ return $fallback } else { return $v }
-}
-
-function Initialize-Quarantine {
-  param([string]$Root = "_otokodlama")
-  $stateDir = Join-Path $Root "state"
-  $qtDir    = Join-Path $Root "quarantine"
-  $repDir   = Join-Path $Root "reports\notify"
-  New-Item -ItemType Directory -Force $stateDir,$qtDir,$repDir | Out-Null
-  $state = Join-Path $stateDir "quarantine_state.json"
-  if(-not (Test-Path $state)){ '{}' | Set-Content -Encoding utf8 -Path $state }
-  return @{ StatePath=$state; QtDir=$qtDir; RepDir=$repDir }
+function Get-Quarantine {
+  param([string]$TaskId)
+  
+  if(!(Test-Path $script:QuarantineFile)){ return @() }
+  
+  try {
+    $data = Get-Content $script:QuarantineFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    if(-not $data){ return @() }
+    if($data -isnot [array]){ $data = @($data) }
+    
+    if($TaskId){
+      return $data | Where-Object { $_.task_id -eq $TaskId }
+    }
+    return $data
+  } catch {
+    Write-Warning "Quarantine dosyasi okunamadi: $_"
+    return @()
+  }
 }
 
 function Update-Quarantine {
   param(
-    [Parameter(Mandatory=$true)][string]$TaskId,
-    [Parameter(Mandatory=$true)][ValidateSet('Success','Fail')]$Outcome,
-    [int]$Threshold = $( [int](Get-Env 'QUARANTINE_THRESHOLD' '15') )
+    [Parameter(Mandatory)][string]$TaskId,
+    [Parameter(Mandatory)][ValidateSet('Success','Fail','Timeout')][string]$Outcome
   )
-  $meta = Initialize-Quarantine
-  $statePath = $meta.StatePath
-  $obj = Get-Content $statePath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction SilentlyContinue
-  if(-not $obj){ $obj = @{} }
-
-  if(-not $obj.ContainsKey($TaskId)){ $obj.$TaskId = @{ fails = 0; quarantined = $false } }
-  $rec = $obj.$TaskId
-
-  if($Outcome -eq 'Success'){ $rec.fails = 0 } else { $rec.fails = [int]$rec.fails + 1 }
-
-  $now = Get-Date
-  $qJustNow = $false
-  if((-not $rec.quarantined) -and $rec.fails -ge $Threshold){
-    $rec.quarantined = $true
-    $qJustNow = $true
-    $csv = Join-Path $meta.QtDir "quarantine.csv"
-    $line = '{0},{1},{2},{3}' -f $now.ToString('s'),$TaskId,$rec.fails,$Threshold
-    Add-Content -Encoding utf8 -Path $csv -Value $line
-    $sum = Join-Path $meta.RepDir ("ai_queue_summary_{0}.txt" -f $now.ToString('yyyyMMdd'))
-    Add-Content -Encoding utf8 -Path $sum -Value ("[{0}] QUARANTINE → {1} (fails={2}/{3})" -f $now.ToString('HH:mm:ss'),$TaskId,$rec.fails,$Threshold)
+  
+  $all = @()
+  if(Test-Path $script:QuarantineFile){
+    try {
+      $all = Get-Content $script:QuarantineFile -Raw -Encoding UTF8 | ConvertFrom-Json
+      if(-not $all){ $all = @() }
+      if($all -isnot [array]){ $all = @($all) }
+    } catch {
+      Write-Warning "Quarantine dosyasi bozuk, sifirlaniyor"
+      $all = @()
+    }
   }
-
-  ($obj | ConvertTo-Json -Depth 5) | Set-Content -Encoding utf8 -Path $statePath
-
-  [pscustomobject]@{
-    TaskId=$TaskId; Fails=[int]$rec.fails; Threshold=$Threshold
-    Quarantined=[bool]$rec.quarantined; JustQuarantined=$qJustNow
+  
+  # Mevcut kaydı bul
+  $existing = $null
+  $index = -1
+  for($i=0; $i -lt $all.Count; $i++){
+    if($all[$i].task_id -eq $TaskId){
+      $existing = $all[$i]
+      $index = $i
+      break
+    }
   }
+  
+  if($existing){
+    # Mevcut kayıt - yeni nesne oluştur
+    $failCount = 0
+    if($existing.PSObject.Properties.Name -contains 'consecutive_fails'){
+      $failCount = [int]$existing.consecutive_fails
+    }
+    
+    if($Outcome -ne 'Success'){
+      $failCount++
+    } else {
+      $failCount = 0
+    }
+    
+    $updated = [PSCustomObject]@{
+      task_id           = $TaskId
+      outcome           = $Outcome
+      consecutive_fails = $failCount
+      first_attempt     = $existing.first_attempt
+      last_attempt      = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+    }
+    
+    $all[$index] = $updated
+  } else {
+    # Yeni kayıt
+    $newEntry = [PSCustomObject]@{
+      task_id           = $TaskId
+      outcome           = $Outcome
+      consecutive_fails = if($Outcome -eq 'Success'){ 0 } else { 1 }
+      first_attempt     = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+      last_attempt      = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+    }
+    $all = @($all) + $newEntry
+  }
+  
+  # Kaydet
+  $dir = Split-Path $script:QuarantineFile -Parent
+  if(!(Test-Path $dir)){ New-Item -ItemType Directory -Force $dir | Out-Null }
+  
+  $all | ConvertTo-Json -Depth 5 | Set-Content -Path $script:QuarantineFile -Encoding UTF8
 }
+
+function Test-QuarantineBlock {
+  param(
+    [Parameter(Mandatory)][string]$TaskId,
+    [int]$MaxFails = 3
+  )
+  
+  $entry = Get-Quarantine -TaskId $TaskId
+  if(-not $entry){ return $false }
+  
+  if($entry.PSObject.Properties.Name -contains 'consecutive_fails'){
+    return ([int]$entry.consecutive_fails -ge $MaxFails)
+  }
+  return $false
+}
+
+Export-ModuleMember -Function Get-Quarantine, Update-Quarantine, Test-QuarantineBlock
