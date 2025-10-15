@@ -1,25 +1,23 @@
 param(
   [string]$TaskId = "UH001",
-  [string]$RequestsDir = "_otokodlama\out",
-  [string]$InboxDir    = "_otokodlama\inbox",
+  [string]$RequestsDir = "_otokodlama\\out",
+  [string]$InboxDir    = "_otokodlama\\inbox",
   [int]   $InboxWaitSeconds = 60
 )
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 
 function Get-Env([string]$name,[string]$fallback){
-  $v = [Environment]::GetEnvironmentVariable($name,'Process')
-  if([string]::IsNullOrWhiteSpace($v)){ $v = [Environment]::GetEnvironmentVariable($name,'User') }
-  if([string]::IsNullOrWhiteSpace($v)){ $v = [Environment]::GetEnvironmentVariable($name,'Machine') }
-  if([string]::IsNullOrWhiteSpace($v)){ return $fallback } else { return $v }
+  $v=[Environment]::GetEnvironmentVariable($name,'Process')
+  if([string]::IsNullOrWhiteSpace($v)){ $v=[Environment]::GetEnvironmentVariable($name,'User') }
+  if([string]::IsNullOrWhiteSpace($v)){ $v=[Environment]::GetEnvironmentVariable($name,'Machine') }
+  if([string]::IsNullOrWhiteSpace($v)){ $fallback } else { $v }
 }
 
 function New-HttpClient { param([int]$TimeoutMin = 8)
   Add-Type -AssemblyName System.Net.Http | Out-Null
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
   $h = New-Object System.Net.Http.HttpClientHandler
-
   $useProxy = $true
   if ($env:AI_USE_PROXY -and $env:AI_USE_PROXY.ToLower() -eq 'false') { $useProxy = $false }
   $proxyUrl = $null
@@ -27,31 +25,28 @@ function New-HttpClient { param([int]$TimeoutMin = 8)
     if ($env:HTTPS_PROXY) { $proxyUrl = $env:HTTPS_PROXY }
     elseif ($env:HTTP_PROXY) { $proxyUrl = $env:HTTP_PROXY }
   }
-  if ($proxyUrl) {
-    try { $wp = New-Object System.Net.WebProxy($proxyUrl); $h.Proxy = $wp; $h.UseProxy = $true } catch {}
-  } else { $h.UseProxy = $useProxy }
-
-  if ($env:AI_TLS_INSECURE -and $env:AI_TLS_INSECURE.ToLower() -eq 'true') {
-    try { $h.ServerCertificateCustomValidationCallback = { $true } } catch {}
-  }
-
+  if ($proxyUrl) { try { $h.Proxy = [System.Net.WebProxy]$proxyUrl; $h.UseProxy = $true } catch {} } else { $h.UseProxy = $useProxy }
+  if ($env:AI_TLS_INSECURE -and $env:AI_TLS_INSECURE.ToLower() -eq 'true') { try { $h.ServerCertificateCustomValidationCallback = { $true } } catch {} }
   $cli = New-Object System.Net.Http.HttpClient($h)
   if($TimeoutMin -le 0){ $TimeoutMin = 1 }
   $cli.Timeout = [TimeSpan]::FromMinutes($TimeoutMin)
   return $cli
 }
 
+function Find-Latest($dir,[string]$pat){
+  if(-not (Test-Path $dir)){ return $null }
+  Get-ChildItem $dir -File -Filter $pat -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Desc | Select-Object -First 1
+}
+
 function Resolve-PatchUrlFromObject($Obj){
   if(-not $Obj){ return $null }
   foreach($k in 'patch_url','result_url','artifact','zip_url','url'){
-    if($Obj.PSObject.Properties.Name -contains $k){
-      $v = $Obj.$k
-      if($v -and ($v -is [string]) -and $v.ToLower().StartsWith('http')){ return $v }
-    }
+    if($Obj.PSObject.Properties[$k]){ $v=$Obj.$k; if($v -and ($v -is [string]) -and $v.ToLower().StartsWith('http')){ return $v } }
   }
   if($Obj.result){
     foreach($k in 'patch_url','url'){
-      if($Obj.result.$k -and $Obj.result.$k.ToString().ToLower().StartsWith('http')){ return $Obj.result.$k }
+      if($Obj.result.PSObject.Properties[$k]){ $v=$Obj.result.$k; if($v -and $v.ToLower().StartsWith('http')){ return $v } }
     }
   }
   return $null
@@ -81,113 +76,106 @@ function Invoke-AiPoll {
       $res = $cli.SendAsync($req).GetAwaiter().GetResult()
       $code = [int]$res.StatusCode
       $body = $res.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-      Write-Host "[ai-http] poll ($code) → $url"
+      Write-Host ('ai-http poll ('+$code+') -> '+$url)
       $obj = $null; try{ $obj = $body | ConvertFrom-Json -ErrorAction SilentlyContinue }catch{}
-      $status = $null; if($obj){ foreach($k in 'status','state'){ if($obj.$k){ $status = $obj.$k.ToString().ToLower(); break } } }
-      if($status -in @('succeeded','success','done','ok')){
-        $purl = Resolve-PatchUrlFromObject $obj
-        return @{ Ok=$true; PatchUrl=$purl; Raw=$obj }
-      }
-      if($status -in @('failed','error')){ return @{ Ok=$false; PatchUrl=$null; Raw=$obj } }
+      $status = $null
+      if($obj){ foreach($k in 'status','state'){ if($obj.PSObject.Properties[$k]){ $status = $obj.$k.ToString().ToLower(); break } } }
+      if($status -in @('succeeded','success','done','ok')){ $purl = Resolve-PatchUrlFromObject $obj; return @{ Ok=$true; PatchUrl=$purl; Raw=$obj } }
+      if($status -in @('failed','error'))          { return @{ Ok=$false; PatchUrl=$null; Raw=$obj } }
       if((Get-Date) - $t0 -gt [TimeSpan]::FromSeconds($MaxSec)){ return @{ Ok=$false; PatchUrl=$null; Raw=$obj; Timeout=$true } }
       Start-Sleep -Seconds $EverySec
     }
   } finally { if($cli){ $cli.Dispose() } }
 }
 
-function Find-Latest($dir,[string]$pat){
-  if(-not (Test-Path $dir)){ return $null }
-  return Get-ChildItem $dir -File -Filter $pat -ErrorAction SilentlyContinue |
-         Sort-Object LastWriteTime -Desc | Select-Object -First 1
-}
-
-function Invoke-AiSubmit {
-  $endpoint = Get-Env 'AI_ENDPOINT' ''
-  if([string]::IsNullOrWhiteSpace($endpoint)){ throw "AI_ENDPOINT boş." }
-
-  $reqFile = Find-Latest $RequestsDir '*.json'
-  if(-not $reqFile){ throw "RequestsDir içinde JSON yok: $RequestsDir" }
-  $reqJson = Get-Content $reqFile.FullName -Raw -Encoding UTF8
-
-  $bundle = Find-Latest $RequestsDir '*.zip'
-  if(-not $bundle){ $bundle = Find-Latest (Join-Path (Split-Path $RequestsDir -Parent) 'bundle') '*.zip' }
-
-  $mode = (Get-Env 'AI_UPLOAD_MODE' 'json').ToLower()
-  $cli = New-HttpClient -TimeoutMin ([int](Get-Env 'AI_TIMEOUT_MIN' '8'))
-
-  $req = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::Post, $endpoint)
-  if($env:AI_API_KEY){
-    if($env:AI_AUTH_HEADER){ $req.Headers.Add($env:AI_AUTH_HEADER,$env:AI_API_KEY) }
-    else{
-      try{ $req.Headers.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer',$env:AI_API_KEY) }catch{}
-      $req.Headers.Remove('X-API-Key') | Out-Null; $req.Headers.Add('X-API-Key',$env:AI_API_KEY)
-    }
-  }
-
-  if($mode -eq 'multipart'){
-    $mp = New-Object System.Net.Http.MultipartFormDataContent
-    $jsonContent = New-Object System.Net.Http.StringContent($reqJson,[Text.UTF8Encoding]::UTF8,'application/json')
-    $mp.Add($jsonContent,'request')
-    if($bundle){
-      $bytes = [IO.File]::ReadAllBytes($bundle.FullName)
-      $bc = New-Object System.Net.Http.ByteArrayContent(,[byte[]]$bytes)
-      $bc.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('application/zip')
-      $mp.Add($bc,'bundle',$bundle.Name)
-    }
-    $req.Content = $mp
-  } else {
-    $req.Content = New-Object System.Net.Http.StringContent($reqJson,[Text.UTF8Encoding]::UTF8,'application/json')
-  }
-
-  $res = $cli.SendAsync($req).GetAwaiter().GetResult()
-  $code = [int]$res.StatusCode
-  $body = $res.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-  Write-Host "[ai-http] submit ($code) → $endpoint"
-  $obj = $null; try{ $obj = $body | ConvertFrom-Json -ErrorAction SilentlyContinue }catch{}
-  $id = $null
-  if($obj){ foreach($k in 'id','run_id','request_id'){ if($obj.$k){ $id = [string]$obj.$k; break } } }
-  if(-not $id){ $id = "mock-{0:yyyyMMddHHmmss}" -f (Get-Date) }  # sanity fallback
-  return @{ UploadOk = ($code -ge 200 -and $code -lt 300); Code=$code; Id=$id; Body=$body; Obj=$obj }
-}
-
 # ==== MAIN ====
-New-Item -ItemType Directory -Force $RequestsDir,$InboxDir,"_otokodlama\logs" | Out-Null
+New-Item -ItemType Directory -Force $RequestsDir,$InboxDir,"_otokodlama\\logs" | Out-Null
 
-$upl = Invoke-AiSubmit
-$uploadOk = $upl.UploadOk
-$id       = $upl.Id
-$lastBody = $upl.Body
+$endpoint = Get-Env 'AI_ENDPOINT' ''
+if([string]::IsNullOrWhiteSpace($endpoint)){ throw "AI_ENDPOINT is empty." }
 
+$reqFile = Find-Latest $RequestsDir '*.json'
+if(-not $reqFile){ throw "No JSON in: $RequestsDir" }
+$reqJson = Get-Content $reqFile.FullName -Raw -Encoding UTF8
+
+$bundle = Find-Latest $RequestsDir '*.zip'
+if(-not $bundle){ $bundle = Find-Latest (Join-Path (Split-Path $RequestsDir -Parent) 'bundle') '*.zip' }
+
+$mode = (Get-Env 'AI_UPLOAD_MODE' 'json').ToLower()
+$cli  = New-HttpClient -TimeoutMin ([int](Get-Env 'AI_TIMEOUT_MIN' '8'))
+
+$req = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::Post, $endpoint)
+if($env:AI_API_KEY){
+  if($env:AI_AUTH_HEADER){ $req.Headers.Add($env:AI_AUTH_HEADER,$env:AI_API_KEY) }
+  else{
+    try{ $req.Headers.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer',$env:AI_API_KEY) }catch{}
+    $req.Headers.Remove('X-API-Key') | Out-Null; $req.Headers.Add('X-API-Key',$env:AI_API_KEY)
+  }
+}
+
+if($mode -eq 'multipart'){
+  $mp = New-Object System.Net.Http.MultipartFormDataContent
+  $jsonContent = New-Object System.Net.Http.StringContent($reqJson,[Text.UTF8Encoding]::UTF8,'application/json')
+  $mp.Add($jsonContent,'request')
+  if($bundle){
+    $bytes = [IO.File]::ReadAllBytes($bundle.FullName)
+    $bc = New-Object System.Net.Http.ByteArrayContent(,[byte[]]$bytes)  # unary comma: arg spread engellendi
+    $bc.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('application/zip')
+    $mp.Add($bc,'bundle',$bundle.Name)
+  }
+  $req.Content = $mp
+} else {
+  $req.Content = New-Object System.Net.Http.StringContent($reqJson,[Text.UTF8Encoding]::UTF8,'application/json')
+}
+
+$res = $cli.SendAsync($req).GetAwaiter().GetResult()
+$code = [int]$res.StatusCode
+$body = $res.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+Write-Host ('ai-http submit ('+$code+') -> '+$endpoint)
+
+$obj = $null; try{ $obj = $body | ConvertFrom-Json -ErrorAction SilentlyContinue }catch{}
+$id = $null
+if($obj){
+  foreach($k in 'id','run_id','request_id'){
+    $p = $obj.PSObject.Properties[$k]
+    if($p -and $p.Value){ $id = [string]$p.Value; break }
+  }
+}
+if(-not $id){ $id = ('mock-{0:yyyyMMddHHmmss}' -f (Get-Date)) }
+
+$uploadOk = ($code -ge 200 -and $code -lt 300)
 if(-not $uploadOk){
-  Write-Host "[ai-http] submit FAIL ($($upl.Code)) — body (ilk 400): " + ($lastBody.Substring(0,[Math]::Min(400,$lastBody.Length)))
+  $first400 = if($body){ $body.Substring(0,[Math]::Min(400,$body.Length)) } else { '' }
+  Write-Host ('ai-http submit FAIL ('+$code+') body(0..400): '+$first400)
   return
 }
 
 # Poll skip?
 if ($env:AI_POLL_MODE -and $env:AI_POLL_MODE.ToLower() -eq 'skip') {
-  Write-Host "[ai-http] poll skipped (AI_POLL_MODE=skip)"
+  Write-Host 'ai-http poll skipped (AI_POLL_MODE=skip)'
   return
 }
 
-# status_url ya da template
-$statusUrl = $null; $respObj=$upl.Obj
-if ($respObj -and $respObj.status_url) { $statusUrl = [string]$respObj.status_url }
-if (-not $statusUrl) { $statusUrl = Get-Env 'AI_STATUS_TEMPLATE' '' }
-if ([string]::IsNullOrWhiteSpace($statusUrl)) { Write-Host "[ai-http] poll atlandı: status url/template yok."; return }
+# Poll
+$statusUrl = $null
+if($obj -and $obj.PSObject.Properties['status_url']){ $statusUrl = [string]$obj.status_url }
+if(-not $statusUrl){ $statusUrl = Get-Env 'AI_STATUS_TEMPLATE' '' }
+if([string]::IsNullOrWhiteSpace($statusUrl)){ Write-Host 'ai-http poll skipped: no status url/template'; return }
 
 $poll = Invoke-AiPoll -Id $id -StatusUrlOrTemplate $statusUrl
-if (-not $poll.Ok) {
-  Write-Host "[ai-http] poll FAIL" + $(if($poll.Timeout){' (timeout)'}else{''})
+if(-not $poll.Ok){
+  Write-Host ('ai-http poll FAIL'+$(if($poll.Timeout){' (timeout)'}else{''}))
   $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-  $diag = "[ai-http] poll FAIL`nstatus_url/template: $statusUrl`nraw: " + (($poll.Raw|ConvertTo-Json -Depth 10) 2>$null)
-  [IO.File]::WriteAllText((Join-Path "_otokodlama\logs" "ai_http_poll_$ts.txt"), $diag, [Text.UTF8Encoding]::new($false))
+  $diag = "[poll fail] status_or_tmpl="+$statusUrl+" raw="+ ((($poll.Raw|ConvertTo-Json -Depth 10) 2>$null) -replace "`r?`n",' ')
+  [IO.File]::WriteAllText((Join-Path "_otokodlama\\logs" ("ai_http_poll_"+$ts+".txt")), $diag, [Text.UTF8Encoding]::new($false))
   return
 }
 
-$purl = $poll.PatchUrl
-if (-not $purl) { Write-Host "[ai-http] patch url yok."; return }
+# Patch indir
 $cli2 = New-HttpClient -TimeoutMin 8
 try{
+  $purl = $poll.PatchUrl
+  if(-not $purl){ Write-Host 'ai-http patch url not found'; return }
   $req2 = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::Get, $purl)
   if($env:AI_API_KEY){
     if($env:AI_AUTH_HEADER){ $req2.Headers.Add($env:AI_AUTH_HEADER,$env:AI_API_KEY) }
@@ -197,10 +185,10 @@ try{
     }
   }
   $res2=$cli2.SendAsync($req2).GetAwaiter().GetResult()
-  if(-not $res2.IsSuccessStatusCode){ Write-Host "[ai-http] patch GET FAIL ($([int]$res2.StatusCode))"; return }
+  if(-not $res2.IsSuccessStatusCode){ Write-Host ('ai-http patch GET FAIL ('+[int]$res2.StatusCode+')'); return }
   $bytes = $res2.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-  $pname = "patch_{0}.zip" -f $id
-  $ppath = Join-Path $InboxDir $pname
-  [IO.File]::WriteAllBytes($ppath, $bytes)
-  Write-Host "[ai-http] patch indirildi → $ppath"
+  New-Item -ItemType Directory -Force $InboxDir | Out-Null
+  $ppath = Join-Path $InboxDir ('patch_'+$id+'.zip')
+  [IO.File]::WriteAllBytes($ppath,$bytes)
+  Write-Host ('ai-http patch downloaded -> '+$ppath)
 } finally { if($cli2){ $cli2.Dispose() } }
