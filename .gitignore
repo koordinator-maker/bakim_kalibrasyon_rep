@@ -44,3 +44,9 @@ _otokodlama/**
 *.bak
 >>>>>>> origin/main
 node_modules/
+
+# === Otokodlama ===
+.env
+_otokodlama/
+_mock/
+*.bak_*

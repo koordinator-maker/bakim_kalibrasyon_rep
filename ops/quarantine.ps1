@@ -1,4 +1,4 @@
-﻿# === quarantine.ps1 (PS5.1 compatible) ===
+﻿# === quarantine.ps1 (PS5.1 - script mode) ===
 $script:RepoRoot = Split-Path -Parent $PSScriptRoot
 $script:QuarantineFile = Join-Path $script:RepoRoot "_otokodlama\quarantine.json"
 
@@ -107,4 +107,4 @@ function Test-QuarantineBlock {
   return $false
 }
 
-Export-ModuleMember -Function Get-Quarantine, Update-Quarantine, Test-QuarantineBlock
+# Export yok (script mode)
