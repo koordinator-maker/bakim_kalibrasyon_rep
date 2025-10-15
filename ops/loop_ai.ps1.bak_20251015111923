@@ -5,9 +5,7 @@ param(
   [int]$MaxRounds = 999,
   [int]$InboxWaitSeconds = 600
 )
-if (-not $script:CurrentTaskId -or [string]::IsNullOrWhiteSpace($script:CurrentTaskId)) {
-  $script:CurrentTaskId = $TaskId
-}. "$PSScriptRoot\quarantine.ps1"
+. "$PSScriptRoot\quarantine.ps1"
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
