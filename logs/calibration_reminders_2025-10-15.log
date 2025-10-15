@@ -1,0 +1,22 @@
+[START] 15/10/2025  9:00:01.92 
+Running: venv\Scripts\python.exe manage.py calibration_reminders --days 30 --settings=core.settings_maintenance 
+Could not find platform independent libraries <prefix>
+Traceback (most recent call last):
+  File "C:\dev\bakim_kalibrasyon\manage.py", line 15, in main
+    from django.core.management import execute_from_command_line
+ImportError: cannot import name 'execute_from_command_line' from 'django.core.management' (unknown location)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\dev\bakim_kalibrasyon\manage.py", line 26, in <module>
+    main()
+    ~~~~^^
+  File "C:\dev\bakim_kalibrasyon\manage.py", line 17, in main
+    raise ImportError(
+    ...<3 lines>...
+    ) from exc
+ImportError: Couldn't import Django. Are you sure it's installed and available on your PYTHONPATH environment variable? Did you forget to activate a virtual environment?
+ExitCode=1 
+[END] 15/10/2025  9:00:02.09 
+ 
