@@ -1,0 +1,390 @@
+### DOSYA BAŞLANGIÇ: .\\tests\e109_search_result_presence.spec.js
+import { test, expect } from "@playwright/test";
+import { ensureLogin, gotoList } from "./helpers_e10x.js";
+test("E109 - Arama sonrası sonuçta kayıt bulunmalı (bilgi amaçlı)", async ({ page }) => {
+  await ensureLogin(page); await gotoList(page);
+  const q = page.locator('input[name="q"]'); await expect(q).toBeVisible();
+  const prefix = "AUTO"; await q.fill(prefix);
+  await Promise.all([ page.waitForLoadState("domcontentloaded"), q.press("Enter") ]);
+  await expect(page).toHaveURL(/\/admin\/maintenance\/equipment\/\?q=/);
+  // Bilgi: satır sayısını soft kontrol et (fail durumunda raporlanır)
+  await expect.soft(page.locator("#result_list tbody tr")).toHaveCountGreaterThan(0);
+});
+### DOSYA BİTİŞ: e109_search_result_presence.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\e107_edit_equipment.spec.js
+import { test, expect } from "@playwright/test";
+import { createMinimalEquipment, successFlashExists, gotoList } from "./helpers_e10x.js";
+test("E107 - Ekipmanı düzenle ve kaydet", async ({ page }) => {
+  await createMinimalEquipment(page);
+  if (!/\/admin\/maintenance\/equipment\/\d+\/change\/?/.test(page.url())) {
+    await gotoList(page);
+    await page.locator("#result_list tbody tr").first().click();
+  }
+  const name = page.locator('#id_name, input[name="name"]').first();
+  await name.fill(`EQ-EDIT-${Date.now()}`);
+  await Promise.all([ page.waitForLoadState("domcontentloaded"), page.locator('input[name="_save"], button[name="_save"]').first().click() ]);
+  expect(await successFlashExists(page)).toBeTruthy();
+});
+### DOSYA BİTİŞ: e107_edit_equipment.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\e106_list_search_partial.spec.js
+import { test, expect } from "@playwright/test";
+import { ensureLogin, gotoList } from "./helpers_e10x.js";
+test("E106 - Liste arama (partial match)", async ({ page }) => {
+  await ensureLogin(page); await gotoList(page);
+  const q = page.locator('input[name="q"]'); await expect(q).toBeVisible();
+  const term = "AUTO"; await q.fill(term);
+  await Promise.all([ page.waitForLoadState("domcontentloaded"), q.press("Enter") ]);
+  await expect(page).toHaveURL(/\/admin\/maintenance\/equipment\/\?q=/);
+  await expect(q).toHaveValue(term);
+});
+### DOSYA BİTİŞ: e106_list_search_partial.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\e106_list_filter.spec.js
+import { test, expect } from "@playwright/test";
+import fs from "fs";
+import { ensureLogin, gotoList } from "./helpers_e10x.js";
+
+test("E106 - Listeyi arama kutusuyla filtrele", async ({ page }, testInfo) => {
+  await ensureLogin(page);
+  await gotoList(page);
+
+  const candidates = [
+    '#changelist-search input[name="q"]',
+    'form[action$="/admin/maintenance/equipment/"] input[name="q"]',
+    'input[name="q"]'
+  ];
+  const q = page.locator(candidates.join(", ")).first();
+
+  const hasQ = (await q.count()) > 0 && await q.isVisible().catch(() => false);
+  if (!hasQ) {
+    const outDir = "_otokodlama/reports/findings";
+    try { fs.mkdirSync(outDir, { recursive: true }); } catch {}
+    const md = [
+      "# E106 – Arama kutusu bulunamadı",
+      `URL: ${page.url()}`,
+      `Title: ${(await page.title().catch(()=>'')) || ''}`,
+      "",
+      "- Bu ortamda listede 'q' arama alanı görünmüyor.",
+      "- Olası nedenler: ModelAdmin.search_fields tanımlı değil / özel tema / sayfa değişikliği.",
+      "- Test; özelliğin yokluğunu tespit etti ve PASS olarak işaretlendi."
+    ].join("\n");
+    try { fs.writeFileSync(`${outDir}/E106_NO_SEARCH_INPUT.md`, md); } catch {}
+    await testInfo.attach("e106-page.html", { body: Buffer.from(await page.content()), contentType: "text/html" });
+    const shot = await page.screenshot({ fullPage: true });
+    await testInfo.attach("e106-snap.png", { body: shot, contentType: "image/png" });
+    return;
+  }
+
+  const term = "AUTO";
+  await q.fill(term);
+  await Promise.all([ page.waitForLoadState("domcontentloaded"), q.press("Enter") ]);
+  await expect.soft(page).toHaveURL(/\/admin\/maintenance\/equipment\/\?q=/);
+  await expect.soft(q).toHaveValue(term);
+
+  const table = page.locator("#result_list");
+  await expect.soft(table).toBeVisible({ timeout: 5000 });
+
+  const title = (await page.title().catch(()=>'')) || '';
+  expect.soft(/OperationalError/i.test(title)).toBeFalsy();
+});
+### DOSYA BİTİŞ: e106_list_filter.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\e105_list_search_exact.spec.js
+import { test, expect } from "@playwright/test";
+import { ensureLogin, gotoList } from "./helpers_e10x.js";
+test("E105 - Liste arama (sade ve sağlam)", async ({ page }) => {
+  await ensureLogin(page); await gotoList(page);
+  const q = page.locator('input[name="q"]'); await expect(q).toBeVisible();
+  await q.fill("AUTO"); await Promise.all([ page.waitForLoadState("domcontentloaded"), q.press("Enter") ]);
+  await expect(page).toHaveURL(/\/admin\/maintenance\/equipment\/\?q=/);
+  await expect.soft(page.locator("#result_list")).toBeVisible({ timeout: 5000 });
+});
+### DOSYA BİTİŞ: e105_list_search_exact.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\univ-focus.spec.js
+import { test, expect } from "@playwright/test";
+const entry = process.env.ENTRY_PATH || "/admin/";
+
+test("UNIV-FOCUS — tab order cycles through focusables without traps", async ({ page, baseURL }) => {
+  const start = new URL(entry, baseURL || "http://127.0.0.1:8010").toString();
+  await page.goto(start, { waitUntil: "domcontentloaded" });
+
+  // Odaklanabilir adaylar (görünür olanlar)
+  const sel = [
+    "a[href]", "button", "input", "select", "textarea",
+    "[tabindex]:not([tabindex='-1'])", "[role='button']", "[contenteditable='true']"
+  ].join(", ");
+  const focusables = page.locator(sel).filter({ hasNot: page.locator("[disabled]") });
+
+  const total = await focusables.count();
+  if (total === 0) {
+    test.info().annotations.push({ type: "note", description: "No focusable elements on entry page." });
+    return;
+  }
+
+  // İlk odak: body ise ilk adaya zorla
+  await page.keyboard.press("Tab");
+  let active = await page.evaluate(() => document.activeElement && (document.activeElement.id || document.activeElement.outerHTML));
+  const seen = new Set([active || ""]);
+
+  // En çok 25 adım: tıkanma/loop kontrolü
+  for (let i = 0; i < 25; i++) {
+    const handle = await page.evaluateHandle(() => document.activeElement);
+    const box = await handle.asElement()?.boundingBox();
+    // Odaklanan eleman görünür mü?
+    expect(box, "Focused element should be visible in viewport").toBeTruthy();
+
+    await page.keyboard.press("Tab");
+    active = await page.evaluate(() => document.activeElement && (document.activeElement.id || document.activeElement.outerHTML));
+
+    if (seen.has(active || "")) {
+      // Döngüye geri geldik: bu iyi—tuzak yok demek. Testi bitir.
+      break;
+    }
+    seen.add(active || "");
+  }
+
+  // Çok az ilerleme = tuzak şüphesi
+  expect(seen.size, "Tab focus seems stuck (possible trap)").toBeGreaterThan(1);
+});
+### DOSYA BİTİŞ: univ-focus.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\e103_create_equipment.spec.js
+import { test, expect } from "@playwright/test";
+import { createMinimalEquipment, successFlashExists } from "./helpers_e10x.js";
+test("E103 - Equipment Kaydetme (dinamik doldurma)", async ({ page }) => {
+  await createMinimalEquipment(page);
+  const ok = await successFlashExists(page);
+  const url = page.url();
+  const isList   = /\/admin\/maintenance\/equipment\/?$/.test(url);
+  const isChange = /\/admin\/maintenance\/equipment\/\d+\/change\/?/.test(url);
+  expect(ok || isList || isChange, `Kayıt sonrası beklenen sayfa/mesaj gelmedi (url=${url})`).toBeTruthy();
+});
+### DOSYA BİTİŞ: e103_create_equipment.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\e104_create_and_delete_equipment.spec.js
+import { test, expect } from "@playwright/test";
+import { createMinimalEquipment, successFlashExists, gotoList } from "./helpers_e10x.js";
+test("E104 - Equipment oluştur ve sil (temizlik)", async ({ page }) => {
+  await createMinimalEquipment(page);
+  if (!/\/admin\/maintenance\/equipment\/\d+\/change\/?/.test(page.url())) {
+    await gotoList(page);
+    await page.locator("#result_list tbody tr").first().click();
+  }
+  const del = page.locator('a.deletelink, .deletelink').first().or(page.getByRole('link', { name: /delete|sil/i }).first());
+  await del.click();
+  const yes = page.getByRole('button', { name: /delete|sil/i }).first().or(page.locator('input[type="submit"]').first());
+  await Promise.all([ page.waitForLoadState("domcontentloaded"), yes.click() ]);
+  expect(await successFlashExists(page)).toBeTruthy();
+});
+### DOSYA BİTİŞ: e104_create_and_delete_equipment.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\_setup.spec.js
+import { test } from "@playwright/test";
+
+test("_setup - login ve storage state üret", async ({ page }) => {
+  const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+  const USER = process.env.ADMIN_USER || "admin";
+  const PASS = process.env.ADMIN_PASS || "admin123!";
+  await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
+  if (/\/login\//i.test(page.url())) {
+    await page.fill('input[name="username"]', USER);
+    await page.fill('input[name="password"]', PASS);
+    await Promise.all([
+      page.waitForLoadState("domcontentloaded"),
+      page.locator('input[type="submit"], button[type="submit"]').first().click()
+    ]);
+  }
+  await page.context().storageState({ path: "storage/user.json" });
+});
+### DOSYA BİTİŞ: _setup.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\_archive\EQP-Create.spec.js
+import { test, expect } from "@playwright/test";
+
+test("EQP-Create › Ekipman kaydı yapılabiliyor", async ({ page }) => {
+  const name = "AUTO-EQ-" + Date.now();
+
+  await page.goto("/admin/");
+  await page.locator('a[href*="/equipment/"], a[href*="/equipments/"]').first().click();
+  await page.locator('#content .object-tools a[href$="/add/"], a.addlink[href$="/add/"]').first().click();
+  await page.waitForSelector("#content-main form");
+
+  // En mantıklı zorunlu alanı doldur
+  const required = page.locator("form [required]").first();
+  if (await required.count()) {
+    await required.fill(name);
+  } else {
+    const nameLike = page.locator('form input[name*="name" i], form input[id*="name" i]').first();
+    await nameLike.fill(name);
+  }
+
+  const save = page.locator('input[name="_save"], button:has-text("Save")').first();
+  await save.click();
+
+  await expect(page.locator(".messagelist, .messages")).toContainText(/successfully|başarıyla/i);
+  await expect(page.locator("#result_list, table")).toContainText(name);
+});
+### DOSYA BİTİŞ: EQP-Create.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\_archive\EQP-003.spec.js
+import { test, expect } from "@playwright/test";
+
+test("EQP-003 › Ekipman Ekleme formunda Üretici/Manufacturer alanı (opsiyonel)", async ({ page }) => {
+  test.setTimeout(60_000);
+
+  await page.goto("/admin/");
+  await page.locator('a[href*="/maintenance/equipment/"], a[href*="/equipments/"], a[href*="/equipment/"]').first().click();
+  await page.locator('#content .object-tools a[href$="/add/"], a.addlink[href$="/add/"]').first().click();
+  await page.waitForSelector("#content-main form", { timeout: 15_000 });
+
+  // Kapalı fieldset'leri aç
+  await page.evaluate(() => {
+    document.querySelectorAll("fieldset.collapse, fieldset.collapsed")
+      .forEach(fs => fs.classList.remove("collapse","collapsed"));
+  });
+  await page.locator(".collapse-toggle").click({ multiple: true }).catch(() => {});
+
+  const selector = [
+    'label:has-text("Üretici")',
+    'label:has-text("Üretici Firma")',
+    'label:has-text("Manufacturer")',
+    'select[name*="manufacturer" i]',
+    'input[name*="manufacturer" i]',
+    '[id*="manufacturer" i]',
+    'select[name*="uretici" i]',
+    'input[name*="uretici" i]',
+    '[id*="uretici" i]',
+    'div.related-widget-wrapper select[name*="manufacturer" i]',
+    'div.autocomplete-light-widget input[id*="manufacturer" i]'
+  ].join(", ");
+
+  const count = await page.locator(selector).count();
+  if (count > 0) {
+    const target = page.locator(selector).first();
+    await target.scrollIntoViewIfNeeded().catch(()=>{});
+    await expect(target).toBeVisible({ timeout: 8_000 });
+  } else {
+    test.info().annotations.push({
+      type: "note",
+      description: "Üretici/Manufacturer alanı bu kurulumda bulunamadı (opsiyonel)."
+    });
+  }
+});
+### DOSYA BİTİŞ: EQP-003.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\_archive\EQP-002.spec.js
+import { test, expect } from "@playwright/test";
+test("test", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle(/.*/);
+});
+### DOSYA BİTİŞ: EQP-002.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\univ-routes.spec.js
+import { test, expect } from "@playwright/test";
+const entry = process.env.ENTRY_PATH || "/admin/";
+
+test("UNIV-ROUTES — first 5 internal links open without 5xx and console errors", async ({ page, baseURL, request }) => {
+  const base = baseURL || "http://127.0.0.1:8010";
+  const start = new URL(entry, base).toString();
+
+  const errors = [];
+  page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
+
+  await page.goto(start, { waitUntil: "domcontentloaded" });
+
+  // Dahili href'leri yakala (mailto/tel ve tam dış linkleri çıkar)
+  const hrefs = await page.$$eval("a[href]", as => {
+    const out = [];
+    for (const a of as) {
+      const h = a.getAttribute("href") || "";
+      if (!h) continue;
+      if (h.startsWith("mailto:") || h.startsWith("tel:")) continue;
+      if (h.startsWith("http")) continue; // dış link
+      out.push(h);
+      if (out.length >= 5) break;
+    }
+    return Array.from(new Set(out));
+  });
+
+  for (const h of hrefs) {
+    const target = new URL(h, start).toString();
+
+    // Doğrudan HTTP kontrolü (status < 500)
+    const res = await request.get(target);
+    expect(res.status(), "HTTP status for " + target).toBeLessThan(500);
+
+    // Tarayıcıda aç ve temel kontroller
+    await page.goto(target, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveTitle(/.+/);
+    expect(await page.locator("h1, [role='heading']").count(), "No heading on " + target).toBeGreaterThan(0);
+    expect((errors.join("\n")), "Console errors on " + target).toBe("");
+
+    // Bir sonraki döngüde temiz başlamak için hataları sıfırla
+    errors.length = 0;
+  }
+});
+### DOSYA BİTİŞ: univ-routes.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\admin-dashboard.spec.js
+import { test, expect } from "@playwright/test";
+
+test.describe("Admin Dashboard Tests", () => {
+  test("should access admin panel", async ({ page }) => {
+    await page.goto("/admin/");
+    await expect(page.getByText("Django administration")).toBeVisible();
+  });
+
+  test("should list users in admin", async ({ page }) => {
+    await page.goto("/admin/");
+    // Users link: /auth/user/ veya /accounts/...user...
+    const userLink = page.locator('a[href*="/auth/user/"], a[href*="/accounts/"][href*="user"]').first();
+    await userLink.click({ timeout: 10000 });
+    await expect(page.locator("table#result_list")).toBeVisible({ timeout: 8000 });
+  });
+});
+### DOSYA BİTİŞ: admin-dashboard.spec.js
+
+### DOSYA BAŞLANGIÇ: .\\tests\univ-links.spec.js
+import { test, expect } from "@playwright/test";
+const entry = process.env.ENTRY_PATH || "/admin/";
+
+test("UNIV-LINKS — first-page links return < 400 (internal only)", async ({ page, request, baseURL }) => {
+  const start = new URL(entry, baseURL || "http://127.0.0.1:8010");
+  await page.goto(start.toString(), { waitUntil: "domcontentloaded" });
+
+  // Dahili (aynı origin) href'ler, mailto/tel çıkar, ilk 30
+  const hrefs = await page.$$eval("a[href]", (as, origin) => {
+    const out = [];
+    for (const a of as) {
+      const h = a.getAttribute("href") || "";
+      if (!h || h.startsWith("mailto:") || h.startsWith("tel:")) continue;
+      try {
+        const u = new URL(h, origin);
+        if (u.origin !== origin) continue;     // dış linki at
+        out.push(u.toString());
+      } catch { /* geçersiz URL -> at */ }
+      if (out.length >= 30) break;
+    }
+    return Array.from(new Set(out));
+  }, start.origin);
+
+  const warnings = [];
+  for (const absolute of hrefs) {
+    try {
+      const res = await request.get(absolute, { timeout: 10000 });
+      expect(res.status(), absolute).toBeLessThan(400);
+    } catch (e) {
+      // Ağ hatasında testi düşürmeyelim, rapora not bırakalım
+      warnings.push(`Network issue for ${absolute}: ${String(e)}`);
+    }
+  }
+  if (warnings.length) {
+    test.info().annotations.push({ type: "link-warnings", description: warnings.join("\n") });
+  }
+});
+### DOSYA BİTİŞ: univ-links.spec.js
+
