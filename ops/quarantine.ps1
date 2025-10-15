@@ -1,35 +1,57 @@
-$ErrorActionPreference = "Stop"
-$Root = if ($PSScriptRoot) { Split-Path -Parent $PSScriptRoot } else { (Get-Location).Path }
-$StateDir = Join-Path $Root "_otokodlama\state"
-$QueueDir = Join-Path $Root "_otokodlama\ai_queue"
-$QuaranDir= Join-Path $Root "_otokodlama\quarantine"
-$NotifyDir= Join-Path $Root "_otokodlama\reports\notify"
-New-Item -ItemType Directory -Force $StateDir,$QueueDir,$QuaranDir,$NotifyDir | Out-Null
-$QPath  = Join-Path $StateDir "quarantine.json"
-$Events = Join-Path $QueueDir "events.jsonl"
-function _W([string]$p,[string]$t){ $e=[Text.UTF8Encoding]::new($false); [IO.File]::WriteAllText($p,$t,$e) }
-function _R([string]$p){ if(Test-Path $p){ Get-Content $p -Raw -Encoding UTF8 } else { "" } }
-function Load-Q { if(Test-Path $QPath){ (_R $QPath | ConvertFrom-Json) } else { @{ tasks=@{} } } }
-function Save-Q($q){ _W $QPath (($q|ConvertTo-Json -Depth 10)) }
-function Is-Quarantined([string]$TaskId){ $q=Load-Q; return [bool]($q.tasks.$TaskId -and $q.tasks.$TaskId.quarantined) }
-function Add-AIEvent([string]$TaskId,[string]$Kind,[string]$Detail,[hashtable]$Meta=@{}){ $o=@{taskId=$TaskId;kind=$Kind;detail=$Detail;meta=$Meta;ts=(Get-Date).ToString("s")}; Add-Content -LiteralPath $Events -Value (($o|ConvertTo-Json -Depth 8)) -Encoding UTF8 }
-function Inc-Attempt([string]$TaskId,[bool]$Pass){
-  if([string]::IsNullOrWhiteSpace($TaskId)){ return @{} }
-  $q=Load-Q; if(-not $q.tasks){ $q.tasks=@{} }
-  if(-not $q.tasks.$TaskId){ $q.tasks.$TaskId=@{attempts=0;fails=0;quarantined=$false;first_ts="";last_ts=""} }
-  $it=$q.tasks.$TaskId; if(-not $it.first_ts){ $it.first_ts=(Get-Date).ToString("s") }
-  $it.attempts++; if(-not $Pass){ $it.fails++ }; $it.last_ts=(Get-Date).ToString("s")
-  if(-not $Pass -and $it.fails -ge 15 -and -not $it.quarantined){
-    $it.quarantined=$true; _W (Join-Path $QuaranDir ("$TaskId.marker")) ("quarantined "+(Get-Date).ToString("s"))
-    Add-AIEvent -TaskId $TaskId -Kind "quarantine" -Detail "15 fail eşiği aşıldı" -Meta @{fails=$it.fails;attempts=$it.attempts}
-  }
-  Save-Q $q; return $it
+﻿Set-StrictMode -Version Latest
+$ErrorActionPreference='Stop'
+
+function Get-Env([string]$name,[string]$fallback){
+  # PS5.1 güvenli env okuma (Process→User→Machine)
+  $v = [Environment]::GetEnvironmentVariable($name,'Process')
+  if([string]::IsNullOrWhiteSpace($v)){ $v = [Environment]::GetEnvironmentVariable($name,'User') }
+  if([string]::IsNullOrWhiteSpace($v)){ $v = [Environment]::GetEnvironmentVariable($name,'Machine') }
+  if([string]::IsNullOrWhiteSpace($v)){ return $fallback } else { return $v }
 }
-function Emit-Queue-Summary {
-  $q=Load-Q; $rows=@(); foreach($k in $q.tasks.Keys){ $t=$q.tasks.$k; $rows+=[pscustomobject]@{TaskId=$k;Attempts=$t.attempts;Fails=$t.fails;Quarantine=$t.quarantined} }
-  $top=$rows|Sort-Object Fails -Descending|Select-Object -First 5
-  $lines=@("# AI Kuyruğu / Karantina Özeti",(Get-Date).ToString("s"),"")
-  foreach($r in $top){ $lines+=("- {0}  (fails={1}, attempts={2}, quarantine={3})" -f $r.TaskId,$r.Fails,$r.Attempts,$r.Quarantine) }
-  $out=Join-Path $NotifyDir ("summary_ai_queue_"+(Get-Date -Format "yyyyMMdd-HHmmss")+".txt")
-  _W $out ($lines -join "`r`n"); return $out
+
+function Initialize-Quarantine {
+  param([string]$Root = "_otokodlama")
+  $stateDir = Join-Path $Root "state"
+  $qtDir    = Join-Path $Root "quarantine"
+  $repDir   = Join-Path $Root "reports\notify"
+  New-Item -ItemType Directory -Force $stateDir,$qtDir,$repDir | Out-Null
+  $state = Join-Path $stateDir "quarantine_state.json"
+  if(-not (Test-Path $state)){ '{}' | Set-Content -Encoding utf8 -Path $state }
+  return @{ StatePath=$state; QtDir=$qtDir; RepDir=$repDir }
+}
+
+function Update-Quarantine {
+  param(
+    [Parameter(Mandatory=$true)][string]$TaskId,
+    [Parameter(Mandatory=$true)][ValidateSet('Success','Fail')]$Outcome,
+    [int]$Threshold = $( [int](Get-Env 'QUARANTINE_THRESHOLD' '15') )
+  )
+  $meta = Initialize-Quarantine
+  $statePath = $meta.StatePath
+  $obj = Get-Content $statePath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction SilentlyContinue
+  if(-not $obj){ $obj = @{} }
+
+  if(-not $obj.ContainsKey($TaskId)){ $obj.$TaskId = @{ fails = 0; quarantined = $false } }
+  $rec = $obj.$TaskId
+
+  if($Outcome -eq 'Success'){ $rec.fails = 0 } else { $rec.fails = [int]$rec.fails + 1 }
+
+  $now = Get-Date
+  $qJustNow = $false
+  if((-not $rec.quarantined) -and $rec.fails -ge $Threshold){
+    $rec.quarantined = $true
+    $qJustNow = $true
+    $csv = Join-Path $meta.QtDir "quarantine.csv"
+    $line = '{0},{1},{2},{3}' -f $now.ToString('s'),$TaskId,$rec.fails,$Threshold
+    Add-Content -Encoding utf8 -Path $csv -Value $line
+    $sum = Join-Path $meta.RepDir ("ai_queue_summary_{0}.txt" -f $now.ToString('yyyyMMdd'))
+    Add-Content -Encoding utf8 -Path $sum -Value ("[{0}] QUARANTINE → {1} (fails={2}/{3})" -f $now.ToString('HH:mm:ss'),$TaskId,$rec.fails,$Threshold)
+  }
+
+  ($obj | ConvertTo-Json -Depth 5) | Set-Content -Encoding utf8 -Path $statePath
+
+  [pscustomobject]@{
+    TaskId=$TaskId; Fails=[int]$rec.fails; Threshold=$Threshold
+    Quarantined=[bool]$rec.quarantined; JustQuarantined=$qJustNow
+  }
 }

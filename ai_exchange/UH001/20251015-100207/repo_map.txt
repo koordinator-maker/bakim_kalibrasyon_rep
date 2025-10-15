@@ -1,0 +1,6 @@
+# [templates]
+C:\dev\bakim_kalibrasyon\templates\base.html
+C:\dev\bakim_kalibrasyon\templates\_form_template.html
+C:\dev\bakim_kalibrasyon\templates\admin\base_site.html
+# [static]
+C:\dev\bakim_kalibrasyon\static\css\base.css
