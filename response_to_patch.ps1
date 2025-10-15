@@ -34,7 +34,10 @@ try {
   if($patchData.files){
     # Dosya bazlı patch
     foreach($file in $patchData.files){
-      $filePath = Join-Path $patchPath $file.path
+      
+      # Path normalizasyonu (C:\... -> relative)
+      $filePath = $file.path -replace '^[A-Z]:[/\\]', '' -replace '^[/\\]', ''
+      $filePath = Join-Path $patchPath $filePath
       $fileDir = Split-Path $filePath -Parent
       if($fileDir -and !(Test-Path $fileDir)){ 
         New-Item -ItemType Directory -Force $fileDir | Out-Null 
