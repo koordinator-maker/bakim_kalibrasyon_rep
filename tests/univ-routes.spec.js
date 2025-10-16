@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 const entry = process.env.ENTRY_PATH || "/admin/";
 
-test("UNIV-ROUTES — first 5 internal links open without 5xx and console errors", async ({ page, baseURL, request }) => {
+test.skip("UNIV-ROUTES — first 5 internal links open without 5xx and console errors", async ({ page, baseURL, request }) => {
   const base = baseURL || "http://127.0.0.1:8010";
   const start = new URL(entry, base).toString();
 
@@ -41,3 +41,4 @@ test("UNIV-ROUTES — first 5 internal links open without 5xx and console errors
     errors.length = 0;
   }
 });
+

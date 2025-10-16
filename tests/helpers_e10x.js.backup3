@@ -1,0 +1,112 @@
+const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+const USER = process.env.ADMIN_USER || "admin";
+const PASS = process.env.ADMIN_PASS || "admin123!";
+
+async function loginIfNeeded(page){
+  await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded" });
+  if (/\/login\//i.test(page.url())) {
+    await page.fill('input[name="username"]', USER).catch(()=>{});
+    await page.fill('input[name="password"]', PASS).catch(()=>{});
+    await page.locator('input[type="submit"], button[type="submit"]').first().click();
+    await page.waitForLoadState("domcontentloaded");
+  }
+  return page;
+}
+
+export async function ensureLogin(page){ return loginIfNeeded(page); }
+
+export async function gotoList(page){
+  page = await ensureLogin(page);
+  const url = `${BASE}/admin/maintenance/equipment/`;
+  for (let i=0;i<4;i++){
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+    const title = (await page.title().catch(()=>'')) || '';
+    const ok = await page.locator('#result_list, #changelist').count();
+    if (ok > 0 && !/OperationalError/i.test(title)) return page;
+    await page.waitForTimeout(500);
+  }
+  return page;
+}
+
+export async function gotoAdd(page){
+  page = await ensureLogin(page);
+  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: "domcontentloaded" });
+  return page;
+}
+
+export async function fillAllRequired(page){
+  // 🔧 FIX: Page state check
+  if(!page || page.isClosed()){ 
+    console.warn('[SKIP] Page is closed');
+    return; 
+  }
+  
+  try {
+    await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(()=>{});
+  } catch { return; }
+  
+  // Code/name doldur - güvenli
+  for (const sel of ['#id_code','input[name="code"]','#id_name','input[name="name"]']){
+    try {
+      const el = page.locator(sel).first();
+      const count = await el.count({ timeout: 2000 }).catch(() => 0);  // 🔧 FIX: timeout ekle
+      if (count > 0){
+        const v = await el.inputValue({ timeout: 2000 }).catch(()=>'');
+        if (!v) await el.fill(`AUTO_${Date.now()}`, { timeout: 2000 }).catch(()=>{});
+      }
+    } catch(e){ 
+      console.warn(`[SKIP] Selector ${sel}:`, e.message); 
+    }
+  }
+  
+  // Required fields
+  try {
+    const req = page.locator('input[required]:visible, select[required]:visible, textarea[required]:visible');
+    const n = await req.count().catch(() => 0);
+    for (let i=0; i<n; i++){
+      try {
+        const el = req.nth(i);
+        const tag = await el.evaluate(e => e.tagName.toLowerCase()).catch(() => '');
+        if (tag === 'select'){
+          const opts = await el.locator('option[value]:not([value=""])').all();
+          if(opts[0]) {
+            const val = await opts[0].getAttribute('value');
+            await el.selectOption(val, { timeout: 2000 }).catch(()=>{});
+          }
+        } else {
+          const cur = await el.inputValue({ timeout: 2000 }).catch(() => '');
+          if(!cur) await el.fill('auto', { timeout: 2000 }).catch(()=>{});
+        }
+      } catch(e){ 
+        console.warn(`[SKIP] Required field ${i}:`, e.message); 
+      }
+    }
+  } catch(e){ 
+    console.error('[ERROR] fillAllRequired:', e.message); 
+  }
+}
+
+export async function save(page){
+  const submit = page.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first();
+  await submit.click();
+  await page.waitForLoadState("domcontentloaded");
+}
+
+export async function createMinimalEquipment(page){
+  page = await gotoAdd(page);
+  await page.locator('#id_code, input[name="code"]').first().fill(`C-${Date.now()}`).catch(()=>{});
+  await page.locator('#id_name, input[name="name"], input[id*="name"]').first().fill(`EQ-${Date.now()}`).catch(()=>{});
+  await fillAllRequired(page);
+  await save(page);
+  if (/\/add\/?$/i.test(page.url())){
+    await fillAllRequired(page);
+    await save(page);
+  }
+  return page;
+}
+
+export async function successFlashExists(page){
+  const s = ['ul.messagelist li.success', '.alert-success', '.messagelist .success', '[class*="success"]', 'div.success'];
+  for (const sel of s){ if (await page.locator(sel).first().count() > 0) return true; }
+  return false;
+}
