@@ -14,3 +14,4 @@ test.describe("Admin Dashboard Tests", () => {
     await expect(page.locator("table#result_list")).toBeVisible({ timeout: 8000 });
   });
 });
+

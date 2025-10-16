@@ -1,4 +1,4 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 test("EQP-003 › Ekipman Ekleme formunda Üretici/Manufacturer alanı (opsiyonel)", async ({ page }) => {
   test.setTimeout(60_000);
@@ -41,3 +41,4 @@ test("EQP-003 › Ekipman Ekleme formunda Üretici/Manufacturer alanı (opsiyone
     });
   }
 });
+

@@ -1,4 +1,4 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
 test("EQP-Create › Ekipman kaydı yapılabiliyor", async ({ page }) => {
   const name = "AUTO-EQ-" + Date.now();
@@ -23,3 +23,4 @@ test("EQP-Create › Ekipman kaydı yapılabiliyor", async ({ page }) => {
   await expect(page.locator(".messagelist, .messages")).toContainText(/successfully|başarıyla/i);
   await expect(page.locator("#result_list, table")).toContainText(name);
 });
+
