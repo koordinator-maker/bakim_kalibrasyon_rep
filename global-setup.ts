@@ -1,24 +1,39 @@
-﻿import { chromium } from "@playwright/test";
+import { chromium, FullConfig } from "@playwright/test";
 
-export default async () => {
+async function globalSetup(config: FullConfig) {
+  const { baseURL } = config.projects[0].use;
+  
+  console.log("=== Global Setup: Creating admin login session ===");
+  
   const browser = await chromium.launch();
   const context = await browser.newContext();
   const page = await context.newPage();
-  const base = process.env.BASE_URL || "http://127.0.0.1:8010";
 
-  await page.goto(base + "/admin/");
-  await page.fill("#id_username", process.env.ADMIN_USER || "");
-  await page.fill("#id_password", process.env.ADMIN_PASS || "");
+  // Admin login sayfasına git
+  await page.goto(`${baseURL}/admin/`, { waitUntil: 'domcontentloaded' });
+  console.log("Admin login page loaded");
 
-  // CSS ve text selector karÄ±ÅŸtÄ±rma! getByRole kullan
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-    page.getByRole("button", { name: /log in/i }).click()
-    // Alternatif saf CSS istersek: page.locator('input[type="submit"]').first().click()
-  ]);
+  // Kullanıcı adı ve şifre
+  await page.locator('input[name="username"]').fill(process.env.ADMIN_USER || "admin");
+  await page.locator('input[name="password"]').fill(process.env.ADMIN_PASS || "admin123!");
+  console.log("Credentials filled, submitting...");
 
-  await page.getByText("Django administration").waitFor({ timeout: 8000 });
+  // Login submit - YENİ API
+  await page.locator('input[type="submit"], button[type="submit"]').click();
+  
+  // URL değişene kadar bekle
+  await page.waitForURL('**/admin/**', { timeout: 20000 });
+  
+  // Sayfa yüklenene kadar bekle
+  await page.waitForLoadState('domcontentloaded');
+  
+  console.log("Login successful, URL:", page.url());
+
+  // Storage'ı kaydet
   await context.storageState({ path: "storage/user.json" });
+  console.log("Session saved to storage/user.json");
+  
   await browser.close();
-};
+}
 
+export default globalSetup;

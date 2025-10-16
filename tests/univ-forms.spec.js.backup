@@ -53,16 +53,10 @@ test("UNIV-FORMS — first form submits without console/server errors", async ({
   // Yükleme bitsin
   await page.waitForLoadState("domcontentloaded");
   // Ağdan son gelen response'u yakala (500 yok)
-  // 🔧 FIX: page.response() deprecated - use response listener
-let lastResponse = null;
-page.on('response', resp => { lastResponse = resp; });
-
-await page.waitForLoadState("domcontentloaded");
-
-if (lastResponse) {
-  const st = lastResponse.status();
-  expect(st, "HTTP 5xx after submit").toBeLessThan(500);
-}
+  const resp = page.response() || null;
+  if (resp) {
+    const st = resp.status();
+    expect(st, "HTTP 5xx after submit").toBeLessThan(500);
   }
 
   // Tipik sunucu hata ipuçları içerikte olmasın

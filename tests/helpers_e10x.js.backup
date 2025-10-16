@@ -1,4 +1,4 @@
-const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+﻿const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
 const USER = process.env.ADMIN_USER || "admin";
 const PASS = process.env.ADMIN_PASS || "admin123!";
 
@@ -7,12 +7,13 @@ async function loginIfNeeded(page){
   if (/\/login\//i.test(page.url())) {
     await page.fill('input[name="username"]', USER).catch(()=>{});
     await page.fill('input[name="password"]', PASS).catch(()=>{});
-    await page.locator('input[type="submit"], button[type="submit"]').first().click();
-    await page.waitForLoadState("domcontentloaded");
+    await Promise.all([
+      page.waitForLoadState("domcontentloaded"),
+      page.locator('input[type="submit"], button[type="submit"]').first().click()
+    ]);
   }
   return page;
 }
-
 export async function ensureLogin(page){ return loginIfNeeded(page); }
 
 export async function gotoList(page){
@@ -35,61 +36,37 @@ export async function gotoAdd(page){
 }
 
 export async function fillAllRequired(page){
-  // 🔧 FIX: Page state check
-  if(!page || page.isClosed()){ 
-    console.warn('[SKIP] Page is closed');
-    return; 
-  }
-  
-  try {
-    await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(()=>{});
-  } catch { return; }
-  
-  // Code/name doldur - güvenli
   for (const sel of ['#id_code','input[name="code"]','#id_name','input[name="name"]']){
-    try {
-      const el = page.locator(sel).first();
-      const count = await el.count({ timeout: 2000 }).catch(() => 0);  // 🔧 FIX: timeout ekle
-      if (count > 0){
-        const v = await el.inputValue({ timeout: 2000 }).catch(()=>'');
-        if (!v) await el.fill(`AUTO_${Date.now()}`, { timeout: 2000 }).catch(()=>{});
-      }
-    } catch(e){ 
-      console.warn(`[SKIP] Selector ${sel}:`, e.message); 
+    const el = page.locator(sel).first();
+    if (await el.count()){
+      const v = (await el.inputValue().catch(()=>'')) || '';
+      if (!v) await el.fill(`AUTO_${Date.now()}`).catch(()=>{});
     }
   }
-  
-  // Required fields
-  try {
-    const req = page.locator('input[required]:visible, select[required]:visible, textarea[required]:visible');
-    const n = await req.count().catch(() => 0);
-    for (let i=0; i<n; i++){
-      try {
-        const el = req.nth(i);
-        const tag = await el.evaluate(e => e.tagName.toLowerCase()).catch(() => '');
-        if (tag === 'select'){
-          const opts = await el.locator('option[value]:not([value=""])').all();
-          if(opts[0]) {
-            const val = await opts[0].getAttribute('value');
-            await el.selectOption(val, { timeout: 2000 }).catch(()=>{});
-          }
-        } else {
-          const cur = await el.inputValue({ timeout: 2000 }).catch(() => '');
-          if(!cur) await el.fill('auto', { timeout: 2000 }).catch(()=>{});
-        }
-      } catch(e){ 
-        console.warn(`[SKIP] Required field ${i}:`, e.message); 
+  const req = page.locator('input[required]:not([type="hidden"]):not([type="submit"]), textarea[required], select[required]');
+  const n = await req.count();
+  for (let i=0;i<n;i++){
+    const el = req.nth(i);
+    const tag = await el.evaluate(e => e.tagName.toLowerCase());
+    const type = (await el.getAttribute('type')) || '';
+    if (tag === 'select'){
+      const options = await el.locator('option').all();
+      for (const opt of options){
+        const v = await opt.getAttribute('value');
+        if (v && v !== '' && v !== '__None'){ await el.selectOption(v).catch(()=>{}); break; }
       }
+    } else if (type === 'checkbox'){
+      await el.check({ force:true }).catch(()=>{});
+    } else {
+      const cur = await el.inputValue().catch(()=> '');
+      if (!cur) await el.fill('auto').catch(()=>{});
     }
-  } catch(e){ 
-    console.error('[ERROR] fillAllRequired:', e.message); 
   }
 }
 
 export async function save(page){
   const submit = page.locator('input[name="_save"], button[name="_save"], input[type="submit"], button[type="submit"]').first();
-  await submit.click();
-  await page.waitForLoadState("domcontentloaded");
+  await Promise.all([ page.waitForLoadState("domcontentloaded"), submit.click() ]);
 }
 
 export async function createMinimalEquipment(page){
