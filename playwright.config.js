@@ -6,15 +6,19 @@ export default defineConfig({
   timeout: 60000,
   
   use: {
-    baseURL: process.env.BASE_URL || 'http://127.0.0.1:8010',
+    baseURL: 'http://127.0.0.1:8010',
     storageState: 'storage/user.json',
-    screenshot: 'only-on-failure',
-    video: 'on-first-retry',
-    trace: 'on-first-retry',
-    headless: false,  // PENCERE AÇIK!
-    slowMo: 500,      // Hareketleri yavaşlat (görmek için)
+    screenshot: 'on',
+    video: 'on',
+    trace: 'on',
+    headless: false,
+    slowMo: 2000,
+    launchOptions: {
+      slowMo: 2000
+    }
   },
   
-  retries: 2,
+  retries: 1,
+  workers: 1,
   globalSetup: './tests/_setup.spec.js',
 });
