@@ -1,149 +1,262 @@
-{# REV: 1.0 | 2025-09-25 | Hash: aad22227 | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 1492687e | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: f985f380 | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 596af45d | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 76949eb7 | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 9043ce3a | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 9522f59f | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 0b4a4771 | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 91c4a7ea | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 69739292 | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 0f80ca51 | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: ae6cfa76 | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: 99e21a92 | Parça: 1/1 #}
-{# REV: 1.0 | 2025-09-24 | Hash: f551b8f6 | Parça: 1/1 #}
-{% extends "maintenance/base.html" %}
-{% block title %}Bakım Kalibrasyon • Dashboard{% endblock %}
+{% extends "base.html" %}
+{% load static %}
 
-{% block sidebar %}
-  <div class="menu-card">
-    <div class="menu-title">BAKIM MODÜLÜ</div>
-    <nav class="menu-links small">
-      <a href="{% url 'admin:maintenance-dashboard' %}" class="menu-link">Analiz Sayfaları</a>
-      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Planlı Bakım</a>
-      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Kestirimci Bakım</a>
-      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Arızi Bakım</a>
-      <a href="{% url 'admin:maintenance-checklists' %}" class="menu-link">Kritik Parça Yönetimi</a>
-      <a href="{% url 'admin:maintenance-calibrations' %}" class="menu-link">Kalibrasyon Yönetimi</a>
-      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Makine Bazlı Analiz</a>
-      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Maliyet Analizi</a>
-      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Süre Analizi</a>
-      <a href="{% url 'admin:maintenance-orders' %}" class="menu-link">Performans Analizi</a>
-    </nav>
-  </div>
+{% block title %}Bakım Dashboard{% endblock %}
 
-  <div class="menu-card ticker-wrap short">
-    <div class="menu-title">YAKLAŞAN BAKIMLAR</div>
-    <div class="ticker" data-speed="12">
-      {% for o in upcoming_orders %}
-        <div class="tick"
-             data-href="/admin/maintenance/maintenanceorder/{{ o.id }}/change/">
-          <b>{{ o.due_date|date:"d.m.Y" }}</b> — {{ o.equipment.code }} {{ o.equipment.name }} — {{ o.get_order_type_display }}
-        </div>
-      {% empty %}
-        <div class="tick">Planlı/kestirimci bakım bulunamadı.</div>
-      {% endfor %}
-      {% for c in upcoming_cals %}
-        <div class="tick"
-             {% if c.id %}
-               data-href="/admin/maintenance/calibrationrecord/{{ c.id }}/change/"
-             {% elif c.asset_id %}
-               data-href="/admin/maintenance/calibrationasset/{{ c.asset_id }}/change/"
-             {% else %}
-               data-href="{% url 'admin:maintenance-calibrations' %}"
-             {% endif %}>
-          <b>{{ c.next_calibration|date:"d.m.Y" }}</b> — {{ c.equipment.code }} {{ c.equipment.name }} — Kalibrasyon
-        </div>
-      {% endfor %}
-    </div>
-  </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'maintenance/dashboard.css' %}">
+<style>
+    .dashboard-container {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .dashboard-header {
+        margin-bottom: 30px;
+    }
+    
+    .dashboard-header h1 {
+        color: #2c3e50;
+        margin: 0 0 10px 0;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card h3 {
+        font-size: 14px;
+        color: #6c757d;
+        margin: 0 0 10px 0;
+        text-transform: uppercase;
+    }
+    
+    .stat-card .stat-number {
+        font-size: 36px;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .stat-card a {
+        color: inherit;
+        text-decoration: none;
+        font-size: 14px;
+    }
+    
+    .stat-card a:hover {
+        text-decoration: underline;
+    }
+    
+    .stat-card.blue { border-left: 4px solid #007bff; }
+    .stat-card.blue .stat-number { color: #007bff; }
+    
+    .stat-card.green { border-left: 4px solid #28a745; }
+    .stat-card.green .stat-number { color: #28a745; }
+    
+    .stat-card.yellow { border-left: 4px solid #ffc107; }
+    .stat-card.yellow .stat-number { color: #ffc107; }
+    
+    .stat-card.red { border-left: 4px solid #dc3545; }
+    .stat-card.red .stat-number { color: #dc3545; }
+    
+    .quick-actions {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .quick-actions h2 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-primary { background: #007bff; color: white; }
+    .btn-primary:hover { background: #0056b3; }
+    
+    .btn-success { background: #28a745; color: white; }
+    .btn-success:hover { background: #1e7e34; }
+    
+    .btn-warning { background: #ffc107; color: #212529; }
+    .btn-warning:hover { background: #e0a800; }
+    
+    .upcoming-table {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+    }
+    
+    .upcoming-table h2 {
+        margin: 0 0 15px 0;
+        font-size: 18px;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    th, td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .alert {
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid transparent;
+        border-radius: 5px;
+    }
+    
+    .alert-warning {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-  <section class="header-card">
-    <h1>BAKIM KALİBRASYON</h1>
-    <div class="filters">
-      <select class="input"><option>Son 90 gün</option><option>Son 180 gün</option><option>Son 12 ay</option></select>
-      <select class="input"><option>Tüm makineler</option></select>
-      <button class="btn ghost">Filtrele</button>
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>🔧 Bakım ve Kalibrasyon Dashboard</h1>
+        <p style="color: #6c757d;">Hoş geldiniz, {{ user.get_full_name|default:user.username }}</p>
     </div>
-  </section>
+    
+    {% if error %}
+    <div class="alert alert-warning">
+        <strong>⚠️ Uyarı:</strong> {{ error }}
+    </div>
+    {% endif %}
+    
+    <!-- İstatistik Kartları -->
+    <div class="stats-grid">
+        <div class="stat-card blue">
+            <h3>📦 Toplam Ekipman</h3>
+            <div class="stat-number">{{ equipment_count }}</div>
+            <a href="/admin/maintenance/equipment/">Tümünü Gör →</a>
+        </div>
+        
+        <div class="stat-card green">
+            <h3>✅ Aktif Ekipman</h3>
+            <div class="stat-number">{{ active_count }}</div>
+            <a href="/admin/maintenance/equipment/?is_active__exact=1">Aktif Olanlar →</a>
+        </div>
+        
+        <div class="stat-card yellow">
+            <h3>📊 Kalibrasyon Varlıkları</h3>
+            <div class="stat-number">{{ calibration_count }}</div>
+            <a href="/admin/maintenance/calibrationasset/">Tümünü Gör →</a>
+        </div>
+        
+        <div class="stat-card red">
+            <h3>🔧 Toplam Kayıt</h3>
+            <div class="stat-number">{{ maintenance_count }}</div>
+            <a href="/admin/maintenance/calibrationrecord/">Kayıtlar →</a>
+        </div>
+    </div>
+    
+    <!-- Hızlı İşlemler -->
+    <div class="quick-actions">
+        <h2>⚡ Hızlı İşlemler</h2>
+        <div class="action-buttons">
+            <a href="/admin/maintenance/equipment/add/" class="btn btn-primary">
+                ➕ Yeni Ekipman
+            </a>
+            <a href="/admin/maintenance/calibrationasset/add/" class="btn btn-success">
+                📊 Yeni Kalibrasyon Varlığı
+            </a>
+            <a href="/admin/maintenance/calibrationrecord/add/" class="btn btn-warning">
+                🔧 Yeni Kalibrasyon Kaydı
+            </a>
+            <a href="/admin/" class="btn btn-primary">
+                🏠 Admin Paneli
+            </a>
+        </div>
+    </div>
+    
+    <!-- Yaklaşan Kalibrasyonlar -->
+    <div class="upcoming-table">
+        <h2>📋 Son Eklenen Kalibrasyon Varlıkları</h2>
+        {% if upcoming_calibrations %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Cihaz Kodu</th>
+                    <th>Cihaz Adı</th>
+                    <th>Lokasyon</th>
+                    <th>Durum</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for asset in upcoming_calibrations %}
+                <tr>
+                    <td>{{ asset.asset_code }}</td>
+                    <td>{{ asset.asset_name }}</td>
+                    <td>{{ asset.location|default:"—" }}</td>
+                    <td>
+                        {% if asset.is_active %}
+                            <span style="color: #28a745;">✓ Aktif</span>
+                        {% else %}
+                            <span style="color: #dc3545;">✗ Pasif</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="text-align: center; color: #6c757d; padding: 20px;">
+            Henüz kalibrasyon varlığı yok
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
 
-  <section class="kpi-row">
-    <div class="kpi">
-      <div class="kpi-title">Toplam Maliyet</div>
-      <div class="kpi-value">{{ kpis.total_cost|default_if_none:"0"|floatformat:2 }} ₺</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-title">Ortalama Maliyet</div>
-      <div class="kpi-value">{{ kpis.avg_cost|default_if_none:"0"|floatformat:2 }} ₺</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-title">Toplam Süre</div>
-      <div class="kpi-value">{{ kpis.total_duration|default_if_none:"0"|floatformat:2 }} h</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-title">İş Emri</div>
-      <div class="kpi-value">{{ kpis.total_orders|default_if_none:"0" }}</div>
-    </div>
-  </section>
-
-  <section class="kpi-row subtle">
-    <div class="kpi small"><div class="kpi-title">MTBF</div><div class="kpi-value">{{ extras.mtbf }} h</div></div>
-    <div class="kpi small"><div class="kpi-title">MTTR</div><div class="kpi-value">{{ extras.mttr }} h</div></div>
-    <div class="kpi small"><div class="kpi-title">Planlı Uyum</div><div class="kpi-value">{{ extras.schedule }}%</div></div>
-    <div class="kpi small"><div class="kpi-title">PdM İsabet</div><div class="kpi-value">{{ extras.pdm }}%</div></div>
-    <div class="kpi small"><div class="kpi-title">Arızi Oran</div><div class="kpi-value">{{ extras.brk_ratio }}%</div></div>
-    <div class="kpi small"><div class="kpi-title">Kalibrasyon Uyum</div><div class="kpi-value">{{ extras.cal_comp }}%</div></div>
-  </section>
-
-  <section class="grid">
-    <div class="card">
-      <div class="card-title">Bakım Tür Dağılımı</div>
-      <div class="bars">
-        <div class="bar"><span>Planlı</span><i style="height:{{ type_counts.PLN|default:0|add:1 }}%"></i></div>
-        <div class="bar"><span>Kestirimci</span><i style="height:{{ type_counts.PRD|default:0|add:1 }}%"></i></div>
-        <div class="bar"><span>Arızi</span><i style="height:{{ type_counts.BRK|default:0|add:1 }}%"></i></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Durum Dağılımı</div>
-      <div class="bars">
-        <div class="bar"><span>Planlandı</span><i style="height:{% firstof status_counts.SCHEDULED 0 %}%"></i></div>
-        <div class="bar"><span>Tamamlandı</span><i style="height:{% firstof status_counts.COMPLETED 0 %}%"></i></div>
-        <div class="bar"><span>Gecikmiş</span><i style="height:{% firstof status_counts.OVERDUE 0 %}%"></i></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Disiplin Bazlı Maliyet</div>
-      <table class="table">
-        <thead><tr><th>Disiplin</th><th>Maliyet (₺)</th></tr></thead>
-        <tbody>
-        {% for row in by_discipline %}
-          <tr>
-            <td>
-              {% if row.equipment__discipline == 'ELEC' %}Elektrik
-              {% elif row.equipment__discipline == 'PNEU' %}Pnömatik
-              {% else %}Mekanik{% endif %}
-            </td>
-            <td class="num">{{ row.cost|default_if_none:"0"|floatformat:2 }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="2">Kayıt yok.</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="card span-2">
-      <div class="card-title">Kontrol Checklist Durum Örneği</div>
-      <p>Checklist tamamlama oranları ve makine bazlı özet için ayrılmış panel. (Veri girildikçe dolduracağız.)</p>
-      <div class="actions">
-        <a class="btn ghost" href="{% url 'admin:maintenance-checklists' %}">Checklistleri Yönet</a>
-        <a class="btn primary" href="{% url 'admin:maintenance-order-create' %}">Yeni İş Emri</a>
-      </div>
-    </div>
-  </section>
+{% block extra_js %}
+<script src="{% static 'maintenance/dashboard.js' %}"></script>
 {% endblock %}

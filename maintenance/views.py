@@ -328,3 +328,54 @@ def calibration_import_wizard(request: HttpRequest) -> HttpResponse:
         ctx["error"] = f"İçe aktarma sırasında beklenmeyen hata: {ex}"
         return render(request, "maintenance/import_wizard.html", ctx)
 # <<< BLOK SONU: ID:PY-VIE-8DM3AFDK
+# ---------------------------
+# Dashboard View
+# ---------------------------
+
+@staff_member_required
+def dashboard_view(request: HttpRequest) -> HttpResponse:
+    """
+    Bakım Dashboard - Ana sayfa özeti
+    """
+    from django.db.models import Count, Q
+    from datetime import date, timedelta
+    
+    context = {
+        'title': 'Bakım Dashboard',
+        'equipment_count': 0,
+        'maintenance_count': 0,
+        'calibration_count': 0,
+        'pending_count': 0,
+        'active_count': 0,
+        'upcoming_calibrations': [],
+    }
+    
+    try:
+        # Equipment sayıları
+        from .models import Equipment
+        context['equipment_count'] = Equipment.objects.count()
+        context['active_count'] = Equipment.objects.filter(is_active=True).count()
+        
+        # Kalibrasyon varlıkları
+        calibration_assets = CalibrationAsset.objects.filter(is_active=True).count()
+        context['calibration_count'] = calibration_assets
+        
+        # Kalibrasyon kayıtları
+        total_records = CalibrationRecord.objects.count()
+        context['maintenance_count'] = total_records
+        
+        # Yaklaşan kalibrasyonlar (30 gün içinde)
+        today = date.today()
+        upcoming_date = today + timedelta(days=30)
+        
+        upcoming = CalibrationAsset.objects.filter(
+            is_active=True
+        ).order_by('asset_code')[:10]
+        
+        context['upcoming_calibrations'] = upcoming
+        context['pending_count'] = upcoming.count()
+        
+    except Exception as e:
+        context['error'] = f"Veri yüklenirken hata: {str(e)}"
+    
+    return render(request, 'maintenance/dashboard.html', context)
