@@ -37,3 +37,4 @@ test("E105 - Liste arama exact match", async ({ page }) => {
   const resultList = page.locator("#result_list, #changelist");
   await expect(resultList.first()).toBeVisible({ timeout: 5000 });
 });
+
