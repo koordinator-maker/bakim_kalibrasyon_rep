@@ -1,0 +1,114 @@
+# OTOKODLAMA - DOSYA LİSTESİ
+Oluşturulma: 17.10.2025 08:19:39
+
+## 🎯 ANA SİSTEM DOSYALARI
+
+### Python (Orchestrator)
+C:\dev\bakim_kalibrasyon\_otokodlama\_smoke_for_bak.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_auth_probe_after_reset.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_auth_probe_ok.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_auth_probe.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_auth_walk.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_namespace_probe.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_reverse_check_fixed.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_reverse_check.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_smoke_authed.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_smoke_autodiscover.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_smoke_final.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_smoke_final2.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_smoke_fixed.py
+C:\dev\bakim_kalibrasyon\_otokodlama\admin_smoke.py
+C:\dev\bakim_kalibrasyon\_otokodlama\ai_bridge.py
+C:\dev\bakim_kalibrasyon\_otokodlama\check_admin_tuple.py
+C:\dev\bakim_kalibrasyon\_otokodlama\check_admin_urls.py
+C:\dev\bakim_kalibrasyon\_otokodlama\dedupe_serials.py
+C:\dev\bakim_kalibrasyon\_otokodlama\diag_dupes.py
+C:\dev\bakim_kalibrasyon\_otokodlama\dump_admin_names.py
+C:\dev\bakim_kalibrasyon\_otokodlama\ensure_admin.py
+C:\dev\bakim_kalibrasyon\_otokodlama\ensure_superuser.py
+C:\dev\bakim_kalibrasyon\_otokodlama\fix_serial_dupes_runner.py
+C:\dev\bakim_kalibrasyon\_otokodlama\list_admin_urls.py
+C:\dev\bakim_kalibrasyon\_otokodlama\orchestrator.py
+C:\dev\bakim_kalibrasyon\_otokodlama\probe_admin_500.py
+C:\dev\bakim_kalibrasyon\_otokodlama\resolve_admin_urls.py
+
+### PowerShell Scripts
+C:\dev\bakim_kalibrasyon\_otokodlama\out\Apply-PatchZip.dump.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\scripts\ai_bridge.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\scripts\app_manager.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\scripts\orchestrator.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\scripts\patch_applier.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\scripts\test_runner.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\ai_response_1.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\ai_response_3.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\response_1.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\response_3.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\response_4.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\response_final.ps1
+C:\dev\bakim_kalibrasyon\_otokodlama\start.ps1
+
+### Konfigürasyon
+C:\dev\bakim_kalibrasyon\playwright.config.js
+C:\dev\bakim_kalibrasyon\package-lock.json
+C:\dev\bakim_kalibrasyon\package.json
+C:\dev\bakim_kalibrasyon\pipeline.config.json
+C:\dev\bakim_kalibrasyon\quarantine.json
+C:\dev\bakim_kalibrasyon\tasks.json
+C:\dev\bakim_kalibrasyon\temp_task_EQP-002.json
+C:\dev\bakim_kalibrasyon\.env
+
+## 🧪 TEST DOSYALARI
+
+### Test Scripts
+C:\dev\bakim_kalibrasyon\tests\_setup.spec.js
+C:\dev\bakim_kalibrasyon\tests\admin-dashboard.spec.js
+C:\dev\bakim_kalibrasyon\tests\e103-create-equipment.spec.js
+C:\dev\bakim_kalibrasyon\tests\e104-create-and-delete-equipment.spec.js
+C:\dev\bakim_kalibrasyon\tests\e105-list-search-exact.spec.js
+C:\dev\bakim_kalibrasyon\tests\e106-list-filter.spec.js
+C:\dev\bakim_kalibrasyon\tests\e106-list-search-partial.spec.js
+C:\dev\bakim_kalibrasyon\tests\e107-edit-equipment.spec.js
+C:\dev\bakim_kalibrasyon\tests\e109-search-result-presence.spec.js
+C:\dev\bakim_kalibrasyon\tests\e110-bulk-filter-reset.spec.js
+C:\dev\bakim_kalibrasyon\tests\smoke-admin.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-404.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-a11y-lite.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-assets.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-console.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-focus.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-forms.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-headings.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-landmarks.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-links.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-routes.spec.js
+C:\dev\bakim_kalibrasyon\tests\univ-smoke.spec.js
+
+### Test Helpers
+C:\dev\bakim_kalibrasyon\tests\helpers_e10x.js
+C:\dev\bakim_kalibrasyon\tests\tasks.spec.skip.js
+
+## 📊 RAPORLAR & LOGLAR
+
+### Bundle Klasörü
+_otokodlama\bundle\ (88 adet)
+
+### AI Queue
+_otokodlama\ai_queue\ (37 dosya)
+
+### Raporlar
+_otokodlama\reports\ (63 rapor)
+
+## 🗂️ TODO & STATE
+
+### TODO List
+_otokodlama\todolist.csv
+
+### State
+_otokodlama\state\tasks.json
+
+## 📦 TOPLAM İSTATİSTİK
+
+Python dosyaları: 27
+JavaScript dosyaları: 24
+Bundle'lar: 88
+AI Yanıtları: 2

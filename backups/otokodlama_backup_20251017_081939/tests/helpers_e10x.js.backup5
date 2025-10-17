@@ -1,0 +1,193 @@
+const BASE = (process.env.BASE_URL || "http://127.0.0.1:8010").replace(/\/$/, "");
+const USER = process.env.ADMIN_USER || "admin";
+const PASS = process.env.ADMIN_PASS || "admin123!";
+
+async function loginIfNeeded(page){
+  await page.goto(`${BASE}/admin/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  if (/\/login\//i.test(page.url())) {
+    await page.fill('input[name="username"]', USER, { timeout: 5000 });
+    await page.fill('input[name="password"]', PASS, { timeout: 5000 });
+    await page.locator('input[type="submit"],button[type="submit"]').first().click({ timeout: 5000 });
+    await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
+  }
+  return page;
+}
+
+export async function ensureLogin(page){ 
+  return await loginIfNeeded(page); 
+}
+
+export async function gotoList(page){
+  page = await ensureLogin(page);
+  await page.goto(`${BASE}/admin/maintenance/equipment/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.waitForTimeout(1000); // Anti-flake
+  return page;
+}
+
+export async function gotoAdd(page){
+  page = await ensureLogin(page);
+  await page.goto(`${BASE}/admin/maintenance/equipment/add/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.waitForTimeout(1000); // Form yüklensin
+  return page;
+}
+
+export async function fillAllRequired(page){
+  // Critical: Page state check
+  if(!page){ 
+    console.error('[ERROR] Page is null');
+    return; 
+  }
+  
+  try {
+    const isClosed = page.isClosed();
+    if(isClosed){
+      console.error('[ERROR] Page is closed');
+      return;
+    }
+  } catch(e){
+    console.error('[ERROR] Cannot check page state:', e.message);
+    return;
+  }
+  
+  // Wait for page ready
+  try {
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+  } catch(e){
+    console.warn('[WARN] Load state timeout, continuing...');
+  }
+  
+  // Fill code/name with retries
+  const codeSelectors = ['#id_code', 'input[name="code"]'];
+  const nameSelectors = ['#id_name', 'input[name="name"]'];
+  
+  for(const sel of codeSelectors){
+    try {
+      const el = page.locator(sel).first();
+      const count = await el.count({ timeout: 3000 });
+      if(count > 0){
+        const val = await el.inputValue({ timeout: 2000 }).catch(() => '');
+        if(!val){
+          await el.fill(`C-${Date.now()}`, { timeout: 3000 });
+          console.log(`[FILL] Code: ${sel}`);
+          break;
+        }
+      }
+    } catch(e){
+      console.warn(`[SKIP] ${sel}: ${e.message}`);
+    }
+  }
+  
+  for(const sel of nameSelectors){
+    try {
+      const el = page.locator(sel).first();
+      const count = await el.count({ timeout: 3000 });
+      if(count > 0){
+        const val = await el.inputValue({ timeout: 2000 }).catch(() => '');
+        if(!val){
+          await el.fill(`EQ-${Date.now()}`, { timeout: 3000 });
+          console.log(`[FILL] Name: ${sel}`);
+          break;
+        }
+      }
+    } catch(e){
+      console.warn(`[SKIP] ${sel}: ${e.message}`);
+    }
+  }
+  
+  // Fill other required fields
+  try {
+    const reqSelector = 'input[required]:visible:not([type="hidden"]), select[required]:visible, textarea[required]:visible';
+    const required = page.locator(reqSelector);
+    const count = await required.count().catch(() => 0);
+    
+    console.log(`[INFO] Found ${count} required fields`);
+    
+    for(let i = 0; i < count; i++){
+      try {
+        const el = required.nth(i);
+        const tag = await el.evaluate(e => e.tagName.toLowerCase()).catch(() => '');
+        const name = await el.getAttribute('name').catch(() => 'unknown');
+        
+        if(tag === 'select'){
+          const options = await el.locator('option[value]:not([value=""])').all();
+          if(options.length > 0){
+            const val = await options[0].getAttribute('value');
+            await el.selectOption(val, { timeout: 3000 });
+            console.log(`[SELECT] ${name} = ${val}`);
+          }
+        } else {
+          const current = await el.inputValue({ timeout: 2000 }).catch(() => '');
+          if(!current){
+            await el.fill('auto_value', { timeout: 3000 });
+            console.log(`[FILL] ${name} = auto_value`);
+          }
+        }
+      } catch(e){
+        console.warn(`[SKIP] Required field ${i}: ${e.message}`);
+      }
+    }
+  } catch(e){
+    console.error('[ERROR] fillAllRequired:', e.message);
+  }
+}
+
+export async function save(page){
+  const submitSelectors = [
+    'input[name="_save"]',
+    'button[name="_save"]',
+    'input[type="submit"]',
+    'button[type="submit"]'
+  ];
+  
+  for(const sel of submitSelectors){
+    try {
+      const btn = page.locator(sel).first();
+      const count = await btn.count({ timeout: 2000 });
+      if(count > 0){
+        await btn.click({ timeout: 5000 });
+        console.log(`[CLICK] Save button: ${sel}`);
+        await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
+        return;
+      }
+    } catch(e){
+      console.warn(`[SKIP] ${sel}: ${e.message}`);
+    }
+  }
+  
+  console.error('[ERROR] No save button found!');
+}
+
+export async function createMinimalEquipment(page){
+  page = await gotoAdd(page);
+  await fillAllRequired(page);
+  await save(page);
+  
+  // Check success
+  const url = page.url();
+  if(url.includes('/add/')){
+    console.warn('[WARN] Still on add page, trying again...');
+    await fillAllRequired(page);
+    await save(page);
+  }
+  
+  return page;
+}
+
+export async function successFlashExists(page){
+  const successSelectors = [
+    '.messagelist .success',
+    '.alert-success',
+    'ul.messagelist li.success',
+    '[class*="success"]'
+  ];
+  
+  for(const sel of successSelectors){
+    const count = await page.locator(sel).count();
+    if(count > 0){
+      console.log(`[SUCCESS] Flash message found: ${sel}`);
+      return true;
+    }
+  }
+  
+  return false;
+}
