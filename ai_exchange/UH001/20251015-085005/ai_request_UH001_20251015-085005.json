@@ -1,0 +1,40 @@
+{
+    "version":  1,
+    "task_id":  "UH001",
+    "constraints":  {
+                        "allow":  [
+                                      "templates/**",
+                                      "app/**",
+                                      "apps/**",
+                                      "static/**",
+                                      "src/**"
+                                  ],
+                        "max_files":  5,
+                        "max_bytes":  200000,
+                        "deny":  [
+                                     "ops/**",
+                                     ".github/**",
+                                     "tools/**",
+                                     "_otokodlama/**",
+                                     "venv/**"
+                                 ]
+                    },
+    "evidence":  {
+                     "screenshots":  [
+
+                                     ],
+                     "logs":  [
+                                  "C:\\dev\\bakim_kalibrasyon\\_otokodlama\\out\\ai_request_20251014-230524.json",
+                                  "C:\\dev\\bakim_kalibrasyon\\_otokodlama\\out\\ai_request_20251014-223048.json",
+                                  "C:\\dev\\bakim_kalibrasyon\\_otokodlama\\out\\ai_request_20251014-222550.json",
+                                  "C:\\dev\\bakim_kalibrasyon\\_otokodlama\\out\\ai_request_20251014-222039.json",
+                                  "C:\\dev\\bakim_kalibrasyon\\_otokodlama\\out\\ai_request_20251014-221726.json"
+                              ],
+                     "bundle_zip":  "bundle_UH001_20251015-085005.zip"
+                 },
+    "intent":  "Fix visible H1 on admin pages without breaking other flows",
+    "context":  {
+                    "repo_map":  "repo_map.txt",
+                    "base_commit":  "7a94db0c4912306024bbe5a0ff4d2fd705283f3f"
+                }
+}

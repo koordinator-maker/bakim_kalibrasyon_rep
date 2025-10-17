@@ -25,3 +25,4 @@ def main():
 if __name__ == '__main__':
     main()
 # <<< BLOK SONU: ID:PY-HEL-JNKMP1V0
+

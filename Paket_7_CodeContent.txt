@@ -1,0 +1,846 @@
+### DOSYA BAŞLANGIÇ: .\\ops\error_summary.ps1
+param(
+    [string]$OutDir = "_otokodlama\out"
+)
+
+$ErrorActionPreference = "Continue"
+
+Write-Host "
+--- HATA ÖZETİ BAŞLADI ---" -ForegroundColor Cyan
+
+$errorCount = 0
+$files = Get-ChildItem -Path $OutDir -Filter "*.json" -ErrorAction SilentlyContinue
+
+if (-not $files) {
+    Write-Host "[WARN] $OutDir altında JSON dosya bulunamadı." -ForegroundColor Yellow
+    exit 0
+}
+
+foreach ($file in $files) {
+    $content = Get-Content $file.FullName -Raw -Encoding UTF8
+    
+    # 1. JSON'u parse etmeyi dene (hata yoksa)
+    try {
+        $data = $content | ConvertFrom-Json -ErrorAction Stop
+        if ($data -and $data.error) {
+            Write-Host "FAIL : " -ForegroundColor Red
+            $errorCount++
+        } elseif ($data -and $data.status -eq "PASS") {
+            # Hata yok, başarılı
+        } else {
+            # Beklenmedik durum (boş JSON veya status yok)
+            Write-Host "UNKNOW : Beklenmedik JSON formatı veya boş çıktı." -ForegroundColor DarkYellow
+            $errorCount++
+        }
+    }
+    # 2. JSON parse edilemezse (bozuk JSON, muhtemelen bir kilitlenme sonucu)
+    catch {
+        # Ham metin içinde hatayı ara (Playwright/Node hata metni)
+        $match = [regex]::Match($content, "Error: ([^
+
+]+)")
+        if ($match.Success) {
+            Write-Host "CRITICAL : [HAM HATA] " -ForegroundColor Magenta
+            $errorCount++
+        } else {
+            # Çok nadir: JSON bozuk ama ham hata da bulunamadı
+            Write-Host "CRITICAL : [HAM OKUNAMADI] JSON bozuk, kök hata bulunamadı." -ForegroundColor DarkRed
+            $errorCount++
+        }
+    }
+}
+
+Write-Host "--- HATA ÖZETİ BİTTİ. Toplam Hata: $errorCount ---" -ForegroundColor Cyan
+
+if ($errorCount -gt 0) {
+    exit 2 # Kırmızı çıkış kodu
+}
+### DOSYA BİTİŞ: error_summary.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\apply_ai_files.ps1
+param(
+  [string]$RepoRoot = ".",
+  [string]$InboxDir = "ai_inbox",
+  [string]$StateTools = "ops/state_tools.ps1",
+  [switch]$DryRun
+)
+
+$ErrorActionPreference = "Stop"
+
+function Ensure-Module {
+  param([string]$Path)
+  if (-not (Test-Path $Path)) { throw "Gerekli script bulunamadı: $Path" }
+  . $Path
+}
+function Normalize-TargetPath {
+  param([string]$InboxFile)
+  $rel = (Resolve-Path -LiteralPath $InboxFile).Path.Substring((Resolve-Path -LiteralPath $InboxDir).Path.Length).TrimStart('\','/')
+  $rel = $rel -replace '^[\\/]+',''
+  if ($rel.ToLower().EndsWith(".txt")) { $rel = $rel.Substring(0, $rel.Length-4) }
+  $rel = $rel -replace '^(root[\\/])',''
+  return $rel
+}
+function New-Directory {
+  param([string]$Path)
+  $dir = Split-Path -Parent $Path
+  if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+}
+
+Ensure-Module -Path (Join-Path $RepoRoot $StateTools)
+
+$inboxFull = Join-Path $RepoRoot $InboxDir
+if (-not (Test-Path $inboxFull)) {
+  Write-Host "[apply] Inbox klasörü yok: $InboxDir (atlandı)" -ForegroundColor Yellow
+  exit 0
+}
+
+$changed = @(); $deleted = @(); $skipped = @()
+$txts = Get-ChildItem $inboxFull -Recurse -File -Filter *.txt
+if (-not $txts) { Write-Host "[apply] Inbox boş." -ForegroundColor Yellow; exit 0 }
+
+foreach ($f in $txts) {
+  $targetRel = Normalize-TargetPath -InboxFile $f.FullName
+  $targetAbs = Join-Path $RepoRoot $targetRel
+  $raw = Get-Content -LiteralPath $f.FullName -Raw
+
+  if ($raw -match '^\s*#\s*DELETE\s*$') {
+    if (Test-Path $targetAbs) {
+      if ($DryRun) { Write-Host "[DRY] DELETE $targetRel" -ForegroundColor Yellow }
+      else { Remove-Item -LiteralPath $targetAbs -Force; $deleted += $targetRel }
+    } else { $skipped += "$targetRel (zaten yok)" }
+    continue
+  }
+
+  if ([string]::IsNullOrWhiteSpace($raw)) { $skipped += "$targetRel (boş içerik/no-op)"; continue }
+
+  if ($DryRun) { Write-Host "[DRY] WRITE $targetRel" -ForegroundColor Cyan }
+  else {
+    if (Test-Path $targetAbs) { Copy-Item -LiteralPath $targetAbs "$targetAbs.bak" -Force -ErrorAction SilentlyContinue }
+    New-Directory -Path $targetAbs
+    [IO.File]::WriteAllText($targetAbs, $raw, [Text.UTF8Encoding]::new($false))
+    $changed += $targetRel
+  }
+}
+
+if (-not $DryRun) {
+  foreach ($p in $changed) { Add-PendingAction -Id ("APPLY-" + [Guid]::NewGuid().ToString("N")) -Type "FILE_WRITE"  -Detail $p -DueStage "" }
+  foreach ($p in $deleted) { Add-PendingAction -Id ("APPLY-" + [Guid]::NewGuid().ToString("N")) -Type "FILE_DELETE" -Detail $p -DueStage "" }
+}
+
+Write-Host "`n=== APPLY SUMMARY ===" -ForegroundColor Green
+"{0,-10} {1}" -f "Changed:", ($changed.Count)
+"{0,-10} {1}" -f "Deleted:", ($deleted.Count)
+"{0,-10} {1}" -f "Skipped:", ($skipped.Count)
+if ($changed) { "`n-- Changed files --"; $changed | ForEach-Object { "  - $_" } }
+if ($deleted) { "`n-- Deleted files --"; $deleted | ForEach-Object { "  - $_" } }
+if ($skipped) { "`n-- Skipped --"; $skipped | ForEach-Object { "  - $_" } }
+### DOSYA BİTİŞ: apply_ai_files.ps1
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\urls.py
+from django.urls import path
+
+# Bu uygulama için URL'ler şu an boş bırakılabilir
+urlpatterns = [
+    
+]
+### DOSYA BİTİŞ: urls.py
+
+### DOSYA BAŞLANGIÇ: .\\ops\_spawn.ps1
+param(
+  [Parameter(Mandatory=$true)][string]$File,
+  [string[]]$Args = @(),
+  [int]$HardTimeoutSec = 300,
+  [int]$HeartbeatSec   = 5
+)
+
+# Argümanları tek stringe dönüştür (içinde boşluk olanları tırnakla)
+function Join-Args([string[]]$arr){
+  $arr | ForEach-Object {
+    if ($_ -match '\s' -and $_ -notmatch '^".*"$') { '"' + $_ + '"' } else { $_ }
+  } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' } | ForEach-Object { $_ } -join ' '
+}
+
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName               = $File
+$psi.Arguments              = (Join-Args $Args)
+$psi.UseShellExecute        = $false
+$psi.RedirectStandardOutput = $true
+$psi.RedirectStandardError  = $true
+$psi.CreateNoWindow         = $true
+
+$p = New-Object System.Diagnostics.Process
+$p.StartInfo = $psi
+[void]$p.Start()
+
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$lastBeat = 0
+
+while(-not $p.HasExited){
+  while(-not $p.StandardOutput.EndOfStream){
+    $line = $p.StandardOutput.ReadLine()
+    if($line){ Write-Host $line; [Console]::Out.Flush() }
+  }
+  while(-not $p.StandardError.EndOfStream){
+    $eline = $p.StandardError.ReadLine()
+    if($eline){ Write-Host $eline -ForegroundColor DarkYellow; [Console]::Out.Flush() }
+  }
+
+  Start-Sleep -Milliseconds 50  # hızlandırıldı (100 -> 50)
+
+  if($sw.Elapsed.TotalSeconds -ge $HardTimeoutSec){
+    Write-Host "[spawn] HARD TIMEOUT ($HardTimeoutSec s). Killing..." -ForegroundColor Red
+    try { $p.Kill() } catch {}
+    break
+  }
+
+  if([int]$sw.Elapsed.TotalSeconds -ge ($lastBeat + $HeartbeatSec)){
+    Write-Host ("[spawn] heartbeat {0}s" -f [int]$sw.Elapsed.TotalSeconds) -ForegroundColor DarkGray
+    [Console]::Out.Flush()
+    $lastBeat = [int]$sw.Elapsed.TotalSeconds
+  }
+}
+# kuyrukta kalan
+if($p){
+  try{
+    $restOut = $p.StandardOutput.ReadToEnd()
+    if($restOut){ Write-Host $restOut; [Console]::Out.Flush() }
+  }catch{}
+  try{
+    $restErr = $p.StandardError.ReadToEnd()
+    if($restErr){ Write-Host $restErr -ForegroundColor DarkYellow; [Console]::Out.Flush() }
+  }catch{}
+}
+
+exit ($p.ExitCode)
+
+
+
+
+
+
+
+
+
+
+
+### DOSYA BİTİŞ: _spawn.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\diagnostics\report_universal.ps1
+param(
+  [string]$Repo = ".",
+  [string]$OutDir = "_otokodlama\reports",
+  [string]$BaseUrl = "http://127.0.0.1:8010",
+  [string]$EntryPath = "/admin/"
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$repo = Resolve-Path $Repo
+Set-Location $repo
+$ts   = (Get-Date).ToString("yyyyMMdd-HHmmss")
+$dir  = Join-Path $repo $OutDir
+$null = New-Item -ItemType Directory -Force -Path $dir
+$out  = Join-Path $dir "universal_findings_$ts.txt"
+
+function UX-W([string]$s){ Add-Content -Path $out -Value $s }
+function UX-H([string]$t){ UX-W ""; UX-W "=== $t ===" }
+function UX-KV($k,$v){ UX-W ("* $($k): $($v)") }
+function UX-Result($name,$status,$note=""){
+  $icon = if($status -eq "PASS"){"[PASS]"} elseif($status -eq "WARN"){"[WARN]"} else {"[FAIL]"}
+  if([string]::IsNullOrWhiteSpace($note)){ UX-W("$icon $name") } else { UX-W("$icon $name — $note") }
+}
+function UX-GetHtml([string]$url){
+  try{
+    $r = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 30 -Method GET
+    return [pscustomobject]@{ Status=$r.StatusCode; Html=$r.Content }
+  } catch {
+    try{
+      $r = Invoke-WebRequest -Uri $url -TimeoutSec 30 -Method GET
+      return [pscustomobject]@{ Status=$r.StatusCode; Html=$r.Content }
+    } catch {
+      $hc = New-Object System.Net.Http.HttpClient
+      $t  = $hc.GetAsync($url).Result
+      $h  = $t.Content.ReadAsStringAsync().Result
+      return [pscustomobject]@{ Status=[int]$t.StatusCode; Html=$h }
+    }
+  }
+}
+
+UX-H "UNIVERSAL Hata Arama (yalnız TESPİT/BİLDİRİM)"
+UX-KV "Zaman" (Get-Date)
+UX-KV "Repo"  $repo
+UX-KV "BaseUrl" $BaseUrl
+UX-KV "EntryPath" $EntryPath
+
+# 1) Araç mevcudiyeti
+UX-H "Araç Mevcudiyeti"
+foreach($c in @("node","npm","python","npx")){
+  $exists = (Get-Command $c -ErrorAction SilentlyContinue) -ne $null
+  UX-Result $c ($(if($exists){"PASS"}else{"WARN"})) ($(if($exists){"bulundu"}else{"yok"}))
+}
+
+# 2) UNIV-FORMS — 'page.response(' imzası
+UX-H "UNIV-FORMS — imza taraması"
+$testsDir = Join-Path $repo "tests"
+if(Test-Path $testsDir){
+  $hits = @()
+  Get-ChildItem $testsDir -Recurse -File -Include *.spec.* | ForEach-Object {
+    try{
+      $raw = Get-Content $_.FullName -Raw -ErrorAction Stop
+      $m = Select-String -InputObject $raw -Pattern "page\.response\s*\(" -AllMatches
+      if($m){
+        $line = (Select-String -Path $_.FullName -Pattern "page\.response\s*\(" | Select-Object -First 1)
+        $hits += [pscustomobject]@{ File=$_.FullName; Line=$line.LineNumber; Preview=$line.Line.Trim() }
+      }
+    } catch {}
+  }
+  if($hits.Count -gt 0){
+    UX-Result "page.response() imzası" "FAIL" "Aşağıda listelendi"
+    foreach($h in $hits){ UX-W ("  - {0} (satır {1})  örnek: {2}" -f $h.File,$h.Line,$h.Preview) }
+  } else {
+    UX-Result "page.response() imzası" "PASS" "Bulunmadı"
+  }
+} else {
+  UX-Result "tests dizini" "WARN" "tests/ yok"
+}
+
+# 3) Login sayfası H1/heading
+UX-H "UNIV-SMOKE — H1/heading kontrolü"
+try{
+  $url = [Uri]::new((New-Object System.Uri ($BaseUrl.TrimEnd('/'))), $EntryPath.TrimStart('/'))
+  $r = UX-GetHtml $url.AbsoluteUri
+  UX-KV "HTTP Status" $r.Status
+  $html = $r.Html
+  $h1Count = ([regex]::Matches($html,"<h1\b[^>]*>",'IgnoreCase')).Count
+  $roleHeading = ([regex]::Matches($html,"role\s*=\s*['""]heading['""]",'IgnoreCase')).Count
+  UX-KV "H1 sayısı" $h1Count
+  UX-KV "role='heading' sayısı" $roleHeading
+  if($h1Count -eq 0 -and $roleHeading -eq 0){
+    UX-Result "Başlık (H1/heading)" "FAIL" "Expected > 0, Received 0"
+  } else {
+    UX-Result "Başlık (H1/heading)" "PASS"
+  }
+} catch {
+  UX-Result "UNIV-SMOKE kontrolü" "WARN" $_.Exception.Message
+}
+
+# 4) #content-start imi
+UX-H "UNIV-ROUTES — #content-start imi"
+try{
+  if(-not $html){
+    $url2 = [Uri]::new((New-Object System.Uri ($BaseUrl.TrimEnd('/'))), $EntryPath.TrimStart('/'))
+    $html = (UX-GetHtml $url2.AbsoluteUri).Html
+  }
+  $hasAnchor = $html -match "id\s*=\s*['""]content-start['""]" -or $html -match "name\s*=\s*['""]content-start['""]"
+  UX-KV "#content-start imi" ($(if($hasAnchor){"VAR"}else{"YOK"}))
+  if(-not $hasAnchor){ UX-Result "Heading/#content-start" "WARN" "imi bulunamadı" }
+  else { UX-Result "Heading/#content-start" "PASS" }
+} catch {
+  UX-Result "UNIV-ROUTES gözlemi" "WARN" $_.Exception.Message
+}
+
+# 5) Playwright rapor dizini
+UX-H "Playwright Rapor Dizini"
+$pw = Join-Path $repo "playwright-report"
+if(Test-Path $pw){
+  $idx = Test-Path (Join-Path $pw "index.html")
+  UX-Result "playwright-report" "PASS" ("index.html " + ($(if($idx){"VAR"}else{"YOK"})))
+} else {
+  UX-Result "playwright-report" "WARN" "Rapor dizini yok"
+}
+
+UX-H "SON"
+UX-W "Bu dosya yalnızca TESPİT/BİLDİRİM amaçlıdır. Yeni test eklenmemiştir."
+Write-Host "Rapor: $out"
+### DOSYA BİTİŞ: report_universal.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\diagnostics\extract_from_txt.ps1
+param(
+  [string]$Repo=".",
+  [string]$ReportsDir="_otokodlama\reports"
+)
+chcp 65001 > $null
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding            = [Text.UTF8Encoding]::new($false)
+Set-StrictMode -Version Latest; $ErrorActionPreference="Stop"
+$repo = Resolve-Path $Repo
+$reportsRoot = Join-Path $repo $ReportsDir
+$dash        = Join-Path $reportsRoot "dashboard"
+if (-not (Test-Path $dash)) { New-Item -ItemType Directory -Force -Path $dash | Out-Null }
+$txt = Get-ChildItem $reportsRoot -File -Filter 'universal_findings_*.txt' |
+       Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $txt) {
+  $empty = Join-Path $dash ("details_" + (Get-Date -Format yyyyMMdd-HHmmss) + ".csv")
+  'Section,Status,Message' | Out-File -FilePath $empty -Encoding UTF8
+  Write-Host "[DETAILS] TXT yok; boş başlıklı CSV yazıldı: $empty"
+  exit 0
+}
+$stamp     = ([IO.Path]::GetFileNameWithoutExtension($txt.Name)) -replace '^universal_findings_',''
+$details   = Join-Path $dash ("details_" + $stamp + ".csv")
+$section = 'HEADER'
+$rows = New-Object 'System.Collections.Generic.List[object]'
+Get-Content $txt.FullName | ForEach-Object {
+  $ln = $_
+  if ($ln -match '^\s*===\s*(.+?)\s*===\s*$') { $section = $Matches[1]; return }
+  if ($ln -match '^\s*\[(PASS|WARN|FAIL)\]\s+(.*)$') {
+    $status = $Matches[1]; $msg = $Matches[2]
+    if ($status -ne 'PASS') {
+      $rows.Add([pscustomobject]@{ Section=$section; Status=$status; Message=$msg })
+    }
+  }
+}
+if ($rows.Count -gt 0) {
+  $rows | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $details
+  Write-Host "[DETAILS] Yazıldı: $details (satır: $($rows.Count))"
+} else {
+  'Section,Status,Message' | Out-File -FilePath $details -Encoding UTF8
+  Write-Host "[DETAILS] Sadece başlık yazıldı (uyarı/başarısızlık bulunamadı): $details"
+}
+### DOSYA BİTİŞ: extract_from_txt.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\diagnostics\export_universal_junit.ps1
+param(
+  [string]$Repo = ".",
+  [string]$ReportsDir = "_otokodlama\reports",
+  [string]$SuiteName = "UniversalFindings",
+  [string]$OutputDir = "_otokodlama\reports\junit",
+  [switch]$GateOnFail = $true,
+  [switch]$GateOnWarn = $false,
+  [switch]$WarnAsSkip = $true,
+  [switch]$DoExit = $false
+)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+function Get-OrDefault([string]$value, [string]$fallback){
+  if ($null -eq $value -or [string]::IsNullOrWhiteSpace($value)) { $fallback } else { $value }
+}
+$repo = Resolve-Path $Repo; Set-Location $repo
+$reportsRoot = Join-Path $repo $ReportsDir
+$dashDir     = Join-Path $reportsRoot "dashboard"
+if (-not (Test-Path $dashDir)) { Write-Host "[JUnit] Dashboard dizini yok: $dashDir" -ForegroundColor Yellow; $global:LASTEXITCODE = 0; return }
+$totals  = Get-ChildItem $dashDir -File -Filter "totals_*.csv"  | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$details = Get-ChildItem $dashDir -File -Filter "details_*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $totals)  { Write-Host "[JUnit] totals_*.csv bulunamadı."  -ForegroundColor Yellow; $global:LASTEXITCODE = 0; return }
+if (-not $details) { Write-Host "[JUnit] details_*.csv bulunamadı." -ForegroundColor Yellow; $global:LASTEXITCODE = 0; return }
+$totObj = Import-Csv $totals.FullName | Select-Object -First 1
+[int]$pass = $totObj.PASS
+[int]$warn = $totObj.WARN
+[int]$fail = $totObj.FAIL
+$timestamp = $totObj.Timestamp
+$fileName  = $totObj.File
+try { $detailRows = Import-Csv $details.FullName } catch { $detailRows = @() }
+$detailRows = $detailRows | Where-Object { $_.Section -or $_.Status -or $_.Message }
+$ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
+$outDir = Join-Path $repo $OutputDir
+$null = New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+$outXml = Join-Path $outDir ("universal_junit_" + $ts + ".xml")
+$tests    = [math]::Max(0, $fail + $warn)
+$failures = [math]::Max(0, $fail)
+$skipped  = if($WarnAsSkip){ [math]::Max(0, $warn) } else { 0 }
+$xml  = New-Object System.Xml.XmlDocument
+$decl = $xml.CreateXmlDeclaration("1.0","UTF-8",$null); $xml.AppendChild($decl) | Out-Null
+$root = $xml.CreateElement("testsuite")
+$root.SetAttribute("name", $SuiteName)
+$root.SetAttribute("tests", $tests.ToString())
+$root.SetAttribute("failures", $failures.ToString())
+$root.SetAttribute("skipped", $skipped.ToString())
+$root.SetAttribute("time", "0")
+$root.SetAttribute("timestamp", (Get-Date).ToString("o"))
+$xml.AppendChild($root) | Out-Null
+$props = $xml.CreateElement("properties"); $root.AppendChild($props) | Out-Null
+function Add-Prop([string]$k,[string]$v){ $p=$xml.CreateElement("property"); $p.SetAttribute("name",$k); $p.SetAttribute("value",$v); $props.AppendChild($p) | Out-Null }
+Add-Prop "universal.timestamp" $timestamp
+Add-Prop "universal.file"      $fileName
+Add-Prop "universal.pass"      $pass
+Add-Prop "universal.warn"      $warn
+Add-Prop "universal.fail"      $fail
+$idx = 0
+foreach($row in $detailRows){
+  $idx++
+  $className = Get-OrDefault $row.Section "Universal"
+  $nameLabel = ("{0}-{1}" -f (Get-OrDefault $row.Status "NOTE"), $idx)
+  $msg       = Get-OrDefault $row.Message "No message"
+  $case = $xml.CreateElement("testcase")
+  $case.SetAttribute("classname", $className)
+  $case.SetAttribute("name", $nameLabel)
+  $case.SetAttribute("time", "0")
+  if ($row.Status -eq "FAIL") {
+    $f = $xml.CreateElement("failure"); $f.SetAttribute("message", $msg); $f.InnerText = $msg; $case.AppendChild($f) | Out-Null
+  } elseif ($row.Status -eq "WARN" -and $WarnAsSkip) {
+    $s = $xml.CreateElement("skipped"); $s.SetAttribute("message", $msg); $case.AppendChild($s) | Out-Null
+  }
+  $root.AppendChild($case) | Out-Null
+}
+$sysout = $xml.CreateElement("system-out"); $sysout.InnerText = ("Summary: PASS={0} WARN={1} FAIL={2} | Source={3}" -f $pass,$warn,$fail,$fileName); $root.AppendChild($sysout) | Out-Null
+$xml.Save($outXml)
+Write-Host ("[JUnit] XML: " + $outXml) -ForegroundColor Cyan
+Write-Host ("[JUnit] Totals: PASS={0} WARN={1} FAIL={2}" -f $pass,$warn,$fail)
+$exitCode = 0
+if ($GateOnFail -and $fail -gt 0) {
+  $exitCode = 2
+} elseif ($GateOnWarn -and $warn -gt 0) {
+  $exitCode = 3
+}
+$gateTxt = Join-Path $outDir ("gate_result_" + $ts + ".txt")
+"ExitCode=$exitCode`nPASS=$pass`nWARN=$warn`nFAIL=$fail`nXML=$outXml" | Out-File -FilePath $gateTxt -Encoding UTF8
+$global:LASTEXITCODE = $exitCode
+if ($exitCode -ne 0) { Write-Host ("[JUnit] Gate triggered. ExitCode=" + $exitCode + " (terminal açık)") -ForegroundColor Yellow }
+else { Write-Host "[JUnit] Gate not triggered. ExitCode=0 (terminal açık)" -ForegroundColor Green }
+if ($DoExit) { exit $exitCode }
+### DOSYA BİTİŞ: export_universal_junit.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\diagnostics\build_universal_dashboard.ps1
+param(
+  [string]$Repo = ".",
+  [string]$ReportsDir = "_otokodlama\reports"
+)
+
+chcp 65001 > $null
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding            = [Text.UTF8Encoding]::new($false)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$repo = Resolve-Path $Repo
+Set-Location $repo
+
+$reportsRoot = Join-Path $repo $ReportsDir
+if (-not (Test-Path $reportsRoot)) { New-Item -ItemType Directory -Force -Path $reportsRoot | Out-Null }
+
+$dashboardDir = Join-Path $reportsRoot "dashboard"
+New-Item -ItemType Directory -Force -Path $dashboardDir | Out-Null
+
+$txtReports = Get-ChildItem $reportsRoot -File -Filter "universal_findings_*.txt" | Sort-Object LastWriteTime
+if (-not $txtReports) { Write-Host "Rapor bulunamadı"; exit 0 }
+
+$timelineCsv = Join-Path $dashboardDir "universal_timeline.csv"
+$timelineMd  = Join-Path $dashboardDir "universal_timeline.md"
+
+$rows = New-Object System.Collections.Generic.List[object]
+foreach ($f in $txtReports) {
+  $raw  = Get-Content $f.FullName -Raw
+  $pass = ([regex]::Matches($raw, '\[PASS\]')).Count
+  $warn = ([regex]::Matches($raw, '\[WARN\]')).Count
+  $fail = ([regex]::Matches($raw, '\[FAIL\]')).Count
+  $name  = [IO.Path]::GetFileNameWithoutExtension($f.Name)
+  $stamp = $name -replace '^universal_findings_', ''
+  $rows.Add([pscustomobject]@{ Timestamp=$stamp; File=$f.Name; PASS=$pass; WARN=$warn; FAIL=$fail })
+}
+$rows | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $timelineCsv
+
+$md = New-Object System.Text.StringBuilder
+$null = $md.AppendLine('# Universal Findings — Timeline')
+$null = $md.AppendLine('')
+$null = $md.AppendLine('| Timestamp | PASS | WARN | FAIL | File |')
+$null = $md.AppendLine('|---|---:|---:|---:|---|')
+foreach ($r in $rows) {
+  $null = $md.AppendLine( ('| {0} | {1} | {2} | {3} | {4} |' -f $r.Timestamp,$r.PASS,$r.WARN,$r.FAIL,$r.File) )
+}
+[IO.File]::WriteAllText($timelineMd, $md.ToString(), [Text.UTF8Encoding]::new($false))
+
+$latest     = $txtReports[-1]
+$latestRaw  = Get-Content $latest.FullName -Raw
+$lines      = $latestRaw -split '`r?`n'
+
+$secName = 'HEADER'
+$details = New-Object System.Collections.Generic.List[object]
+foreach ($ln in $lines) {
+  if ($ln -match '^\s*===\s*(.+?)\s*===\s*$') { $secName = $Matches[1]; continue }
+  if ($ln -match '^\[(PASS|WARN|FAIL)\]\s+(.*)$') {
+    $status = $Matches[1]; $msg = $Matches[2]
+    if ($status -ne 'PASS') { $details.Add([pscustomobject]@{ Section=$secName; Status=$status; Message=$msg }) }
+  }
+}
+
+$latestStamp = ([IO.Path]::GetFileNameWithoutExtension($latest.Name)) -replace '^universal_findings_', ''
+$detailsCsv  = Join-Path $dashboardDir ("details_" + $latestStamp + ".csv")
+$totalsCsv   = Join-Path $dashboardDir ("totals_"  + $latestStamp + ".csv")
+
+if ($details.Count -gt 0) { $details | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $detailsCsv }
+else { 'Section,Status,Message' | Out-File -FilePath $detailsCsv -Encoding UTF8 }
+
+$passL = ([regex]::Matches($latestRaw, '\[PASS\]')).Count
+$warnL = ([regex]::Matches($latestRaw, '\[WARN\]')).Count
+$failL = ([regex]::Matches($latestRaw, '\[FAIL\]')).Count
+$tot = [pscustomobject]@{ Timestamp=$latestStamp; PASS=$passL; WARN=$warnL; FAIL=$failL; File=$latest.Name }
+$tot | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $totalsCsv
+
+$indexMd = Join-Path $dashboardDir "index.md"
+$sb = New-Object System.Text.StringBuilder
+$null = $sb.AppendLine('# Universal Dashboard')
+$null = $sb.AppendLine('')
+$null = $sb.AppendLine( ('**Timeline CSV:** `{0}`'       -f (Split-Path -Leaf $timelineCsv)) )
+$null = $sb.AppendLine( ('**Timeline MD :** `{0}`'       -f (Split-Path -Leaf $timelineMd)) )
+$null = $sb.AppendLine('')
+$null = $sb.AppendLine( ('**Latest details CSV:** `{0}`' -f (Split-Path -Leaf $detailsCsv)) )
+$null = $sb.AppendLine( ('**Latest totals  CSV:** `{0}`' -f (Split-Path -Leaf $totalsCsv)) )
+$null = $sb.AppendLine('')
+$null = $sb.AppendLine('> Bu pano yalnız **tespit/bildirim** amaçlıdır. Yeni test oluşturmaz.')
+[IO.File]::WriteAllText($indexMd, $sb.ToString(), [Text.UTF8Encoding]::new($false))
+
+Write-Host ("[DASHBOARD] Timeline CSV    : " + $timelineCsv)
+Write-Host ("[DASHBOARD] Timeline MD     : " + $timelineMd)
+Write-Host ("[DASHBOARD] Latest details  : " + $detailsCsv)
+Write-Host ("[DASHBOARD] Latest totals   : " + $totalsCsv)
+Write-Host ("[DASHBOARD] Index           : " + $indexMd)
+### DOSYA BİTİŞ: build_universal_dashboard.ps1
+
+### DOSYA BAŞLANGIÇ: .\\auth.setup.js
+// Rev: 2025-10-02 12:20 r1
+// auth.setup.js
+const { chromium } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
+
+module.exports = async () => {
+  const STORAGE_PATH = path.join(__dirname, 'storage', 'user.json');
+  const baseURL = process.env.BASE_URL || 'http://127.0.0.1:8010';
+
+  // storage klasörü garanti
+  fs.mkdirSync(path.dirname(STORAGE_PATH), { recursive: true });
+
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+
+  // LOGIN AKIŞI — kendi uygulamana göre selector/URL uyarlayabilirsin
+  await page.goto(`${baseURL}/admin/login/`, { waitUntil: 'domcontentloaded' });
+  await page.fill('#id_username', process.env.ADMIN_USER || 'hp');
+  await page.fill('#id_password', process.env.ADMIN_PASS || 'admin');
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'networkidle' }),
+    page.click('text=/Log in|Giriş|Oturum Aç/i'),
+  ]);
+
+  // Oturum durumunu kaydet
+  await page.context().storageState({ path: STORAGE_PATH });
+  await browser.close();
+};
+### DOSYA BİTİŞ: auth.setup.js
+
+### DOSYA BAŞLANGIÇ: .\\maintenance\admin.py
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'serial_number', 'location', 'manufacturer', 'is_active')
+    list_filter = ('location', 'is_active')
+    search_fields = ('name', 'serial_number')
+    
+    # EQP-003 testi için 'manufacturer' alanının formda görünür olduğundan emin olunur.
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'serial_number', 'manufacturer', 'purchase_date', 'last_maintenance_date', 'next_maintenance_date', 'location', 'is_active')
+        }),
+    )
+### DOSYA BİTİŞ: admin.py
+
+### DOSYA BAŞLANGIÇ: .\\core\urls.py
+from django.contrib import admin
+from django.urls import path, include
+from django.shortcuts import redirect
+
+urlpatterns = [
+    # root URL'ye gidildiğinde /admin/'e yönlendir
+    path('', lambda request: redirect('admin/', permanent=False)),
+    
+    # Standart Django Admin yolu
+    path('admin/', admin.site.urls),
+    
+    # Uygulama URL'leri
+    path('maintenance/', include('maintenance.urls')),
+]
+### DOSYA BİTİŞ: urls.py
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_no_append_admin.py
+# -*- coding: utf-8 -*-
+from django.middleware.common import CommonMiddleware
+
+class NoAppendSlashForAdmin(CommonMiddleware):
+    """
+    Admin altındaki URL'lerde CommonMiddleware'in APPEND_SLASH yönlendirmesini devre dışı bırakır.
+    Diğer tüm yollar için standart davranış korunur.
+    """
+    def process_request(self, request):
+        p = request.path
+        # admin altına giriyorsa bu middleware append_slash yapmasın
+        if p.startswith("/admin/"):
+            return None
+        # diğer tüm yollar: standart davranış
+        return super().process_request(request)
+### DOSYA BİTİŞ: mw_no_append_admin.py
+
+### DOSYA BAŞLANGIÇ: .\\core\mw_admin_canonical.py
+# -*- coding: utf-8 -*-
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+from django.http import HttpResponseRedirect
+
+BLOCK_KEYS = ("_changelist_filters", "preserved_filters", "p")
+
+class AdminEquipmentCanonicalRedirectMiddleware:
+    """
+    /admin/maintenance/equipment/ GET isteklerini, URL resolver'a gitmeden önce
+    sterilize query ile /admin/maintenance/equipment/_direct/ adresine 302 yapar.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Sadece kanonik liste yolu ve GET
+        if request.method == "GET" and request.path == "/admin/maintenance/equipment/":
+            u = urlsplit(request.get_full_path())
+            qs = [(k, v) for (k, v) in parse_qsl(u.query, keep_blank_values=True) if k not in BLOCK_KEYS]
+            new_qs = urlencode(qs)
+            target = urlunsplit((u.scheme, u.netloc, "/admin/maintenance/equipment/_direct/", new_qs, u.fragment))
+            return HttpResponseRedirect(target)
+        return self.get_response(request)
+### DOSYA BİTİŞ: mw_admin_canonical.py
+
+### DOSYA BAŞLANGIÇ: .\\core\admin_utils.py
+# Bu dosya, toplu admin aksiyonları için gereken yardımcı fonksiyonları içerir.
+def make_active(modeladmin, request, queryset):
+    """Seçili objeleri toplu olarak aktif yapar."""
+    queryset.update(is_active=True)
+make_active.short_description = "Seçili öğeleri aktif yap"
+
+def make_inactive(modeladmin, request, queryset):
+    """Seçili objeleri toplu olarak pasif yapar."""
+    queryset.update(is_active=False)
+make_inactive.short_description = "Seçili öğeleri pasif yap"
+### DOSYA BİTİŞ: admin_utils.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\bootreport_on_activate.ps1
+# REV: 1.0 | 2025-09-24 | Hash: d37abaeb | Parça: 1/1
+# Bootreport'ı venv aktivasyonunda üretir. Logu var\bootreport-activate-YYYYmmdd-HHMMSS.log'a yazar.
+param()
+
+$PRJ = Split-Path -Parent $MyInvocation.MyCommand.Path
+# dosya konumumuz /scripts ise proje kökü bir üst dizin
+$PRJ = Split-Path -Parent $PRJ
+
+$PY  = Join-Path $PRJ "venv\Scripts\python.exe"
+$DT  = Get-Date -Format "yyyyMMdd-HHmmss"
+$LOGDIR = Join-Path $PRJ "var"
+New-Item -ItemType Directory -Force -Path $LOGDIR | Out-Null
+$LOG = Join-Path $LOGDIR "bootreport-activate-$DT.log"
+
+# Ortam
+$env:BOOTREPORT_DEBUG = "0"
+
+# settings_maintenance ile çalıştır
+& $PY "$PRJ\manage.py" bootreport_dump --settings=core.settings_maintenance *>> $LOG
+### DOSYA BİTİŞ: bootreport_on_activate.ps1
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\_otokodlama\resolve_admin_urls.py
+import os, sys, django
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE","core.settings_maintenance")
+django.setup()
+from django.urls import resolve, Resolver404
+for p in ["/admin/","/admin/maintenance/equipment/","/admin/maintenance/equipment/add/"]:
+    try:
+        m = resolve(p)
+        print(p, "-> OK:", m.func.__module__)
+    except Resolver404:
+        print(p, "-> 404 (pattern yok)")
+### DOSYA BİTİŞ: resolve_admin_urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\core\urls.py
+from django.contrib import admin
+from django.urls import path, include
+from django.shortcuts import redirect
+
+urlpatterns = [
+    # root URL'ye gidildiğinde /admin/'e yönlendir
+    path('', lambda request: redirect('admin/', permanent=False)),
+    
+    # Standart Django Admin yolu
+    path('admin/', admin.site.urls),
+    
+    # Uygulama URL'leri
+    path('maintenance/', include('maintenance.urls')),
+]
+### DOSYA BİTİŞ: urls.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\maintenance\admin.py
+from django.contrib import admin
+from .models import Equipment
+
+@admin.register(Equipment)
+class EquipmentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'serial_number', 'location', 'manufacturer', 'is_active')
+    list_filter = ('location', 'is_active')
+    search_fields = ('name', 'serial_number')
+    
+    # EQP-003 testi için 'manufacturer' alanının formda görünür olduğundan emin olunur.
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'serial_number', 'manufacturer', 'purchase_date', 'last_maintenance_date', 'next_maintenance_date', 'location', 'is_active')
+        }),
+    )
+### DOSYA BİTİŞ: admin.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\maintenance\models.py
+from django.db import models
+import uuid
+
+# Manufacturer modelini ekliyoruz (Equipment modeli için ForeignKey gerektirebiliriz)
+# Ancak şimdilik sadece Equipment modelindeki alanı CharField olarak tutalım
+# Eğer Manufacturer ayrı bir model olsaydı, şuna benzer olurdu:
+# class Manufacturer(models.Model):
+#     name = models.CharField(max_length=100)
+#     def __str__(self):
+#         return self.name
+
+class Equipment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # admin.py'nin beklediği alanlar
+    name = models.CharField(max_length=200, verbose_name="Ekipman Adı")
+    serial_number = models.CharField(max_length=100, unique=True, verbose_name="Seri Numarası")
+    location = models.CharField(max_length=100, verbose_name="Konum")
+    
+    # EQP-003 testi için gerekli olan ve admin.py'de eklediğimiz alan
+    manufacturer = models.CharField(max_length=100, blank=True, null=True, verbose_name="Üretici Firma")
+
+    # Diğer bakım alanları
+    purchase_date = models.DateField(null=True, blank=True, verbose_name="Satın Alma Tarihi")
+    last_maintenance_date = models.DateField(null=True, blank=True, verbose_name="Son Bakım Tarihi")
+    next_maintenance_date = models.DateField(null=True, blank=True, verbose_name="Sonraki Bakım Tarihi")
+    is_active = models.BooleanField(default=True, verbose_name="Aktif")
+
+    class Meta:
+        verbose_name = "Ekipman"
+        verbose_name_plural = "Ekipmanlar"
+
+    def __str__(self):
+        return self.name
+### DOSYA BİTİŞ: models.py
+
+### DOSYA BAŞLANGIÇ: .\\_yedek\20251008-093923\scripts\build-tasks.js
+// scripts/build-tasks.js (CSV'den JSON'a dönüştürücü)
+const fs = require('fs');
+const path = require('path');
+const csv = fs.readFileSync(path.join(process.cwd(), 'tasks_template.csv'), 'utf8');
+
+const lines = csv.trim().split('\r\n');
+const headers = lines[0].split(',');
+const tasks = [];
+
+for (let i = 1; i < lines.length; i++) {
+     const values = lines[i].split(',');
+     if (values.length === headers.length) {
+          let task = {};
+          for (let j = 0; j < headers.length; j++) {
+               task[headers[j].trim()] = values[j].trim().replace(/^"|"$/g, '');
+          }
+          tasks.push(task);
+     }
+}
+
+if (!fs.existsSync('build')) { fs.mkdirSync('build'); }
+fs.writeFileSync('build/tasks.json', JSON.stringify(tasks, null, 2));
+console.log(`[BUILD] ${tasks.length} görev tasks.json dosyasına başarıyla dönüştürüldü.`);
+### DOSYA BİTİŞ: build-tasks.js
+

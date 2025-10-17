@@ -22,7 +22,7 @@ $ts     = (Get-Date -Format "yyyyMMdd-HHmmss")
 $branch = "$FeaturePrefix$ts"
 
 # 1) Yeni feature dalı + küçük fark
-git checkout -b $branch | Out-Null
+git checkout -B $env:GH_BRANCHbranch | Out-Null
 New-Item -ItemType Directory -Force ".github" | Out-Null
 "trigger $(Get-Date -Format s)" | Set-Content ".github\pr-bumper.md"
 git add ".github\pr-bumper.md"
@@ -50,7 +50,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "[pr] $prUrl" -ForegroundColor Cyan
 
 # 5) PR numarası
-$pr = gh pr list --state open --head $branch --json number --jq '.[0].number'
+$pr = gh pr list --state open --head $branch  
 
 # 6) Label + reviewer + auto-merge
 gh label create "ui-tests" --color "5319e7" --description "UI pipeline checks" --force 2>$null | Out-Null
@@ -69,7 +69,7 @@ if ($WaitForMerge) {
   $deadline = (Get-Date).AddSeconds($WaitTimeoutSec)
   do {
     Start-Sleep -Seconds 5
-    $state = gh pr view $pr --json state --jq .state
+    $state = gh pr view $pr  
     if ($state -eq "MERGED") { break }
   } while ((Get-Date) -lt $deadline)
 

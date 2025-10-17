@@ -27,10 +27,10 @@ function Get-Conflicts {
 # --- Branch'ı akıllı şekilde çöz ---
 if (-not $Branch) {
    if ($PrNumber -gt 0) {
-     $Branch = gh pr view $PrNumber --json headRefName --jq .headRefName
+     $Branch = gh pr view $PrNumber  
      if (-not $Branch) { throw "PR #$PrNumber bulunamadı/kapalı. -Branch vererek deneyin." }
    } else {
-     $Branch = gh pr list --state open --limit 1 --json headRefName --jq '.[0].headRefName' 2>$null
+     $Branch = gh pr list --state open --limit 1   2>$null
      if (-not $Branch) {
        $Branch = (git rev-parse --abbrev-ref HEAD)
        if (-not $Branch -or $Branch -eq 'HEAD') { throw "Açık PR yok ve aktif dal çözülemedi. -Branch ya da -PrNumber verin." }

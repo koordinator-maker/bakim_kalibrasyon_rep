@@ -1,1 +1,6 @@
-﻿id,title,severity,area,evidence,timestamp,status
+"id","title","severity","area","evidence","timestamp","status"
+"TASK001","Kalibrasyon formu validasyon eksikliği","high","forms","Form submit validasyon atlanıyor","2025-10-15T10:00:00","solved"
+"TASK002","Sıcaklık alanı negatif değer kontrolü","medium","validation","Min/max kontrol eksik","2025-10-15T11:00:00","solved"
+"TASK003","Humidity alanı required kontrolü","high","validation","Boş geçilebiliyor","2025-10-15T12:00:00","pending"
+"TASK004","Dashboard grafik init hatası","medium","ui","Chart.js yüklenmiyor","2025-10-15T13:00:00","todo"
+"GPT4O_DEMO","GPT-4o test patch request","high","demo","Demo için test görevi","2025-10-15T23:00:00","todo"

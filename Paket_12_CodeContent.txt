@@ -1,0 +1,1300 @@
+### DOSYA BAŞLANGIÇ: .\\scripts\capture_screenshot.ps1
+# REV: 1.0 | 2025-09-25 | Hash: TBD | Parça: 1/1
+Param(
+  [string]$OutDir = "targets/screens",
+  [string]$AlsoCopyTo = ""
+)
+$ErrorActionPreference = "Stop"
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+if (!(Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
+
+$ts = Get-Date -Format "yyyyMMdd-HHmmss"
+$path = Join-Path $OutDir ("screenshot-$ts.png")
+
+$bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+$gfx = [System.Drawing.Graphics]::FromImage($bmp)
+$gfx.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+$bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+$gfx.Dispose()
+$bmp.Dispose()
+
+Write-Host "[SCREENSHOT] $path"
+
+if ($AlsoCopyTo -and (Test-Path $AlsoCopyTo)) {
+  Copy-Item $path -Destination (Join-Path $AlsoCopyTo ("screenshot-$ts.png")) -Force
+}
+### DOSYA BİTİŞ: capture_screenshot.ps1
+
+### DOSYA BAŞLANGIÇ: .\\scripts\build-tasks.js
+const fs = require("fs");
+const path = require("path");
+
+function readCSV(p) {
+  const txt = fs.readFileSync(p, "utf8").trim();
+  if (!txt) return [];
+  const [headerLine, ...lines] = txt.split(/\r?\n/);
+  const headers = headerLine.split(",").map(s => s.trim());
+  return lines
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map(line => {
+      const cells = line.split(",").map(s => s.trim());
+      const o = {};
+      headers.forEach((h, i) => (o[h] = cells[i] ?? ""));
+      // tip güvenliği/varsayılanlar
+      if (!o.id) o.id = "TASK-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+      if (!o.type) o.type = "check";
+      if (!o.title) o.title = "Untitled";
+      if (!o.job_definition) o.job_definition = "open:/;expect:body";
+      if (!o.visual_threshold) o.visual_threshold = 0.9;
+      return o;
+    });
+}
+
+function writeJson(outPath, arr) {
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, JSON.stringify(arr, null, 2), "utf8");
+  console.log("✓ wrote", outPath, "count:", arr.length);
+}
+
+function main() {
+  const root = process.cwd();
+  const csvPath = path.join(root, "tasks.csv");
+
+  let tasks = [];
+  if (fs.existsSync(csvPath)) {
+    tasks = readCSV(csvPath);
+  }
+
+  // fallback: CSV yoksa en az 1 görev üret
+  if (!Array.isArray(tasks) || tasks.length === 0) {
+    tasks = [
+      {
+        id: "SMOKE-001",
+        type: "check",
+        title: "Admin açılıyor",
+        description: "Django admin sayfası yüklenir",
+        job_definition: "open:/admin/;expect:Django administration",
+        design_ref: "N/A",
+        visual_threshold: 0.9
+      }
+    ];
+  }
+
+  // Çoklu hedeflere yaz: spec hangi yolu okursa dolu bulsun
+  writeJson(path.join(root, "tasks.json"), tasks);
+  writeJson(path.join(root, "tests", "tasks.json"), tasks);
+  writeJson(path.join(root, "build", "tasks.json"), tasks);
+}
+main();
+### DOSYA BİTİŞ: build-tasks.js
+
+### DOSYA BAŞLANGIÇ: .\\reporters\quarantine-reporter.js
+// reporters/quarantine-reporter.js (Karantina ve AI Kuyruk Yöneticisi - TAM İMPLEMENTASYON)
+const fs = require('fs');
+const path = require('path');
+
+const QUARANTINE_FILE = path.join(process.cwd(), 'quarantine.json');
+const AI_QUEUE_FILE = path.join(process.cwd(), 'ai_queue', 'failed_tests.jsonl');
+
+class QuarantineReporter {
+     constructor(options) {
+          this.quarantine = {};
+          this.loadQuarantine();
+     }
+
+     loadQuarantine() {
+          if (fs.existsSync(QUARANTINE_FILE)) {
+               try {
+                    this.quarantine = JSON.parse(fs.readFileSync(QUARANTINE_FILE, 'utf8'));
+                    console.log(`[REPORTER] Karantina durumu yüklendi: ${Object.keys(this.quarantine).length} öğe.`);
+               } catch (e) {
+                    console.error('[REPORTER HATA] Karantina dosyasını okurken hata oluştu, sıfırdan başlatılıyor.', e.message);
+                    this.quarantine = {};
+               }
+          }
+     }
+
+     onTestEnd(test, result) {
+          const testId = `${path.basename(test.location.file)} - ${test.title}`;
+
+          if (result.status === 'failed' || result.status === 'timedOut') {
+               this.quarantine[testId] = (this.quarantine[testId] || 0) + 1;
+
+               const errorMsg = result.errors[0]?.message || result.error?.message || 'Tanımsız veya süre aşımı hatası';
+               const aiReport = {
+                    id: testId,
+                    status: result.status,
+                    error: errorMsg.split('\n')[0],
+                    timestamp: new Date().toISOString()
+               };
+               fs.appendFileSync(AI_QUEUE_FILE, JSON.stringify(aiReport) + '\n');
+
+               if (this.quarantine[testId] >= 3) {
+                    console.log(`[KARANTİNA] Görev ${testId} 3. kez başarısız oldu ve karantinaya alındı.`);
+               }
+          } else if (result.status === 'passed' && this.quarantine[testId] && this.quarantine[testId] < 3) {
+               delete this.quarantine[testId];
+          }
+     }
+
+     onEnd(result) {
+          fs.writeFileSync(QUARANTINE_FILE, JSON.stringify(this.quarantine, null, 2));
+          console.log(`[RAPOR] Karantina durumu güncellendi. Başarısızlık sayısı: ${result.failures}.`);
+     }
+}
+
+module.exports = QuarantineReporter;
+### DOSYA BİTİŞ: quarantine-reporter.js
+
+### DOSYA BAŞLANGIÇ: .\\playwright.config.js
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  use: {
+    baseURL: process.env.BASE_URL || 'http://127.0.0.1:8010',
+    storageState: 'storage/user.json',
+    screenshot: 'only-on-failure',
+    video: 'on-first-retry',
+    trace: 'on-first-retry',
+  },
+  retries: 2
+});
+### DOSYA BİTİŞ: playwright.config.js
+
+### DOSYA BAŞLANGIÇ: .\\ops\git_ops.ps1
+param(
+  [string]$RepoRoot = ".",
+  [string]$Branch   = "main",
+  [string]$AddSpec  = ".",
+  [string]$Message  = "[auto] apply files + update state",
+  [switch]$NoPush
+)
+
+$ErrorActionPreference = "Stop"
+Set-Location $RepoRoot
+
+$dirty = & git status --porcelain
+if (-not $dirty) { Write-Host "[git] Çalışma alanı temiz; commit/push atlandı." -ForegroundColor Yellow; exit 0 }
+
+& git add $AddSpec
+try { & git commit -m $Message } catch { Write-Host "[git] Commit başarısız: $($_.Exception.Message)" -ForegroundColor Red; exit 2 }
+
+if (-not $NoPush) {
+  try { & git push origin $Branch } catch { Write-Host "[git] Push başarısız: $($_.Exception.Message)" -ForegroundColor Red; exit 3 }
+  Write-Host "[git] Pushed to origin/$Branch" -ForegroundColor Green
+} else {
+  Write-Host "[git] --NoPush seçildi, push atlandı." -ForegroundColor Yellow
+}
+### DOSYA BİTİŞ: git_ops.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\gen_from_backlog.ps1
+param(
+    [string]$BacklogPath = "ops/backlog.json",
+    [string]$FlowsDir = "flows",
+    [string]$FlowGenScript = "tools/pw_flow.py"
+)
+
+$ErrorActionPreference = "Stop"
+
+if (-not (Test-Path $BacklogPath)) {
+    Write-Error "Backlog dosyası bulunamadı: $BacklogPath"
+    exit 1
+}
+if (-not (Test-Path $FlowsDir)) {
+    New-Item -ItemType Directory -Path $FlowsDir | Out-Null
+}
+if (-not (Test-Path $FlowGenScript)) {
+    Write-Error "Flow oluşturma betiği bulunamadı: $FlowGenScript"
+    exit 1
+}
+
+Write-Host "[gen] Flow üretimi BAŞLADI." -ForegroundColor Yellow
+
+try {
+    $jsonContent = Get-Content $BacklogPath -Raw -Encoding UTF8
+    $backlog = $jsonContent | ConvertFrom-Json -ErrorAction Stop
+} catch {
+    Write-Error "Backlog JSON dosyası okunamadı veya bozuk: "
+    exit 1
+}
+
+$generatedCount = 0
+foreach ($task in $backlog) {
+    if (-not $task.id) {
+        Write-Warning "Boş ID içeren görev atlandı."
+        continue
+    }
+
+    $flowFileName = "_flow.json"
+    $flowFilePath = Join-Path -Path $FlowsDir -ChildPath $flowFileName
+    
+    $tempTaskPath = "temp_task_.json" 
+    (ConvertTo-Json $task -Depth 10) | Set-Content -Path $tempTaskPath -Encoding UTF8
+
+    Write-Host "[DEBUG] Görev:  - Hedef dosya: $flowFilePath" -ForegroundColor DarkGray
+
+    $pythonArgs = @(
+        "-File", $FlowGenScript,
+        "--task-file", $tempTaskPath,
+        "--output", $flowFilePath
+    )
+    
+    $result = python @($pythonArgs)
+    
+    if (-not (Test-Path $flowFilePath)) {
+        Write-Warning "[WARN] $flowFileName oluşturulamadı. Python çıktısı: $result"
+    } else {
+        Write-Host "✅ $flowFileName başarıyla oluşturuldu." -ForegroundColor Green
+        $generatedCount++
+    }
+
+    Remove-Item $tempTaskPath -ErrorAction SilentlyContinue
+}
+
+Write-Host "[gen] Flow üretimi TAMAMLANDI. Toplam üretilen: $generatedCount" -ForegroundColor Yellow
+
+if ($generatedCount -gt 0) {
+    exit 0
+} else {
+    exit 1
+}
+### DOSYA BİTİŞ: gen_from_backlog.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\open_pr.ps1
+param(
+  [string]$RepoRoot   = ".",
+  [string]$Branch     = "main",   # PR HEAD (çalıştığınız dal)
+  [string]$BaseBranch = "main",   # PR BASE (hedef dal)
+  [string]$StateTools = "ops/state_tools.ps1"
+)
+
+$ErrorActionPreference = "Stop"
+
+function Show-GitHubErrorBody {
+  param([System.Net.WebException]$Ex)
+  try {
+    $resp = $Ex.Response
+    if ($resp -and $resp.GetResponseStream) {
+      $sr = New-Object IO.StreamReader($resp.GetResponseStream())
+      $body = $sr.ReadToEnd()
+      Write-Warning ("GitHub API error body: " + $body)
+      if ($resp.Headers["WWW-Authenticate"]) {
+        Write-Warning ("WWW-Authenticate: " + $resp.Headers["WWW-Authenticate"])
+      }
+    }
+  } catch { Write-Warning "Error body okunamadı: $($_.Exception.Message)" }
+}
+
+function Get-RepoSlug {
+  param([string]$RepoRoot)
+  Push-Location $RepoRoot
+  try {
+    $url = (& git remote get-url origin 2>$null)
+    if (-not $url) { throw "origin remote bulunamadı." }
+    if ($url -match 'github\.com[:/](.+?)(\.git)?$') { return $Matches[1] }
+    throw "GitHub repo slug çözülemedi: $url"
+  } finally { Pop-Location }
+}
+
+function Load-State {
+  param([string]$StateTools,[string]$RepoRoot)
+  . (Join-Path $RepoRoot $StateTools)
+  return (Get-State)
+}
+
+function Build-PR-Body {
+  param($state)
+  $lines = @()
+  $lines += "### UI Test Özeti"
+  if ($state.tests -and $state.tests.summary) {
+    $lines += ""
+    $lines += "- **Passed**: $($state.tests.summary.passed)"
+    $lines += "- **Failed**: $($state.tests.summary.failed)"
+    $lines += "- **Last Run**: $($state.tests.summary.last_run)"
+  }
+
+  if ($state.tests -and $state.tests.results) {
+    $lines += ""
+    $lines += "| Key | Status | words_recall | missing_count | out_json | screenshot |"
+    $lines += "|-----|--------|--------------|---------------|----------|------------|"
+
+    $keys = @()
+    if ($state.tests.results -is [hashtable]) { $keys = $state.tests.results.Keys }
+    else { $keys = ($state.tests.results.PSObject.Properties | Select-Object -ExpandProperty Name) }
+
+    foreach ($k in $keys) {
+      $it = if ($state.tests.results -is [hashtable]) { $state.tests.results[$k] } else { $state.tests.results.$k }
+      $status = $it.status
+      $recall = ""
+      $misses = ""
+      if ($it.metrics) {
+        if ($it.metrics.PSObject.Properties['words_recall']) { $recall = [string]$it.metrics.words_recall }
+        if ($it.metrics.PSObject.Properties['missing_count']) { $misses = [string]$it.metrics.missing_count }
+      }
+      $outj = ""
+      $shot = ""
+      if ($it.artifacts) {
+        if ($it.artifacts.PSObject.Properties['out_json']) { $outj = [string]$it.artifacts.out_json }
+        if ($it.artifacts.PSObject.Properties['screenshot']) { $shot = [string]$it.artifacts.screenshot }
+      }
+      $lines += "| $k | $status | $recall | $misses | $outj | $shot |"
+    }
+  }
+
+  if ($state.pending_actions -and $state.pending_actions.Count -gt 0) {
+    $lines += ""
+    $lines += "### Pending Actions"
+    foreach ($p in $state.pending_actions) {
+      $lines += "- [$($p.status)] **$($p.type)**: $($p.detail) (due_stage: $($p.due_stage), ts: $($p.ts))"
+    }
+  }
+
+  return ($lines -join "`n")
+}
+
+# ----- MAIN -----
+$repoSlug = Get-RepoSlug -RepoRoot $RepoRoot
+$state    = Load-State -StateTools $StateTools -RepoRoot $RepoRoot
+
+$title = "[auto] UI validate passed → open PR"
+$body  = Build-PR-Body -state $state
+
+# 1) Push edildiğinden emin ol
+Push-Location $RepoRoot
+try { & git push origin $Branch | Out-Null } finally { Pop-Location }
+
+# 2) PR açma: gh (CLI) → yoksa REST → ikisi de yoksa uyarı
+$createdUrl = ""
+$used = ""
+
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+  try {
+    $out = & gh pr create --title $title --body $body --base $BaseBranch --head $Branch 2>&1
+    if ($LASTEXITCODE -eq 0) {
+      $m = ($out | Select-String -Pattern 'https?://github\.com/.+?/pull/\d+' | Select-Object -First 1)
+      if ($m) { $createdUrl = $m.Matches.Value; $used = "gh" }
+    } else {
+      Write-Warning "gh pr create hata verdi: $out"
+    }
+  } catch {
+    Write-Warning "gh pr create çalışmadı: $($_.Exception.Message)"
+  }
+}
+
+if (-not $createdUrl) {
+  $token = $env:GITHUB_TOKEN
+  if ($token) {
+    $bodyObj = @{
+      title = $title
+      head  = $Branch
+      base  = $BaseBranch
+      body  = $body
+    }
+    $json = $bodyObj | ConvertTo-Json -Depth 5
+    $uri  = "https://api.github.com/repos/$repoSlug/pulls"
+
+    $headers = @{
+      "Accept"        = "application/vnd.github+json"
+      "Authorization" = "token $token"
+      "X-GitHub-Api-Version" = "2022-11-28"
+      "User-Agent"    = "ps-open-pr"
+    }
+    try {
+      $resp = Invoke-RestMethod -Method Post -Uri $uri -Headers $headers -Body $json
+      if ($resp.html_url) { $createdUrl = $resp.html_url; $used = "rest" }
+    } catch [System.Net.WebException] {
+      Show-GitHubErrorBody $_.Exception
+      Write-Warning "REST ile PR açma denemesi hata verdi."
+    }
+  } else {
+    Write-Warning "Ne 'gh' komutu başarılı ne de GITHUB_TOKEN tanımlı. PR otomatik açılamadı (pipeline kesilmedi)."
+  }
+}
+
+if ($createdUrl) {
+  Write-Host "[pr] Açıldı ($used) → $createdUrl" -ForegroundColor Green
+  . (Join-Path $RepoRoot $StateTools)
+  Advance-Pipeline -ToStage "await_review" -Hint "PR açıldı: $createdUrl"
+} else {
+  Write-Host "[pr] PR açılamadı; stage değiştirilmedi." -ForegroundColor Yellow
+}
+
+### DOSYA BİTİŞ: open_pr.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\pipeline_local.ps1
+param(
+  [string]$BaseUrl     = "http://127.0.0.1:8010",
+  [string]$JobsCsv     = "ops/ui_jobs.csv",
+  [string]$BaselineDir = "targets\reference",
+  [string]$AlertsDir   = "_otokodlama\alerts",
+  [string]$StateTools  = "ops/state_tools.ps1",
+  [switch]$NoGitPush
+)
+
+$ErrorActionPreference = "Stop"
+
+# 1) AI patch'leri uygula (varsa)
+powershell -ExecutionPolicy Bypass -File "ops/apply_ai_files.ps1" -RepoRoot "." -InboxDir "ai_inbox" -StateTools $StateTools | Out-Host
+
+# 2) UI testlerini koştur + state güncelle
+powershell -ExecutionPolicy Bypass -File "ops/run_suite.ps1" -BaseUrl $BaseUrl -JobsCsv $JobsCsv -BaselineDir $BaselineDir -AlertsDir $AlertsDir -StateTools $StateTools | Out-Host
+
+# 3) Değişiklikleri commit/push
+if ($NoGitPush) {
+  powershell -ExecutionPolicy Bypass -File "ops/git_ops.ps1" -RepoRoot "." -Branch "main" -AddSpec "." -Message "[auto] ai apply + ui validate + state" -NoPush | Out-Host
+} else {
+  powershell -ExecutionPolicy Bypass -File "ops/git_ops.ps1" -RepoRoot "." -Branch "main" -AddSpec "." -Message "[auto] ai apply + ui validate + state" | Out-Host
+}
+
+Write-Host "`n[pipeline] DONE." -ForegroundColor Green
+### DOSYA BİTİŞ: pipeline_local.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_universal_suite.ps1
+param(
+  [string]$Repo = ".",
+  [string]$BaseUrl = "http://127.0.0.1:8010",
+  [string]$EntryPath = "/admin/",
+  [string]$ReportsDir = "_otokodlama\reports",
+  [string]$BundleDir  = "_otokodlama\bundle",
+  [switch]$Zip = $true,
+  [switch]$GateOnFail = $true,
+  [switch]$WarnAsSkip = $true
+)
+chcp 65001 > $null
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding            = [Text.UTF8Encoding]::new($false)
+Set-StrictMode -Version Latest; $ErrorActionPreference="Stop"
+$repo = Resolve-Path $Repo; Set-Location $repo
+$ts = (Get-Date).ToString("yyyyMMdd-HHmmss")
+$reportsRoot = Join-Path $repo $ReportsDir
+$bundleRoot  = Join-Path $repo $BundleDir
+$diagDir     = Join-Path $repo "ops\diagnostics"
+$null = New-Item -ItemType Directory -Force -Path $reportsRoot,$bundleRoot,$diagDir | Out-Null
+# 1) Rapor (TXT üretir)
+& (Join-Path $diagDir "report_universal.ps1") -Repo $repo -OutDir $ReportsDir -BaseUrl $BaseUrl -EntryPath $EntryPath
+# 2) Dashboard (timeline, totals, index) - BU ADIM ARTIK ÖNCE
+& (Join-Path $diagDir "build_universal_dashboard.ps1") -Repo $repo -ReportsDir $ReportsDir
+# 3) TXT -> details CSV (bizim sağlam çıkarım) - EN SON YAZSIN
+& (Join-Path $diagDir "extract_from_txt.ps1") -Repo $repo -ReportsDir $ReportsDir
+# 3b) Sigorta: header-only kaldıysa tekrar düzelt
+$dashDir = Join-Path $reportsRoot "dashboard"
+$lastDet = Get-ChildItem $dashDir -File -Filter "details_*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($lastDet) {
+  $firstTwo = Get-Content $lastDet.FullName -TotalCount 2
+  if (-not $firstTwo -or $firstTwo.Length -lt 2) {
+    & (Join-Path $diagDir "extract_from_txt.ps1") -Repo $repo -ReportsDir $ReportsDir
+  }
+}
+# 4) JUnit
+& (Join-Path $diagDir "export_universal_junit.ps1") `
+  -Repo $repo -ReportsDir $ReportsDir `
+  -SuiteName "UniversalFindings" `
+  -OutputDir "_otokodlama\reports\junit" `
+  -GateOnFail:$GateOnFail -WarnAsSkip:$WarnAsSkip
+# 5) Paketle
+$bundle = Join-Path $bundleRoot ("bundle_" + $ts)
+$null = New-Item -ItemType Directory -Force -Path $bundle | Out-Null
+Copy-Item $reportsRoot -Destination $bundle -Recurse -Force | Out-Null
+$pwDir = Join-Path $repo "playwright-report"
+if (Test-Path $pwDir) { Copy-Item $pwDir -Destination (Join-Path $bundle "playwright-report") -Recurse -Force | Out-Null }
+if ($Zip) {
+  $zipPath = $bundle + ".zip"
+  if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  [System.IO.Compression.ZipFile]::CreateFromDirectory($bundle, $zipPath)
+  Write-Host ("[BUNDLE] ZIP: " + $zipPath)
+} else {
+  Write-Host ("[BUNDLE] FOLDER: " + $bundle)
+}
+# 6) Özet
+$totals = Get-ChildItem $dashDir -File -Filter "totals_*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($totals) {
+  $obj = Import-Csv $totals.FullName | Select-Object -First 1
+  Write-Host ("[OZET] Son rapor: {0} | PASS={1} WARN={2} FAIL={3}" -f $obj.Timestamp,$obj.PASS,$obj.WARN,$obj.FAIL)
+}
+### DOSYA BİTİŞ: run_universal_suite.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\run_backlog.ps1
+param(
+    [string]$FlowsDir = "flows",
+    [string]$Filter = "*",
+    [string]$BaseUrl = "http://127.0.0.1:8010",
+    [bool]$LinkSmoke = $false,
+    [int]$SmokeDepth = 1,
+    [int]$SmokeLimit = 200,
+    [string]$ExtraArgs = ""
+)
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "[run] Filters: $Filter" -ForegroundColor Yellow
+
+$flowFiles = Get-ChildItem -Path $FlowsDir -Filter "*_flow.json" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like $Filter.Replace('*', '*') + "_flow.json" }
+
+if ($flowFiles.Count -eq 0) {
+    Write-Host "[run] Akış bulunamadı. Aranılan dizin: $FlowsDir" -ForegroundColor Red
+    Write-Host "[DEBUG] Filtre: $Filter.Replace('*', '*') + '_flow.json'" -ForegroundColor DarkGray
+    exit 1
+}
+
+Write-Host "[run] 0 adet akış bulundu. Başlatılıyor..." -ForegroundColor Green
+
+foreach ($file in $flowFiles) {
+    $flowPath = $file.FullName
+    $id = $file.BaseName -replace '_flow$'
+
+    Write-Host "--- Başlatılıyor: $id ($flowPath) ---" -ForegroundColor Cyan
+    
+    $args = @(
+        "npx", 
+        "playwright", 
+        "flow", 
+        "run", 
+        "", 
+        "--base-url", 
+        ""
+    )
+
+    if ($LinkSmoke) {
+        $args += @(
+            "--extra-command", 
+            "powershell -ExecutionPolicy Bypass -File ops/smoke_links.ps1 -TargetUrl "" -TargetFlow "" -SmokeDepth $SmokeDepth -SmokeLimit $SmokeLimit -OkRedirectTo /_direct/.*",
+            "--log-file",
+            "logs/$id_smoke_$(Get-Date -Format 'yyyyMMddHHmmss').log"
+        )
+    }
+
+    if ($ExtraArgs) {
+        $args += $ExtraArgs.Split(' ') | Where-Object { -not [string]::IsNullOrEmpty($_) }
+    }
+
+    $commandLine = $args -join ' '
+    Write-Host "[DEBUG] Çalıştırılan Komut: $commandLine" -ForegroundColor DarkGray
+    
+    $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $commandLine" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "logs/$id_pw_$(Get-Date -Format 'yyyyMMddHHmmss').log" -RedirectStandardError "logs/$id_error_$(Get-Date -Format 'yyyyMMddHHmmss').log"
+    
+    if ($process.ExitCode -eq 0) {
+        Write-Host "✅ Başarılı: $id" -ForegroundColor Green
+    } else {
+        Write-Host "❌ Başarısız: $id (Exit Kodu: $(.ExitCode))" -ForegroundColor Red
+    }
+}
+
+Write-Host "--- Koşucu BİTTİ ---" -ForegroundColor Yellow
+### DOSYA BİTİŞ: run_backlog.ps1
+
+### DOSYA BAŞLANGIÇ: .\\pipeline.ps1
+# REV: 1.0 | 2025-09-25 | Hash: TBD | Parça: 1/1
+Param(
+  [string]$Settings = "core.settings"
+)
+$ErrorActionPreference = "Stop"
+
+# -------------------- Ortam & Yol Kurulumu --------------------
+$Root = (Get-Location).Path
+$Ts   = Get-Date -Format "yyyyMMdd-HHmmss"
+$OutDir = Join-Path $Root ("_otokodlama/out/" + $Ts)
+New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+
+# Tam terminal dökümü
+Start-Transcript -Path (Join-Path $OutDir "transcript.txt") -Force | Out-Null
+
+# Config yükle
+$ConfigPath = Join-Path $Root "pipeline.config.json"
+if (Test-Path $ConfigPath) {
+  $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+} else {
+  throw "pipeline.config.json bulunamadı."
+}
+
+# -------------------- Yardımcılar --------------------
+function Step($name, $scriptBlock) {
+  Write-Host "==> $name"
+  try {
+    & $scriptBlock 2>&1 | Tee-Object -FilePath (Join-Path $OutDir ("$($name -replace '\s','_').log"))
+    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) { throw "$name exit code $LASTEXITCODE" }
+  } catch {
+    Write-Host "!  $name FAILED"
+    Stop-Transcript | Out-Null
+    throw
+  }
+}
+
+function StepSoft($name, $scriptBlock) {
+  Write-Host "==> $name (soft)"
+  try {
+    & $scriptBlock 2>&1 | Tee-Object -FilePath (Join-Path $OutDir ("$($name -replace '\s','_').log"))
+  } catch {
+    Write-Host "!  $name FAILED (soft, continuing)"
+  }
+}
+
+# 650 satır üstü gate (venv, node_modules, _otokodlama hariç)
+function Gate-LineLimit650 {
+  $limit = 650
+  $long = @()
+  Get-ChildItem -Recurse -File | Where-Object {
+    $_.FullName -notmatch '\\venv\\' -and
+    $_.FullName -notmatch '\\node_modules\\' -and
+    $_.FullName -notmatch '\\_otokodlama\\' -and
+    $_.Name -ne "transcript.txt"
+  } | ForEach-Object {
+    try {
+      $cnt = [System.IO.File]::ReadLines($_.FullName).Count
+      if ($cnt -gt $limit) {
+        $long += "{0} : {1} satır" -f ($_).FullName, $cnt
+      }
+    } catch { }
+  }
+  $out = Join-Path $OutDir "longfiles.txt"
+  $long | Out-File -Encoding utf8 $out
+  if ($long.Count -gt 0) {
+    Write-Host "[LONGFILES] 650+ satır bulundu, detay için: $out"
+    throw "650 satır sınırı aşıldı."
+  } else {
+    Write-Host "[LONGFILES] OK (650 üstü yok)"
+  }
+}
+
+# -------------------- Adımlar --------------------
+# (İstersen aktif tut: revstamp / blockcheck / guardrail)
+#Step "revstamp" { python tools/revstamp.py . }
+Step "blockcheck" { python tools/blockcheck.py --tracked }
+Step "guardrail_check" { python tools/guardrail_check.py }
+
+# 650 satır gate
+Step "line_limit_650" { Gate-LineLimit650 }
+
+# Django check (soft)
+StepSoft "django_check" { .\scripts\django_check.ps1 -Settings $Settings -Soft }
+
+# Ekran görüntüsü (her koşuda)
+$ScreensDir = Join-Path $Root $Config.screenshots_dir
+Step "screenshot" {
+  .\scripts\capture_screenshot.ps1 -OutDir $ScreensDir -AlsoCopyTo $OutDir
+}
+
+# Playwright testleri
+$PwOut = Join-Path $OutDir "playwright"
+Step "playwright" {
+  if (!(Test-Path $PwOut)) { New-Item -ItemType Directory -Force -Path $PwOut | Out-Null }
+  python tools/playwright_tests.py --urls $Config.urls_file --out $PwOut
+}
+
+# Layout acceptance (hedef ekran + iyileştirme + test sonucu)
+$TargetPng = Join-Path $Root $Config.target_screenshot
+$ImproveTx = Join-Path $Root $Config.improvements_file
+$LayJson   = Join-Path $OutDir "layout_report.json"
+$PwJson    = Join-Path $PwOut "report.json"
+$Th        = [double]$Config.acceptance.screenshot_similarity
+
+Step "acceptance_gate" {
+  python tools/layout_acceptance.py `
+    --target $TargetPng `
+    --latest $ScreensDir `
+    --improve $ImproveTx `
+    --report $LayJson `
+    --threshold $Th `
+    --playwright_json $PwJson
+}
+
+Write-Host "[PIPELINE] Tamamlandı."
+Stop-Transcript | Out-Null
+### DOSYA BİTİŞ: pipeline.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\universal_postprocess.ps1
+param(
+  [string]$Repo       = ".",
+  [string]$ReportsDir = "_otokodlama\reports",
+  [string]$BundleDir  = "_otokodlama\bundle",
+  [string]$CsvPath    = "tasks_template.csv",
+  [string]$TasksJson  = "build\tasks.json"
+)
+chcp 65001 > $null
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$OutputEncoding            = [Text.UTF8Encoding]::new($false)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+function First-NonEmpty {
+  param([Parameter(ValueFromRemainingArguments=$true)][object[]]$Values)
+  foreach ($v in $Values) { if ($null -ne $v) { $s=[string]$v; if ($s.Trim().Length -gt 0) { return $s } } }
+  return ""
+}
+function Ensure-Dir([string]$Path) {
+  $p = (Split-Path -Parent $Path)
+  if ($p -and -not (Test-Path $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
+}
+function Get-Prop($obj, [string]$name, $default="") {
+  if ($null -eq $obj) { return $default }
+  $has = $obj.PSObject.Properties[$name]
+  if ($has -and $null -ne $has.Value) { $s=[string]$has.Value; if ($s.Trim().Length -gt 0) { return $has.Value } }
+  return $default
+}
+$repo = Resolve-Path $Repo
+Set-Location $repo
+$reportsRoot = Join-Path $repo $ReportsDir
+$dashboard   = Join-Path $reportsRoot "dashboard"
+$notifyDir   = Join-Path $reportsRoot "notify"
+$bundleRoot  = Join-Path $repo $BundleDir
+function Resolve-UnderRepo([string]$p){ if ([IO.Path]::IsPathRooted($p)) { $p } else { Join-Path $repo $p } }
+$csvFull   = Resolve-UnderRepo $CsvPath
+$tasksFull = Resolve-UnderRepo $TasksJson
+if (-not (Test-Path $notifyDir)) { New-Item -ItemType Directory -Force -Path $notifyDir | Out-Null }
+if (-not (Test-Path $bundleRoot)) { New-Item -ItemType Directory -Force -Path $bundleRoot | Out-Null }
+function Convert-TasksCsvToJson {
+  param([string]$Csv, [string]$OutJson)
+  if (-not (Test-Path $Csv)) {
+    Write-Host "[CSV→JSON] $Csv yok, boş tasks.json yazılıyor" -ForegroundColor Yellow
+    $empty = @{ generated_at = (Get-Date).ToUniversalTime().ToString("s") + "Z"; source="universal_planning"; items=@() }
+    Ensure-Dir $OutJson
+    ($empty | ConvertTo-Json -Depth 10) | Set-Content -Path $OutJson -Encoding UTF8
+    return
+  }
+  $bytes = [IO.File]::ReadAllBytes($Csv)
+  if ($bytes.Length -ge 3 -and $bytes[0]-eq 0xEF -and $bytes[1]-eq 0xBB -and $bytes[2]-eq 0xBF) {
+    $text = [Text.UTF8Encoding]::new($false).GetString($bytes,3,$bytes.Length-3)
+  } else {
+    $text = [Text.UTF8Encoding]::new($false).GetString($bytes)
+  }
+  $firstLine = ($text -split "`r?`n" | Where-Object { $_.Trim() -ne "" } | Select-Object -First 1)
+  if ($null -eq $firstLine -or ($firstLine -notmatch '(^|,)id(,|$)') -or ($firstLine -notmatch '(^|,)title(,|$)')) {
+    Write-Host "[CSV→JSON] Uyarı: id/title başlıkları beklenen biçimde değil" -ForegroundColor Yellow
+  }
+  try { $rows = ConvertFrom-Csv -InputObject $text } catch { throw "[CSV→JSON] CSV parse hatası: $($_.Exception.Message)" }
+  $doc = [ordered]@{ generated_at=(Get-Date).ToUniversalTime().ToString("s")+"Z"; source="csv_template"; items=@() }
+  foreach ($r in $rows) {
+    $id    = First-NonEmpty (Get-Prop $r 'id') (Get-Prop $r 'ID') (Get-Prop $r 'task_id')
+    $title = First-NonEmpty (Get-Prop $r 'title') (Get-Prop $r 'TITLE') (Get-Prop $r 'name')
+    $sev   = First-NonEmpty (Get-Prop $r 'severity') "medium"
+    $area  = First-NonEmpty (Get-Prop $r 'area') "pipeline"
+    $evd   = First-NonEmpty (Get-Prop $r 'evidence') ""
+    $tsmp  = First-NonEmpty (Get-Prop $r 'timestamp') ""
+    $stat  = First-NonEmpty (Get-Prop $r 'status') "todo"
+    $doc.items += [ordered]@{ id=$id; title=$title; severity=$sev; area=$area; evidence=$evd; timestamp=$tsmp; status=$stat; steps=@(); source="csv" }
+  }
+  Ensure-Dir $OutJson
+  ($doc | ConvertTo-Json -Depth 10) | Set-Content -Path $OutJson -Encoding UTF8
+  Write-Host "[CSV→JSON] Yazıldı: $OutJson"
+}
+function Merge-FindingsIntoTasks {
+  param([string]$DetailsCsv, [string]$TasksJsonPath)
+  if (Test-Path $TasksJsonPath) {
+    try { $tasksObj = Get-Content $TasksJsonPath -Raw | ConvertFrom-Json -ErrorAction Stop }
+    catch { throw "[MERGE] $TasksJsonPath parse edilemedi: $($_.Exception.Message)" }
+  } else {
+    $tasksObj = [ordered]@{ generated_at=(Get-Date).ToUniversalTime().ToString("s")+"Z"; source="universal_planning"; items=@() }
+  }
+  $items = New-Object 'System.Collections.Generic.List[object]'
+  if ($tasksObj.items) { $items.AddRange([object[]]$tasksObj.items) }
+  # 1) details dosyasını belirle
+  $detailsFile = $DetailsCsv
+  if ([string]::IsNullOrWhiteSpace($detailsFile) -or -not (Test-Path $detailsFile)) {
+    if (Test-Path $dashboard) {
+      $d = Get-ChildItem $dashboard -File -Filter 'details_*.csv' |
+           Sort-Object LastWriteTime -Descending | Select-Object -First 1
+      if ($d) { $detailsFile = $d.FullName }
+    }
+  }
+  # 2) CSV oku
+  $rows = @()
+  if ($detailsFile -and (Test-Path $detailsFile)) {
+    try { $rows = Import-Csv $detailsFile } catch { $rows = @() }
+  }
+  # 3) Fallback: CSV boşsa TXT parse et
+  $needsFallback = $true
+  if ($rows -and $rows.Count -gt 0) { $needsFallback = $false }
+  if ($needsFallback) {
+    $latestTxt = $null
+    if (Test-Path $reportsRoot) {
+      $latestTxt = Get-ChildItem $reportsRoot -File -Filter 'universal_findings_*.txt' |
+                   Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    }
+    if ($latestTxt) {
+      $section = 'HEADER'
+      $tmpRows = New-Object 'System.Collections.Generic.List[object]'
+      Get-Content $latestTxt.FullName | ForEach-Object {
+        $ln = $_
+        if ($ln -match '^\s*===\s*(.+?)\s*===\s*$') { $section = $Matches[1]; return }
+        if ($ln -match '^\s*\[(PASS|WARN|FAIL)\]\s+(.*)$') {
+          $status = $Matches[1]; $msg = $Matches[2]
+          if ($status -ne 'PASS') {
+            $tmpRows.Add([pscustomobject]@{ Section=$section; Status=$status; Message=$msg })
+          }
+        }
+      }
+      if ($tmpRows.Count -gt 0) { $rows = $tmpRows }
+    }
+  }
+  # 4) mevcut anahtarlar
+  $existing = New-Object 'System.Collections.Generic.HashSet[string]'
+  foreach ($it in $items) {
+    $id  = Get-Prop $it 'id' ""
+    $ttl = Get-Prop $it 'title' ""
+    $src = Get-Prop $it 'source' "csv"
+    if ($id -and $id.Trim().Length -gt 0) { [void]$existing.Add(("ID::" + $id.Trim().ToLower())) }
+    else { [void]$existing.Add(("TT::" + $ttl.Trim().ToLower() + "::" + $src)) }
+  }
+  # 5) satırları görevleştir
+  foreach ($r in $rows) {
+    $sec  = Get-Prop $r 'Section' ""
+    $msg  = Get-Prop $r 'Message' ""
+    $stat = ([string](Get-Prop $r 'Status' "")).ToUpper()
+    if ([string]::IsNullOrWhiteSpace($msg)) { continue }
+    $hRaw = ($sec + "::" + $msg).Trim().ToLower()
+    $key  = "TT::" + $hRaw + "::universal_findings"
+    if (-not $existing.Contains($key)) {
+      $code = "UNIV-NOTE"; if ($stat -eq "FAIL") { $code = "UNIV-FAIL" } elseif ($stat -eq "WARN") { $code = "UNIV-WARN" }
+      $severity = "low";   if ($stat -eq "FAIL") { $severity = "high" }  elseif ($stat -eq "WARN") { $severity = "medium" }
+      $title = ("[{0}] {1} - {2}" -f $code,$sec,$msg)
+      $items.Add([ordered]@{
+        id        = ""
+        title     = $title.Substring(0,[Math]::Min(200,$title.Length))
+        severity  = $severity
+        area      = "aggregation"
+        evidence  = $sec
+        timestamp = (Get-Date).ToUniversalTime().ToString("s") + "Z"
+        status    = "todo"
+        steps     = @("Kaynak: dashboard/details_*.csv","Tekil anahtar: section+message")
+        source    = "universal_findings"
+      })
+      [void]$existing.Add($key)
+    }
+  }
+  # 6) yaz
+  $tasksObj.items = $items
+  $parent = Split-Path -Parent $TasksJsonPath
+  if ($parent -and -not (Test-Path $parent)) { New-Item -ItemType Directory -Force -Path $parent | Out-Null }
+  ($tasksObj | ConvertTo-Json -Depth 10) | Set-Content -Path $TasksJsonPath -Encoding UTF8
+  Write-Host "[MERGE] Birleşti → $TasksJsonPath (Toplam: $($items.Count))"
+}
+function Write-NotifySummary {
+  param([string]$TotalsCsv, [string]$DetailsCsv, [string]$OutDir)
+  $tot = $null; if (Test-Path $TotalsCsv) { try { $tot = Import-Csv $TotalsCsv | Select-Object -First 1 } catch { $tot = $null } }
+  if (-not $tot) { Write-Host "[NOTIFY] totals CSV yok/okunamadı, atlandı." -ForegroundColor Yellow; return }
+  $lines = @(); if ($DetailsCsv -and (Test-Path $DetailsCsv)) { try { $lines = Import-Csv $DetailsCsv } catch { $lines = @() } }
+  $top = $lines | Where-Object { $_.Status -in @("FAIL","WARN") } | Select-Object Section,Status,Message -First 5
+  $sb = New-Object System.Text.StringBuilder
+  [void]$sb.AppendLine("UNIVERSAL SUMMARY - $(Get-Date -Format s)")
+  [void]$sb.AppendLine("Report: $($tot.File)")
+  [void]$sb.AppendLine(("Totals: PASS={0} WARN={1} FAIL={2}" -f $tot.PASS,$tot.WARN,$tot.FAIL))
+  [void]$sb.AppendLine(""); [void]$sb.AppendLine("Top Findings:")
+  if ($top) { foreach($t in $top){ [void]$sb.AppendLine((" - [{0}] {1}: {2}" -f $t.Status,$t.Section,$t.Message)) } }
+  else { [void]$sb.AppendLine(" - (yok)") }
+  $outFile = Join-Path $OutDir ("summary_" + (Get-Date).ToString("yyyyMMdd-HHmmss") + ".txt")
+  [IO.File]::WriteAllText($outFile, $sb.ToString(), [Text.UTF8Encoding]::new($false))
+  Write-Host "[NOTIFY] $outFile"
+}
+function Include-Extras-ToBundle {
+  param([string]$BundleRoot, [string]$ReportsRoot, [string]$TasksFile)
+  $bundles = Get-ChildItem $BundleRoot -File -Filter "bundle_*.zip" | Sort-Object LastWriteTime -Descending
+  if (-not $bundles) { Write-Host "[BUNDLE] bundle_*.zip bulunamadı (atlandı)" -ForegroundColor Yellow; return }
+  $zipPath = $bundles[0].FullName
+  $temp = Join-Path $BundleRoot ("__temp_unpack_" + [Guid]::NewGuid().ToString("N")); New-Item -ItemType Directory -Force -Path $temp | Out-Null
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $temp)
+  $destTasks = Join-Path $temp "build\tasks.json"; Ensure-Dir $destTasks
+  if (Test-Path $TasksFile) { Copy-Item $TasksFile -Destination $destTasks -Force }
+  $srcNotify = Join-Path $ReportsRoot "notify"
+  if (Test-Path $srcNotify) {
+    $destNotify = Join-Path $temp "_otokodlama\reports\notify"
+    if (-not (Test-Path $destNotify)) { New-Item -ItemType Directory -Force -Path $destNotify | Out-Null }
+    Copy-Item $srcNotify\* -Destination $destNotify -Recurse -Force
+  }
+  Remove-Item $zipPath -Force
+  [System.IO.Compression.ZipFile]::CreateFromDirectory($temp, $zipPath)
+  Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Host "[BUNDLE] Güncellendi: $zipPath"
+}
+# ---- AKIŞ ----
+Convert-TasksCsvToJson -Csv $csvFull -OutJson $tasksFull
+$details = $null; $totals = $null
+if (Test-Path $dashboard) {
+  $details = Get-ChildItem $dashboard -File -Filter "details_*.csv" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  $totals  = Get-ChildItem $dashboard -File -Filter "totals_*.csv"  | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+}
+$detailsPath = $null; if ($details) { $detailsPath = $details.FullName }
+Merge-FindingsIntoTasks -DetailsCsv $detailsPath -TasksJsonPath $tasksFull
+if ($totals) { Write-NotifySummary -TotalsCsv $totals.FullName -DetailsCsv $detailsPath -OutDir $notifyDir }
+Include-Extras-ToBundle -BundleRoot $bundleRoot -ReportsRoot $reportsRoot -TasksFile $tasksFull
+Write-Host "`n[OK] Post-process tamamlandı." -ForegroundColor Green
+### DOSYA BİTİŞ: universal_postprocess.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\state_tools.ps1
+param(
+  # Varsayılan yol, bu dosyanın (ops/) yanına state.json olarak ayarlanır
+  [string]$StatePath = ""
+)
+
+$ErrorActionPreference = "Stop"
+
+# --- Yol yardımcıları ---
+$__ThisFile   = $MyInvocation.MyCommand.Path
+$__ScriptRoot = Split-Path -Parent $__ThisFile
+if ([string]::IsNullOrWhiteSpace($StatePath)) {
+  $StatePath = Join-Path $__ScriptRoot "state.json"
+}
+
+function _Is-Hashtable { param($x) return ($x -is [hashtable]) }
+function _Is-PSObj     { param($x) return ($x -is [pscustomobject]) }
+
+function _Ensure-Dir {
+  param([Parameter(Mandatory=$true)][string]$Path)
+  $dir = Split-Path -Parent $Path
+  if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+}
+
+function _Ensure-Prop {
+  param($Obj,[string]$Name,$Default=$null)
+  if (_Is-Hashtable $Obj) { if (-not $Obj.ContainsKey($Name)) { $Obj[$Name]=$Default }; return }
+  if (-not $Obj.PSObject.Properties[$Name]) { Add-Member -InputObject $Obj -MemberType NoteProperty -Name $Name -Value $Default }
+}
+
+function _Set-Prop {
+  param($Obj,[string]$Name,$Value)
+  if (_Is-Hashtable $Obj) { $Obj[$Name]=$Value; return }
+  if (-not $Obj.PSObject.Properties[$Name]) { Add-Member -InputObject $Obj -MemberType NoteProperty -Name $Name -Value $Value }
+  else { $Obj.$Name = $Value }
+}
+
+# Map benzeri alanlara anahtar/değer yaz (Hashtable veya PSCustomObject fark etmeksizin)
+function _Map-Set {
+  param($Map,[string]$Key,$Value)
+  if (_Is-Hashtable $Map) { $Map[$Key] = $Value; return }
+  if (-not $Map.PSObject.Properties[$Key]) { Add-Member -InputObject $Map -MemberType NoteProperty -Name $Key -Value $Value }
+  else { $Map.$Key = $Value }
+}
+
+# Map benzeri alanın anahtarlarını döndür
+function _Map-Keys {
+  param($Map)
+  if (_Is-Hashtable $Map) { return $Map.Keys }
+  return ($Map.PSObject.Properties | Select-Object -ExpandProperty Name)
+}
+
+function Get-State {
+  param([string]$Path = $StatePath)
+  try {
+    if (Test-Path $Path) {
+      $s = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+      _Ensure-Prop $s 'project' ''
+      _Ensure-Prop $s 'repo' ''
+      _Ensure-Prop $s 'pipeline' (@{ stage="validate_ui_pages"; history=@() })
+      _Ensure-Prop $s 'tests'    (@{ results=@{}; summary=@{ passed=0; failed=0; last_run="" } })
+      _Ensure-Prop $s 'pending_actions' @()
+      _Ensure-Prop $s 'last_updated'    ""
+      _Ensure-Prop $s.pipeline 'stage'   'validate_ui_pages'
+      _Ensure-Prop $s.pipeline 'history' @()
+      _Ensure-Prop $s.tests    'results' @{}
+      _Ensure-Prop $s.tests    'summary' (@{ passed=0; failed=0; last_run="" })
+      _Ensure-Prop $s.tests.summary 'passed'   0
+      _Ensure-Prop $s.tests.summary 'failed'   0
+      _Ensure-Prop $s.tests.summary 'last_run' ""
+      return $s
+    }
+  } catch { }
+
+  return [pscustomobject]@{
+    project=""
+    repo=""
+    pipeline=@{ stage="validate_ui_pages"; history=@() }
+    tests=@{ results=@{}; summary=@{ passed=0; failed=0; last_run="" } }
+    pending_actions=@()
+    last_updated=""
+  }
+}
+
+function Save-State {
+  param([Parameter(Mandatory=$true)]$State,[string]$Path=$StatePath)
+  _Ensure-Prop $State 'last_updated' ""
+  _Set-Prop    $State 'last_updated' ((Get-Date).ToString("s"))
+  _Ensure-Dir  -Path $Path
+  $json = $State | ConvertTo-Json -Depth 20
+  [IO.File]::WriteAllText($Path,$json,[Text.UTF8Encoding]::new($false))
+}
+
+function Update-TestResult {
+  param(
+    [Parameter(Mandatory=$true)][string]$Key,
+    [ValidateSet("PASSED","FAILED")][string]$Status,
+    [hashtable]$Metrics,[hashtable]$Artifacts,
+    [string]$StatePathParam = $StatePath
+  )
+  $st = Get-State -Path $StatePathParam
+  _Ensure-Prop $st 'tests' (@{ results=@{}; summary=@{passed=0;failed=0;last_run=""} })
+  _Ensure-Prop $st.tests 'results' @{}
+  _Ensure-Prop $st.tests 'summary' (@{ passed=0; failed=0; last_run="" })
+  if (-not $Metrics)   { $Metrics   = @{} }
+  if (-not $Artifacts) { $Artifacts = @{} }
+
+  $entry = @{
+    status=$Status; metrics=$Metrics; artifacts=$Artifacts; ts=(Get-Date).ToString("s")
+  }
+  _Map-Set $st.tests.results $Key $entry
+
+  $passed=0; $failed=0
+  foreach($k in (_Map-Keys $st.tests.results)){
+    $it = if (_Is-Hashtable $st.tests.results) { $st.tests.results[$k] } else { $st.tests.results.$k }
+    if($it.status -eq "PASSED"){$passed++}else{$failed++}
+  }
+  _Set-Prop $st.tests.summary 'passed'   $passed
+  _Set-Prop $st.tests.summary 'failed'   $failed
+  _Set-Prop $st.tests.summary 'last_run' ((Get-Date).ToString("s"))
+
+  Save-State -State $st -Path $StatePathParam
+}
+
+function Add-PendingAction {
+  param(
+    [Parameter(Mandatory=$true)][string]$Id,
+    [Parameter(Mandatory=$true)][string]$Type,
+    [Parameter(Mandatory=$true)][string]$Detail,
+    [string]$DueStage="",
+    [string]$StatePathParam = $StatePath
+  )
+  $st = Get-State -Path $StatePathParam
+  _Ensure-Prop $st 'pending_actions' @()
+  $st.pending_actions += @{ id=$Id; type=$Type; detail=$Detail; due_stage=$DueStage; ts=(Get-Date).ToString("s"); status="open" }
+  Save-State -State $st -Path $StatePathParam
+}
+
+function Advance-Pipeline {
+  param([Parameter(Mandatory=$true)][string]$ToStage,[string]$Hint="",[string]$StatePathParam=$StatePath)
+  $st = Get-State -Path $StatePathParam
+  _Ensure-Prop $st 'pipeline' (@{ stage="validate_ui_pages"; history=@() })
+  _Ensure-Prop $st.pipeline 'stage' "validate_ui_pages"
+  _Ensure-Prop $st.pipeline 'history' @()
+  $st.pipeline.history += @{ from=$st.pipeline.stage; to=$ToStage; hint=$Hint; ts=(Get-Date).ToString("s") }
+  _Set-Prop $st.pipeline 'stage' $ToStage
+  Save-State -State $st -Path $StatePathParam
+}
+### DOSYA BİTİŞ: state_tools.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\smoke_links.ps1
+# Rev: 2025-09-28 15:20 r4
+param(
+  [Parameter(Mandatory=$true)][string]$Base,
+  [Parameter(Mandatory=$true)][string]$Start,
+  [Parameter(Mandatory=$true)][string]$Out,
+  [int]$Depth = 1,
+  [int]$Limit = 150,
+  [string]$PathPrefix = "/",
+  [string]$LoginPath = "/admin/login/",
+  [string]$User = "admin",
+  [string]$Pass = "Admin!2345",
+  [int]$Timeout = 20000,
+  [string]$OkRedirectTo = ""   # ör: "/_direct/.*|/admin/.*"
+)
+
+function Join-Url([uri]$baseUri, [string]$url) {
+  if ([string]::IsNullOrWhiteSpace($url)) { return $null }
+  $u = $null
+  if ([System.Uri]::TryCreate($url, [System.UriKind]::Absolute, [ref]$u)) { return $u }
+  return [uri]::new($baseUri, $url)
+}
+
+function InScope([string]$locPath, [string]$prefix) {
+  if ([string]::IsNullOrWhiteSpace($locPath)) { return $false }
+  if ([string]::IsNullOrWhiteSpace($prefix))  { return $true }
+  return $locPath.ToLower().StartsWith($prefix.ToLower())
+}
+
+function DepthOf([string]$path, [string]$prefix) {
+  if (-not $path) { return 0 }
+  $p   = $path
+  $pre = if ($null -ne $prefix) { $prefix } else { "" }
+  $p   = $p.Trim('/')
+  $pre = $pre.Trim('/')
+  if ($pre -and $p.ToLower().StartsWith($pre.ToLower())) {
+    $p = $p.Substring($pre.Length).Trim('/')
+  }
+  if ([string]::IsNullOrWhiteSpace($p)) { return 0 }
+  return ($p.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries).Length)
+}
+
+function ParseLinks([string]$html, [uri]$docUri) {
+  $set = New-Object System.Collections.Generic.HashSet[string]
+  if (-not $html) { return @() }
+  $rx = [regex]'(?isx)
+      <a\b[^>]*?href\s*=\s*["''](?<u>[^"''#>]+)["'']
+    | <link\b[^>]*?href\s*=\s*["''](?<u>[^"''#>]+)["'']
+    | <script\b[^>]*?src\s*=\s*["''](?<u>[^"''#>]+)["'']
+  '
+  foreach ($m in $rx.Matches($html)) {
+    $u = $m.Groups['u'].Value
+    if ([string]::IsNullOrWhiteSpace($u)) { continue }
+    try {
+      $abs = (Join-Url $docUri $u)
+      if ($abs) { [void]$set.Add($abs.AbsolutePath) }
+    } catch {}
+  }
+  # .ToArray() .NET Framework'te extension; 5.1'de garanti değil → düz diziye çevir
+  return @($set)
+}
+
+Add-Type -AssemblyName System.Net.Http
+$handler = New-Object System.Net.Http.HttpClientHandler
+$cookieJar = New-Object System.Net.CookieContainer
+$handler.CookieContainer   = $cookieJar
+$handler.AllowAutoRedirect = $false
+$client  = New-Object System.Net.Http.HttpClient($handler)
+$client.Timeout = [TimeSpan]::FromMilliseconds([Math]::Max(1000, $Timeout))
+$baseUri = [uri]$Base
+
+function Get-Resp([uri]$uri, [string]$method="GET", [string]$body="", [hashtable]$headers=@{}) {
+  $req = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::$method, $uri)
+  foreach ($k in $headers.Keys) { $req.Headers.TryAddWithoutValidation($k, [string]$headers[$k]) | Out-Null }
+  if ($method -eq "POST") {
+    $req.Content = New-Object System.Net.Http.StringContent($body, [System.Text.Encoding]::UTF8, "application/x-www-form-urlencoded")
+  }
+  $resp = $client.SendAsync($req).Result
+  return $resp
+}
+
+function Do-Login {
+  try {
+    $loginUri = Join-Url $baseUri $LoginPath
+    $r1 = Get-Resp $loginUri "GET"
+    $html = $r1.Content.ReadAsStringAsync().Result
+    $token = ""
+    $m = [regex]::Match($html, 'name=["'']csrfmiddlewaretoken["'']\s+value=["'']([^"'']+)["'']', 'IgnoreCase')
+    if ($m.Success) { $token = $m.Groups[1].Value }
+    $body = "username=$([uri]::EscapeDataString($User))&password=$([uri]::EscapeDataString($Pass))"
+    if ($token) { $body += "&csrfmiddlewaretoken=$([uri]::EscapeDataString($token))" }
+    $null = Get-Resp $loginUri "POST" $body @{ "Referer" = $loginUri.AbsoluteUri }
+    return $true
+  } catch {
+    Write-Host "[link-smoke] login hata: $($_.Exception.Message)" -ForegroundColor Yellow
+    return $false
+  }
+}
+
+$null = Do-Login
+
+$queue   = New-Object System.Collections.Generic.Queue[object]
+$visited = New-Object System.Collections.Generic.HashSet[string]
+$bad     = New-Object System.Collections.Generic.List[object]
+$checked = 0
+
+$startUri = Join-Url $baseUri $Start
+$queue.Enqueue([pscustomobject]@{ Uri=$startUri; Depth=0 })
+
+while(($queue.Count -gt 0) -and ($checked -lt $Limit)) {
+  $item = $queue.Dequeue()
+  $u = $item.Uri
+  $d = [int]$item.Depth
+  if (-not $u) { continue }
+
+  $key = $u.AbsolutePath.ToLower()
+  if ($visited.Contains($key)) { continue }
+  [void]$visited.Add($key)
+
+  try {
+    $resp = Get-Resp $u "GET"
+    $status = [int]$resp.StatusCode
+    $locHdr = $resp.Headers.Location
+    $locAbs = $null
+    if ($locHdr) { $locAbs = Join-Url $u $locHdr.ToString() }
+
+    if ($status -ge 300 -and $status -lt 400) {
+      $okRedirect = $false
+      if ($locAbs -and -not [string]::IsNullOrWhiteSpace($OkRedirectTo)) {
+        if ($locAbs.AbsolutePath -match $OkRedirectTo) { $okRedirect = $true }
+      }
+      $inScopeNext = ($locAbs -ne $null) -and (InScope $locAbs.AbsolutePath $PathPrefix)
+      if ($inScopeNext -and -not $okRedirect) {
+        $locStr = if ($locAbs) { $locAbs.AbsoluteUri } else { "" }
+        $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=$status; location=$locStr }) | Out-Null
+      }
+      if ($locAbs -and (InScope $locAbs.AbsolutePath $PathPrefix) -and ($d -lt $Depth)) {
+        $queue.Enqueue([pscustomobject]@{ Uri=$locAbs; Depth=$d })
+      }
+    }
+    elseif ($status -ge 200 -and $status -lt 300) {
+      $ct = $resp.Content.Headers.ContentType
+      if ($ct -and $ct.MediaType -like "text/html") {
+        $html = $resp.Content.ReadAsStringAsync().Result
+        if ((InScope $u.AbsolutePath $PathPrefix) -and ($d -lt $Depth)) {
+          foreach ($p in (ParseLinks $html $u)) {
+            if (InScope $p $PathPrefix) {
+              $depthNext = (DepthOf $p $PathPrefix)
+              if ($depthNext -le $Depth) {
+                $abs = Join-Url $baseUri $p
+                if ($abs -and -not $visited.Contains($abs.AbsolutePath.ToLower())) {
+                  $queue.Enqueue([pscustomobject]@{ Uri=$abs; Depth=$depthNext })
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    else {
+      $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=$status; location="" }) | Out-Null
+    }
+  } catch {
+    $msg = $_.Exception.Message
+    Write-Host "[link-smoke] GET hata: $msg" -ForegroundColor Yellow
+    $bad.Add([pscustomobject]@{ url=$u.AbsoluteUri; status=-1; location=""; error=$msg }) | Out-Null
+  }
+
+  $checked++
+}
+
+$result = [pscustomobject]@{
+  checked      = $checked
+  bad          = $bad.Count
+  bad_list     = $bad
+  visited      = $visited | Sort-Object
+  scope_prefix = $PathPrefix
+  base         = $Base
+  start        = $Start
+  ok_redirect  = $OkRedirectTo
+  depth        = $Depth
+  limit        = $Limit
+}
+$dir = Split-Path -Parent $Out
+if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+$result | ConvertTo-Json -Depth 6 | Out-File -FilePath $Out -Encoding UTF8
+
+if ($bad.Count -gt 0) {
+  Write-Host ("[link-smoke] checked={0} bad={1} scope_prefix={2}" -f $checked, $bad.Count, $PathPrefix) -ForegroundColor Red
+  $i = 0
+  foreach ($b in $bad) {
+    Write-Host ("    {0} {1} {2}" -f $i, $b.status, $b.url)
+    $i++
+  }
+  exit 2
+} else {
+  Write-Host ("[link-smoke] checked={0} bad=0 scope_prefix={1}" -f $checked, $PathPrefix) -ForegroundColor Green
+  Write-Host "[link-smoke] YEŞİL" -ForegroundColor Green
+  exit 0
+}
+### DOSYA BİTİŞ: smoke_links.ps1
+
+### DOSYA BAŞLANGIÇ: .\\ops\smoke_links_wrapper.ps1
+param(
+  [string]$Base,
+  [string]$Start,
+  [string]$Out,
+  [int]   $Depth,
+  [int]   $Limit,
+  [string]$PathPrefix,
+  [int]   $Timeout,
+  [string]$OkRedirectTo
+)
+& "$PSScriptRoot\smoke_links.ps1" `
+  -Base $Base `
+  -Start $Start `
+  -Out $Out `
+  -Depth $Depth `
+  -Limit $Limit `
+  -PathPrefix $PathPrefix `
+  -Timeout $Timeout `
+  -OkRedirectTo $OkRedirectTo
+### DOSYA BİTİŞ: smoke_links_wrapper.ps1
+

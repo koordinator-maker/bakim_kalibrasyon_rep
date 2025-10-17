@@ -1,0 +1,275 @@
+param(
+  [string]$TaskId = "UH001",
+  [string]$RequestsDir = ".",
+  [string]$OutDir = "_otokodlama\\inbox"
+)
+function Test-AiEndpointQuick {
+  param([string]$Url, [int]$TimeoutSec = 15)
+  $o = [ordered]@{ Ok=$false; Code=0; Body=''; Error='' }
+  if ([string]::IsNullOrWhiteSpace($Url) -or ($Url -match '<GERCEK|YOUR-REAL|ENDPOINT>')) {
+    $o.Error = "AI_ENDPOINT placeholder/boş: '$Url'"; return [pscustomobject]$o
+  }
+  try {
+    $ProgressPreference='SilentlyContinue'
+    $resp = Invoke-WebRequest -Method Head -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -ErrorAction Stop
+    $o.Ok = ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500)
+    $o.Code = $resp.StatusCode
+  } catch {
+    # Bazı sunucular HEAD'e 405 verir → GET ile kısa dene
+    try {
+      $resp = Invoke-WebRequest -Method Get -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -ErrorAction Stop
+      $o.Ok = ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500)
+      $o.Code = $resp.StatusCode
+      if ($resp.Content) {
+        $max=[Math]::Min(500,[Text.Encoding]::UTF8.GetByteCount($resp.Content))
+        $o.Body = $resp.Content.Substring(0,[Math]::Min($max,$resp.Content.Length))
+      }
+    } catch {
+      $o.Error = $_.Exception.Message
+    }
+  }
+  return [pscustomobject]$o
+}
+function Invoke-AiSubmit {
+  param(
+    [Parameter(Mandatory=$true)][string]$SubmitUrl,
+    [Parameter(Mandatory=$true)][string]$ReqPath,
+    [Parameter(Mandatory=$false)][string]$BundlePath,
+    [int]$TimeoutMin = 8
+  )
+  Add-Type -AssemblyName System.Net.Http | Out-Null
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  $result = [ordered]@{ UploadOk=$false; Id=$null; Status=0; Body=''; Error='' }
+  if ([string]::IsNullOrWhiteSpace($SubmitUrl) -or -not $SubmitUrl.StartsWith('http')) {
+    $result.Error = "AI_ENDPOINT geçersiz: '$SubmitUrl'"
+    return [pscustomobject]$result
+  }
+  $http = New-Object System.Net.Http.HttpClient
+  $http.Timeout = [TimeSpan]::FromMinutes($TimeoutMin)
+  try {
+    # Auth header’lar (Bearer + X-API-Key)
+    if ($env:AI_API_KEY) {
+      try { $http.DefaultRequestHeaders.Authorization =
+              New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer', $env:AI_API_KEY) } catch {}
+      try { $http.DefaultRequestHeaders.Remove('X-API-Key') } catch {}
+      $http.DefaultRequestHeaders.Add('X-API-Key', $env:AI_API_KEY)
+    }
+    $mp = New-Object System.Net.Http.MultipartFormDataContent
+    # request json
+    $requestText = Get-Content -LiteralPath $ReqPath -Raw -Encoding UTF8
+    $reqContent = New-Object System.Net.Http.StringContent($requestText,[Text.UTF8Encoding]::new($false),'application/json')
+    $mp.Add($reqContent,'request','ai_request.json')
+    # bundle (opsiyonel)
+    if (-not $BundlePath -or -not (Test-Path $BundlePath)) {
+      $b = Get-ChildItem "_otokodlama\bundle" -Filter 'bundle_*.zip' -File -ErrorAction SilentlyContinue |
+           Sort-Object LastWriteTime -Desc | Select-Object -First 1
+      if ($b) { $BundlePath = $b.FullName }
+    }
+    $fs = $null; $fileContent = $null
+    if ($BundlePath -and (Test-Path $BundlePath)) {
+      $fs = [System.IO.File]::Open($BundlePath,[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::Read)
+      $fileContent = New-Object System.Net.Http.StreamContent($fs)
+      $fileContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse('application/zip')
+      $mp.Add($fileContent,'bundle',[System.IO.Path]::GetFileName($BundlePath))
+    } else {
+      Write-Host "[ai-http] bundle yok; yalnız 'request' gönderilecek."
+    }
+    Write-Host "[ai-http] submit → $SubmitUrl"
+    $resp  = $http.PostAsync($SubmitUrl,$mp).GetAwaiter().GetResult()
+    $body  = $resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+    $code  = [int]$resp.StatusCode
+    $result.Status = $code
+    if ($body) {
+      $max = [Math]::Min(2000, $body.Length)
+      $result.Body = $body.Substring(0,$max)
+    }
+    if ($resp.IsSuccessStatusCode) {
+      $result.UploadOk = $true
+      Write-Host "[ai-http] submit OK ($code)"
+    } else {
+      Write-Host "[ai-http] submit FAIL ($code) body: $($result.Body)"
+    }
+    # Yanıttan id çıkart
+    if ($result.UploadOk -and $result.Body) {
+      try {
+        $obj = $result.Body | ConvertFrom-Json -ErrorAction SilentlyContinue
+        if ($obj) {
+          if ($obj.id)          { $result.Id = $obj.id }
+          elseif ($obj.request_id){ $result.Id = $obj.request_id }
+          elseif ($obj.token)   { $result.Id = $obj.token }
+        }
+      } catch {}
+      if (-not $result.Id -and $resp -and $resp.Headers -and $resp.Headers.Location) {
+        $result.Id = $resp.Headers.Location.ToString()
+      }
+    }
+  } catch {
+    $result.Error = $_.Exception.Message
+    Write-Host "[ai-http] submit EXCEPTION: $($result.Error)"
+  } finally {
+    if ($fileContent) { $fileContent.Dispose() }
+    if ($fs)         { $fs.Dispose() }
+    if ($mp)         { $mp.Dispose() }
+    if ($http)       { $http.Dispose() }
+  }
+  return [pscustomobject]$result
+}
+# --- safety inits (PS5.1) ---
+if (-not (Get-Variable -Name uploadOk   -ErrorAction SilentlyContinue)) { $uploadOk   = $false }
+if (-not (Get-Variable -Name statusOk   -ErrorAction SilentlyContinue)) { $statusOk   = $false }
+if (-not (Get-Variable -Name downloadOk -ErrorAction SilentlyContinue)) { $downloadOk = $false }
+if (-not (Get-Variable -Name resp       -ErrorAction SilentlyContinue)) { $resp       = $null  }
+# -- ai_request fallback: yoksa üret (PS5.1) --
+function New-Utf8([bool]$noBom=$true){ New-Object System.Text.UTF8Encoding($noBom) }
+function Write-Utf8([string]$p,[string]$t){ [IO.File]::WriteAllText($p,$t,(New-Utf8)) }
+New-Item -ItemType Directory -Force -Path $RequestsDir | Out-Null
+# mevcut istek var mı?
+$reqJson = Get-ChildItem -LiteralPath $RequestsDir -Filter 'ai_request_*.json' -File -ErrorAction SilentlyContinue |
+           Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $reqJson) {
+  $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
+  if ([string]::IsNullOrWhiteSpace($TaskId)) { $TaskId = "AUTO-$ts" }
+  # bağlam (opsiyonel)
+  $latestDetails = Get-ChildItem "_otokodlama\reports\dashboard" -Filter 'details_*.csv' -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Desc | Select-Object -First 1
+  $latestFind    = Get-ChildItem "_otokodlama\reports" -Filter 'universal_findings_*.txt' -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Desc | Select-Object -First 1
+  $bundleZip     = Get-ChildItem "_otokodlama\bundle" -Filter 'bundle_*.zip' -File -ErrorAction SilentlyContinue |
+                   Sort-Object LastWriteTime -Desc | Select-Object -First 1
+  $reports = @()
+  if ($latestDetails) { $reports += $latestDetails.FullName }
+  if ($latestFind)    { $reports += $latestFind.FullName }
+  $bundlePath = $null; if ($bundleZip) { $bundlePath = $bundleZip.FullName }
+  $reqObj = @{
+    task_id = $TaskId
+    base_url = $env:BASE_URL
+    reports  = $reports
+    bundle   = $bundlePath
+    meta     = @{ user=$env:USERNAME; host=$env:COMPUTERNAME; ts=(Get-Date).ToString('s') }
+  }
+  $reqPath = Join-Path $RequestsDir ("ai_request_{0}.json" -f $ts)
+  Write-Utf8 $reqPath (($reqObj | ConvertTo-Json -Depth 20))
+  $reqJson = Get-Item -LiteralPath $reqPath
+  Write-Host "[ai-http] fallback: $($reqJson.Name) oluşturuldu."
+}
+# burada $reqJson kesin
+$reqObj = Get-Content -LiteralPath $reqJson.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+# --- EARLY preflight + upload (üstte koşsun) ---
+$submitUrl = $env:AI_ENDPOINT
+$pf = Test-AiEndpointQuick -Url $submitUrl -TimeoutSec 10
+Write-Host "[ai-http] preflight EARLY url=$submitUrl  ok=$($pf.Ok) code=$($pf.Code) err=$($pf.Error)"
+$reqPath   = $reqJson.FullName
+$bundleIn  = $null
+if ($reqObj -and $reqObj.bundle) { $bundleIn = $reqObj.bundle }
+$timeoutMin = 8; if ($env:AI_TIMEOUT_MIN) { $timeoutMin = [int]$env:AI_TIMEOUT_MIN }
+$upl = Invoke-AiSubmit -SubmitUrl $submitUrl -ReqPath $reqPath -BundlePath $bundleIn -TimeoutMin $timeoutMin
+$uploadOk = $upl.UploadOk; $id = $upl.Id; $lastStatus = $upl.Status; $lastBody = $upl.Body; $lastErr = $upl.Error
+if (-not $uploadOk) {
+  $logDir = "_otokodlama\logs"; New-Item -ItemType Directory -Force $logDir | Out-Null
+  $ts = Get-Date -Format 'yyyyMMdd-HHmmss'
+  $diag = @"
+[ai-http] submit FAIL (EARLY)
+url: $submitUrl
+status: $lastStatus
+error: $lastErr
+body[0..2000]: $lastBody
+api_key_len: $([string]::IsNullOrEmpty($env:AI_API_KEY) ? 0 : $env:AI_API_KEY.Length)
+"@
+  $logPath = Join-Path $logDir "ai_http_submit_$ts.txt"
+  [IO.File]::WriteAllText($logPath, $diag, [Text.UTF8Encoding]::new($false))
+  Write-Host "[ai-http] FAIL detail (EARLY) → $logPath"
+}
+
+
+$reqObj = Get-Content -LiteralPath $reqJson.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+# --- PS5.1-safe timings ---
+# Defaults
+$timeout    = 8      # dakika
+$pollSec    = 5      # saniye
+$maxPollSec = 600    # saniye
+# Env overrides
+if ($env:AI_TIMEOUT_MIN) { $timeout    = [int]$env:AI_TIMEOUT_MIN }
+if ($env:AI_POLL_SEC)    { $pollSec    = [int]$env:AI_POLL_SEC }
+if ($env:AI_MAX_SEC)     { $maxPollSec = [int]$env:AI_MAX_SEC }
+# Defaults
+$timeout    = 8      # dakika
+$pollSec    = 5      # saniye
+$maxPollSec = 600    # saniye
+# Env overrides
+if ($env:AI_TIMEOUT_MIN) { $timeout    = [int]$env:AI_TIMEOUT_MIN }
+if ($env:AI_POLL_SEC)    { $pollSec    = [int]$env:AI_POLL_SEC }
+if ($env:AI_MAX_SEC)     { $maxPollSec = [int]$env:AI_MAX_SEC }
+# Defaults
+$timeout    = 8      # dakika
+$pollSec    = 5      # saniye
+$maxPollSec = 600    # saniye
+# Env overrides
+if ($env:AI_TIMEOUT_MIN) { $timeout    = [int]$env:AI_TIMEOUT_MIN }
+if ($env:AI_POLL_SEC)    { $pollSec    = [int]$env:AI_POLL_SEC }
+if ($env:AI_MAX_SEC)     { $maxPollSec = [int]$env:AI_MAX_SEC }
+Set-StrictMode -Version Latest
+$ErrorActionPreference='Stop'
+[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+# Guard
+if(-not $env:AI_ENDPOINT -or -not $env:AI_API_KEY){ throw "AI_ENDPOINT / AI_API_KEY env değişkenlerini ayarla." }
+$baseUrl = $env:AI_ENDPOINT.TrimEnd('/')
+$pollSec = 5
+# Son ai_request + bundle'ı bul
+$root = (Get-Location).Path
+$prefer = Join-Path $root ("ai_exchange\"+$TaskId)
+$searchBase = if(Test-Path $prefer){$prefer}else{(Resolve-Path $RequestsDir).Path}
+$latest = Get-ChildItem $searchBase -Directory -ErrorAction SilentlyContinue | Sort LastWriteTime -Descending | Select -First 1
+if(-not $latest){ throw "ai_exchange/$TaskId altında paket yok." }
+$reqJson = Get-ChildItem $latest.FullName -Filter "ai_request_*.json" -File | Sort LastWriteTime -Desc | Select -First 1
+$bundle  = Get-ChildItem $latest.FullName -Filter "bundle_*.zip"      -File | Sort LastWriteTime -Desc | Select -First 1
+ # [patched orphan catch] catch {
+# [patched orphan catch]   # Fallback: JSON + base64 (endpoint böyle istiyorsa)
+# [patched orphan catch]   try {
+# [patched orphan catch]     $payload = @{
+# [patched orphan catch]       task_id = $TaskId
+# [patched orphan catch]       request = (Get-Content -LiteralPath $reqJson.FullName -Raw)
+# [patched orphan catch]     } | ConvertTo-Json -Depth 12
+# [patched orphan catch]     $resp = Invoke-RestMethod -Method Post -Uri ($baseUrl+"/requests") -Headers ($hdr + @{ "Content-Type"="application/json" }) -Body $payload -TimeoutSec 120
+# [patched orphan catch]     $uploadOk = $true
+# [patched orphan catch]   } catch {
+# [patched orphan catch]     throw "Upload başarısız: $($_.Exception.Message)"
+# [patched orphan catch]   }
+# [patched orphan catch] }
+# 2) Poll: status endpoint → completed + patch_url bekle
+if (-not (Get-Variable -Name uploadOk -ErrorAction SilentlyContinue)) { $uploadOk = $true }
+if(-not $uploadOk){ throw "Upload başarısız - HTTP ayrıntıları yukarıda (status/body)." }
+ $id = $null
+if ($resp -and $resp.id) { $id = $resp.id }
+elseif ($resp -and $resp.request_id) { $id = $resp.request_id }
+elseif ($resp -and $resp.token) { $id = $resp.token }
+else { throw "AI submit: response id missing." }
+if(-not $id){ throw "Yanıt id içermiyor: $(($resp|ConvertTo-Json -Depth 6))" }
+$deadline = (Get-Date).AddMinutes($timeout)
+$patchUrl = $null; $aiResult = $null
+do {
+  Start-Sleep -Seconds $pollSec
+  $st = Invoke-RestMethod -Method Get -Uri ($baseUrl+"/requests/"+$id) -Headers $hdr -TimeoutSec 60
+  $status = ($st.status+"").ToLower()
+  if($st.result){ $aiResult = $st.result } # skorlayacağız
+  if($st.patch_url){ $patchUrl = $st.patch_url }
+  if($status -eq "completed" -and $patchUrl){ break }
+  if($status -eq "failed"){ throw "AI servis failed: $($st.error)" }
+} while((Get-Date) -lt $deadline)
+if(-not $patchUrl){ throw "Zaman aşımı: patch_url gelmedi." }
+# 3) İndir: patch.zip → OutDir
+if(!(Test-Path $OutDir)){ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null }
+$ts = Get-Date -Format "yyyyMMdd-HHmmss"
+$outZip = Join-Path $OutDir ("patch_"+$TaskId+"_"+$ts+".zip")
+Invoke-WebRequest -UseBasicParsing -Uri $patchUrl -Headers $hdr -OutFile $outZip -TimeoutSec 300
+# 4) (Opsiyonel) AI yanıtını kaydet ve skorla
+if($aiResult){
+  $resPath = Join-Path $latest.FullName ("ai_result_"+$TaskId+"_"+$ts+".json")
+  [IO.File]::WriteAllText($resPath, ($aiResult|ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+  try {
+    powershell -ExecutionPolicy Bypass -File "$PSScriptRoot\\ai_response_validator.ps1" -TaskId $TaskId -ResultJson $resPath -MinScore 0.9
+  } catch {
+    Write-Host "[warn] validator: $($_.Exception.Message)"
+  }
+}
+Write-Host "[http] patch indirildi: $((Resolve-Path $outZip).Path)"if ($env:AI_POLL_SEC)   { $pollSec    = [int]$env:AI_POLL_SEC }
+if ($env:AI_MAX_SEC)    { $maxPollSec = [int]$env:AI_MAX_SEC }

@@ -1,14 +1,14 @@
-﻿from django.contrib import admin
+from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
 
+# Admin site customization
+admin.site.site_header = "Bakım Kalibrasyon Yönetim"
+admin.site.site_title = "Admin"
+admin.site.index_title = "Yönetim Paneli"
+
 urlpatterns = [
-    # root URL'ye gidildiğinde /admin/'e yönlendir
-    path('', lambda request: redirect('admin/', permanent=False)),
-    
-    # Standart Django Admin yolu
+    path('', lambda request: redirect('admin:index')),
     path('admin/', admin.site.urls),
-    
-    # Uygulama URL'leri
     path('maintenance/', include('maintenance.urls')),
 ]
