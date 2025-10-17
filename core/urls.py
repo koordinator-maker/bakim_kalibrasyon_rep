@@ -1,14 +1,17 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.shortcuts import redirect
 
-# Admin site customization
+# Admin site ayarları
 admin.site.site_header = "Bakım Kalibrasyon Yönetim"
-admin.site.site_title = "Admin"
+admin.site.site_title = "Bakım Kalibrasyon"
 admin.site.index_title = "Yönetim Paneli"
 
+# Admin düzeltmesini import et
+try:
+    import core.admin_fix
+except ImportError:
+    pass
+
 urlpatterns = [
-    path('', lambda request: redirect('admin:index')),
     path('admin/', admin.site.urls),
-    path('maintenance/', include('maintenance.urls')),
 ]
