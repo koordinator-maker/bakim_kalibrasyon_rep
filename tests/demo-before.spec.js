@@ -1,29 +1,35 @@
 import { test, expect } from "@playwright/test";
 
+// Global setup'ı devre dışı bırak - temiz session
+test.use({ storageState: undefined });
+
 test.setTimeout(60000);
 
-test("🔴 BEFORE - Login FAILED", async ({ page }) => {
+test("🔴 BEFORE - Wrong Login", async ({ page }) => {
+  console.log("🔴 BEFORE: Yanlış şifre ile login...");
+  
   await page.goto("http://127.0.0.1:8010/admin/login/");
   
-  console.log("🔴 BEFORE PATCH: Yanlış credentials ile login deneyin...");
+  // Sayfanın yüklendiğini gör
+  await page.waitForTimeout(2000);
   
-  // Formu doldur
+  // YANLIŞ credentials
   await page.locator("#id_username").fill("wrong_user");
   await page.locator("#id_password").fill("wrong_password");
   
-  // 2 saniye bekle (görmek için)
-  await page.waitForTimeout(2000);
+  // Girişi gör
+  await page.waitForTimeout(1000);
   
-  // Login butonuna tıkla
+  // Submit
   await page.locator("input[type='submit']").click();
   
-  // 3 saniye bekle (hata mesajını gör)
+  // Hata mesajını gör (3 saniye)
   await page.waitForTimeout(3000);
   
-  // Hata bekliyoruz - admin paneline GİREMEYECEK
-  const errorMsg = await page.locator(".errornote").textContent();
-  console.log(`❌ ERROR: ${errorMsg}`);
+  // HATA mesajı var mı kontrol et
+  const hasError = await page.locator(".errornote").isVisible();
+  console.log(`❌ Error visible: ${hasError}`);
   
-  // Bu başarısız olacak - admin panelinde değiliz
+  // Test başarısız olacak - admin panelinde değiliz
   await expect(page.locator("#user-tools")).toBeVisible({ timeout: 2000 });
 });

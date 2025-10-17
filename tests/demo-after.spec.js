@@ -1,32 +1,38 @@
 import { test, expect } from "@playwright/test";
 
+// Global setup'ı devre dışı bırak - temiz session
+test.use({ storageState: undefined });
+
 test.setTimeout(60000);
 
-test("✅ AFTER - Login SUCCESS", async ({ page }) => {
+test("✅ AFTER - Correct Login", async ({ page }) => {
+  console.log("✅ AFTER: Doğru şifre ile login...");
+  
   await page.goto("http://127.0.0.1:8010/admin/login/");
   
-  console.log("✅ AFTER PATCH: Doğru credentials ile login yapın...");
+  // Sayfanın yüklendiğini gör
+  await page.waitForTimeout(2000);
   
   // DOĞRU credentials
   await page.locator("#id_username").fill("admin");
   await page.locator("#id_password").fill("admin");
   
-  // 2 saniye bekle (görmek için)
-  await page.waitForTimeout(2000);
+  // Girişi gör
+  await page.waitForTimeout(1000);
   
-  // Login butonuna tıkla
+  // Submit
   await page.locator("input[type='submit']").click();
   
-  // 3 saniye bekle (başarılı girişi gör)
+  // Başarılı girişi gör (3 saniye)
   await page.waitForTimeout(3000);
   
-  // Başarılı - admin panelindeyiz!
+  // Admin panelindeyiz!
   await expect(page.locator("#user-tools")).toBeVisible();
-  console.log("✅ SUCCESS: Admin paneline giriş yapıldı!");
+  console.log("✅ SUCCESS: Admin paneline girildi!");
   
-  // Admin panelinde olduğumuzu doğrula
+  // URL kontrolü
   await expect(page).toHaveURL(/\/admin\//);
   
-  // 2 saniye daha bekle (başarılı ekranı gör)
+  // Biraz daha bekle (görmek için)
   await page.waitForTimeout(2000);
 });
