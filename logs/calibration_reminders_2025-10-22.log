@@ -1,0 +1,2 @@
+[START] 22/10/2025 10:32:19.53 
+Running: venv\Scripts\python.exe manage.py calibration_reminders --days 30 --settings=core.settings_maintenance 
